@@ -1,0 +1,953 @@
+openapi: 3.1.0
+info:
+  title: Black Bolt API
+  version: 1.0.0
+  description: Contract-first API surface for Black Bolt Tier-1.
+servers:
+  - url: https://api.blackbolt.example
+security:
+  - bearerAuth: []
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      tags: [system]
+      summary: Health check endpoint
+      security: []
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /v1/auth/login:
+    post:
+      operationId: authLogin
+      tags: [auth]
+      summary: Placeholder login endpoint
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '501':
+          description: Not implemented
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotImplementedError'
+
+  /v1/tenants:
+    get:
+      operationId: listTenants
+      tags: [tenants]
+      summary: Placeholder tenant listing endpoint
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+      responses:
+        '501':
+          description: Not implemented
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotImplementedError'
+
+  /v1/tenants/{tenantId}/customers/imports:
+    post:
+      operationId: createCustomerImport
+      tags: [customers, imports]
+      summary: Upload customer CSV import
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/TenantIdPath'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '202':
+          description: Import accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateImportResponse'
+
+  /v1/imports/{importId}:
+    get:
+      operationId: getCustomerImportStatus
+      tags: [imports]
+      summary: Get customer import status
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/ImportIdPath'
+      responses:
+        '200':
+          description: Import status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportStatusResponse'
+
+  /v1/tenants/{tenantId}/customers:
+    get:
+      operationId: listCustomers
+      tags: [customers]
+      summary: List tenant customers with optional segment filter
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/TenantIdPath'
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: segment
+          in: query
+          schema: { $ref: '#/components/schemas/CustomerSegment' }
+      responses:
+        '200':
+          description: Customer page
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListCustomersResponse'
+
+  /v1/tenants/{tenantId}/suppressions/imports:
+    post:
+      operationId: createSuppressionImport
+      tags: [suppressions, imports]
+      summary: Upload suppression CSV import
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/TenantIdPath'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '202':
+          description: Suppression import accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateSuppressionImportResponse'
+
+  /v1/suppressions/imports/{suppressionImportId}:
+    get:
+      operationId: getSuppressionImportStatus
+      tags: [suppressions, imports]
+      summary: Get suppression import status
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/SuppressionImportIdPath'
+      responses:
+        '200':
+          description: Suppression import status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuppressionImportStatusResponse'
+
+  /v1/tenants/{tenantId}/integrations/gbp:
+    patch:
+      operationId: setGbpIntegration
+      tags: [integrations, gbp]
+      summary: Set GBP tenant integration references
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/TenantIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetGbpIntegrationRequest'
+      responses:
+        '200':
+          description: Integration updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GbpIntegrationResponse'
+
+  /v1/tenants/{tenantId}/integrations/gbp/operator-summary:
+    get:
+      operationId: getGbpOperatorSummary
+      tags: [integrations, gbp, operator]
+      summary: Get GBP integration and ingest operator summary
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/TenantIdPath'
+      responses:
+        '200':
+          description: GBP operator summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GbpOperatorSummaryResponse'
+
+  /v1/tenants/{tenantId}/reviews/poll:
+    post:
+      operationId: pollGbpReviews
+      tags: [reviews, gbp]
+      summary: Enqueue GBP review polling job
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/TenantIdPath'
+      responses:
+        '202':
+          description: Poll accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PollReviewsResponse'
+
+  /v1/tenants/{tenantId}/reviews:
+    get:
+      operationId: listReviews
+      tags: [reviews]
+      summary: List GBP reviews for tenant
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/TenantIdPath'
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+        - name: cursor
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Review page
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListReviewsResponse'
+
+  /v1/tenants/{tenantId}/revenue/events:
+    post:
+      operationId: createRevenueEvent
+      summary: Create a revenue event (manual ingest for proof layer)
+      description: |
+        Creates an idempotent revenue event for attribution. No payment processing.
+        Requires an Idempotency-Key header (or request field, per contract) and is tenant-scoped.
+      tags: [Revenue]
+      parameters:
+        - $ref: '#/components/parameters/TenantIdPath'
+        - $ref: '#/components/parameters/IdempotencyKeyHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RevenueEventCreateRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RevenueEventCreateResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/tenants/{tenantId}/revenue/summary:
+    get:
+      operationId: getRevenueSummary
+      summary: Revenue proof summary (attribution rollup)
+      description: |
+        Returns an attribution rollup using a conservative model (initially LAST_TOUCH).
+        Windows: Direct (7d) and Assisted (30d).
+      tags: [Revenue]
+      parameters:
+        - $ref: '#/components/parameters/TenantIdPath'
+        - name: from
+          in: query
+          required: false
+          description: ISO8601 datetime (inclusive). Defaults to now-30d.
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: false
+          description: ISO8601 datetime (exclusive). Defaults to now.
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RevenueSummaryResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/webhooks/postmark:
+    post:
+      operationId: receivePostmarkWebhook
+      tags: [webhooks, postmark]
+      summary: Receive Postmark webhook events
+      security: []
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema: { type: string, example: "Basic base64(user:pass)" }
+        - name: x-postmark-signature
+          in: header
+          required: false
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostmarkWebhookPayload'
+      responses:
+        '200':
+          description: Webhook accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostmarkWebhookAccepted'
+        '401':
+          description: Invalid webhook credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Transient webhook processing failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/tenants/{tenantId}/integrations/postmark/operator-summary:
+    get:
+      operationId: getPostmarkOperatorSummary
+      tags: [integrations, postmark, operator]
+      summary: Get Postmark send/webhook operator summary
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/TenantIdPath'
+      responses:
+        '200':
+          description: Postmark operator summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostmarkOperatorSummaryResponse'
+
+  /v1/tenants/{tenantId}/integrations/postmark/resume:
+    post:
+      operationId: resumePostmarkSends
+      tags: [integrations, postmark, operator]
+      summary: Ack resume checklist and resume postmark sends
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/TenantIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [checklistAck]
+              properties:
+                checklistAck: { type: boolean }
+      responses:
+        '200':
+          description: Resume decision result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostmarkResumeResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    TenantHeader:
+      name: x-tenant-id
+      in: header
+      required: true
+      schema: { type: string }
+    TenantIdPath:
+      name: tenantId
+      in: path
+      required: true
+      schema: { type: string }
+    IdempotencyKeyHeader:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: { type: string }
+      description: |
+        Required idempotency key for create operations. Must be stable across retries.
+    ImportIdPath:
+      name: importId
+      in: path
+      required: true
+      schema: { type: string }
+    SuppressionImportIdPath:
+      name: suppressionImportId
+      in: path
+      required: true
+      schema: { type: string }
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Conflict:
+      description: Conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+  schemas:
+    HealthResponse:
+      type: object
+      required: [ok, service, version]
+      properties:
+        ok: { type: boolean }
+        service: { type: string }
+        version: { type: string }
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8 }
+    ErrorResponse:
+      type: object
+      required: [error, message]
+      properties:
+        error: { type: string }
+        message: { type: string }
+    NotImplementedError:
+      allOf:
+        - $ref: '#/components/schemas/ErrorResponse'
+        - type: object
+          properties:
+            statusCode: { type: integer, enum: [501] }
+    CreateImportResponse:
+      type: object
+      required: [importId, status]
+      properties:
+        importId: { type: string }
+        status: { $ref: '#/components/schemas/ImportStatus' }
+    CreateSuppressionImportResponse:
+      type: object
+      required: [suppressionImportId, status]
+      properties:
+        suppressionImportId: { type: string }
+        status: { $ref: '#/components/schemas/ImportStatus' }
+    ImportStatus:
+      type: string
+      enum: [queued, running, succeeded, failed]
+    ImportError:
+      type: object
+      required: [code, message]
+      properties:
+        rowNum: { type: integer, nullable: true }
+        code: { type: string }
+        message: { type: string }
+    ImportStatusResponse:
+      type: object
+      required: [importId, tenantId, status, totalRows, processedRows, succeededRows, failedRows, duplicateRows]
+      properties:
+        importId: { type: string }
+        tenantId: { type: string }
+        status: { $ref: '#/components/schemas/ImportStatus' }
+        totalRows: { type: integer }
+        processedRows: { type: integer }
+        succeededRows: { type: integer }
+        failedRows: { type: integer }
+        duplicateRows: { type: integer }
+        errors:
+          type: array
+          items: { $ref: '#/components/schemas/ImportError' }
+        createdAt: { type: string, format: date-time }
+        finishedAt: { type: string, format: date-time, nullable: true }
+    SuppressionImportStatusResponse:
+      allOf:
+        - $ref: '#/components/schemas/ImportStatusResponse'
+        - type: object
+          required: [suppressionImportId]
+          properties:
+            suppressionImportId: { type: string }
+    CustomerSegment:
+      type: string
+      enum: [0_90, 90_365, 365_plus]
+    Customer:
+      type: object
+      required: [id, tenantId, email, segment, createdAt]
+      properties:
+        id: { type: string }
+        tenantId: { type: string }
+        externalCustomerRef: { type: string, nullable: true }
+        email: { type: string, format: email }
+        displayName: { type: string, nullable: true }
+        lastServiceDate: { type: string, format: date-time, nullable: true }
+        segment: { $ref: '#/components/schemas/CustomerSegment' }
+        createdAt: { type: string, format: date-time }
+    ListCustomersResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Customer' }
+        nextCursor: { type: string, nullable: true }
+    SetGbpIntegrationRequest:
+      type: object
+      required: [gbpAccountId, gbpLocationId, gbpAccessTokenRef]
+      properties:
+        gbpAccountId: { type: string }
+        gbpLocationId: { type: string }
+        gbpAccessTokenRef: { type: string }
+        reason: { type: string, nullable: true }
+    GbpIntegrationResponse:
+      type: object
+      required: [tenantId, gbpAccountId, gbpLocationId, gbpAccessTokenRef, gbpIntegrationStatus]
+      properties:
+        tenantId: { type: string }
+        gbpAccountId: { type: string }
+        gbpLocationId: { type: string }
+        gbpAccessTokenRef: { type: string }
+        gbpIntegrationStatus: { type: string, enum: [CONNECTED, NEEDS_REAUTH, DISCONNECTED] }
+    PollReviewsResponse:
+      type: object
+      required: [queue]
+      properties:
+        jobId: { type: string, nullable: true }
+        queue: { type: string }
+        cooldownUntil: { type: string, format: date-time, nullable: true }
+    Review:
+      type: object
+      required: [id, tenantId, source, sourceReviewId, createdAt]
+      properties:
+        id: { type: string }
+        tenantId: { type: string }
+        source: { type: string, enum: [GBP] }
+        sourceReviewId: { type: string }
+        rating: { type: integer, nullable: true }
+        body: { type: string, nullable: true }
+        reviewerName: { type: string, nullable: true }
+        reviewedAt: { type: string, format: date-time, nullable: true }
+        createdAt: { type: string, format: date-time }
+    ListReviewsResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Review' }
+        nextCursor: { type: string, nullable: true }
+    JobRunTelemetry:
+      type: object
+      properties:
+        pages_fetched: { type: integer }
+        reviews_fetched: { type: integer }
+        upserted: { type: integer }
+        skipped: { type: integer }
+        cooldown_applied: { type: boolean }
+        error_class: { type: string, nullable: true }
+    LatestJobRunSummary:
+      type: object
+      required: [id, state, createdAt]
+      properties:
+        id: { type: string }
+        state: { type: string, enum: [queued, running, retrying, succeeded, failed, dead_lettered] }
+        errorCode: { type: string, nullable: true }
+        errorMessage: { type: string, nullable: true }
+        metadataJson:
+          allOf:
+            - $ref: '#/components/schemas/JobRunTelemetry'
+          nullable: true
+        createdAt: { type: string, format: date-time }
+        finishedAt: { type: string, format: date-time, nullable: true }
+    IntegrationAlert:
+      type: object
+      required: [id, code, severity, message, createdAt]
+      properties:
+        id: { type: string }
+        code: { type: string }
+        severity: { type: string }
+        message: { type: string }
+        createdAt: { type: string, format: date-time }
+        resolvedAt: { type: string, format: date-time, nullable: true }
+    GbpOperatorSummaryResponse:
+      type: object
+      required: [tenantId, gbpIntegrationStatus, alerts]
+      properties:
+        tenantId: { type: string }
+        gbpIntegrationStatus: { type: string, enum: [CONNECTED, NEEDS_REAUTH, DISCONNECTED] }
+        cooldownUntil: { type: string, format: date-time, nullable: true }
+        lastSuccessAt: { type: string, format: date-time, nullable: true }
+        latestJobRun:
+          allOf:
+            - $ref: '#/components/schemas/LatestJobRunSummary'
+          nullable: true
+        alerts:
+          type: array
+          items: { $ref: '#/components/schemas/IntegrationAlert' }
+    PostmarkWebhookPayload:
+      type: object
+      required: [RecordType]
+      properties:
+        RecordType: { type: string }
+        MessageID: { type: string, nullable: true }
+        ID: { type: [string, integer], nullable: true }
+        ReceivedAt: { type: string, format: date-time, nullable: true }
+        DeliveredAt: { type: string, format: date-time, nullable: true }
+        BouncedAt: { type: string, format: date-time, nullable: true }
+        Metadata:
+          type: object
+          additionalProperties: true
+          nullable: true
+      additionalProperties: true
+    PostmarkWebhookAccepted:
+      type: object
+      required: [accepted, duplicate, eventId]
+      properties:
+        accepted: { type: boolean }
+        duplicate: { type: boolean }
+        eventId: { type: string }
+        resolved: { type: boolean, nullable: true }
+    PostmarkSendSummaryItem:
+      type: object
+      required: [campaignMessageId, status, attempt, lastEventAt]
+      properties:
+        campaignMessageId: { type: string }
+        status: { type: string }
+        deliveryState: { type: string, nullable: true }
+        providerMessageId: { type: string, nullable: true }
+        attempt: { type: integer }
+        lastEventAt: { type: string, format: date-time }
+    PostmarkWebhookSummaryItem:
+      type: object
+      required: [id, providerEventId, eventType, receivedAt, reconcileStatus]
+      properties:
+        id: { type: string }
+        providerEventId: { type: string }
+        providerMessageId: { type: string, nullable: true }
+        eventType: { type: string }
+        receivedAt: { type: string, format: date-time }
+        payloadRedactedJson:
+          type: object
+          additionalProperties: true
+        reconcileStatus: { type: string }
+        lastError: { type: string, nullable: true }
+    PostmarkRollup:
+      type: object
+      required: [sent, simulated, failed]
+      properties:
+        sent: { type: integer }
+        simulated: { type: integer }
+        failed: { type: integer }
+    PostmarkInvariantBreach:
+      type: object
+      required: [active]
+      properties:
+        active: { type: boolean }
+        code:
+          type: string
+          nullable: true
+          enum:
+            - POSTMARK_SEND_SENT_WITHOUT_PROVIDER_ID
+            - POSTMARK_SEND_STUCK_SENDING_WITHOUT_PROVIDER_ID
+            - POSTMARK_INVARIANT_UNKNOWN
+        severity:
+          type: string
+          nullable: true
+          enum: [high, medium, low]
+        message: { type: string, nullable: true }
+        detectedAt: { type: string, format: date-time, nullable: true }
+        runbookRef: { type: string, nullable: true }
+        runbookQuery: { type: string, nullable: true }
+        staleThresholdMinutes: { type: integer, nullable: true }
+        nextActions:
+          type: array
+          nullable: true
+          items: { type: string }
+    PostmarkOperatorSummaryResponse:
+      type: object
+      required: [tenantId, paused, resumeChecklistAck, sends, webhookEvents, rollups, invariants, metrics, gauges]
+      properties:
+        tenantId: { type: string }
+        paused: { type: boolean }
+        pausedUntil: { type: string, format: date-time, nullable: true }
+        pauseReason: { type: string, nullable: true }
+        lastErrorClass: { type: string, nullable: true }
+        resumeChecklistAck: { type: boolean }
+        sends:
+          type: array
+          items: { $ref: '#/components/schemas/PostmarkSendSummaryItem' }
+        webhookEvents:
+          type: array
+          items: { $ref: '#/components/schemas/PostmarkWebhookSummaryItem' }
+        rollups:
+          type: object
+          required: [last1h, last24h]
+          properties:
+            last1h: { $ref: '#/components/schemas/PostmarkRollup' }
+            last24h: { $ref: '#/components/schemas/PostmarkRollup' }
+        invariants:
+          type: object
+          required: [breaches]
+          properties:
+            sendStateBreach:
+              allOf:
+                - $ref: '#/components/schemas/PostmarkInvariantBreach'
+              deprecated: true
+              description: Legacy alias for highest-severity breach; prefer `breaches[0]`.
+            breaches:
+              type: array
+              items: { $ref: '#/components/schemas/PostmarkInvariantBreach' }
+        metrics:
+          type: object
+          required: [webhook_auth_fail_total, webhook_auth_previous_cred_total, webhook_duplicate_total, send_claim_success_total, send_claim_zero_total, send_guard_provider_message_id_block_total]
+          properties:
+            webhook_auth_fail_total: { type: integer }
+            webhook_auth_previous_cred_total: { type: integer }
+            webhook_duplicate_total: { type: integer }
+            send_claim_success_total: { type: integer }
+            send_claim_zero_total: { type: integer }
+            send_guard_provider_message_id_block_total: { type: integer }
+        gauges:
+          type: object
+          required: [pausedTenantsCount]
+          properties:
+            pausedTenantsCount: { type: integer }
+        diagnostics:
+          type: object
+          nullable: true
+          properties:
+            durationMs: { type: integer }
+            prismaCalls: { type: integer }
+    PostmarkResumeResponse:
+      type: object
+      required: [resumed]
+      properties:
+        resumed: { type: boolean }
+        reason: { type: string, nullable: true }
+    RevenueAttributionModel:
+      type: string
+      enum: [LAST_TOUCH]
+      description: Conservative attribution model. Phase 6 starts with LAST_TOUCH only.
+    RevenueEventKind:
+      type: string
+      enum: [INVOICE, PAYMENT, SALE]
+      description: Revenue event classification. Proof layer uses these for reporting only.
+    RevenueEventSource:
+      type: string
+      enum: [MANUAL, IMPORT, API]
+      description: Source of revenue events. Phase 6 uses MANUAL first.
+    RevenueCurrency:
+      type: string
+      minLength: 3
+      maxLength: 3
+      description: ISO 4217 currency code (e.g., USD).
+    RevenueEventCreateRequest:
+      type: object
+      required:
+        - occurredAt
+        - amountCents
+        - currency
+        - kind
+        - source
+      properties:
+        occurredAt:
+          type: string
+          format: date-time
+        amountCents:
+          type: integer
+          minimum: 1
+          description: Amount in minor units (cents).
+        currency:
+          $ref: '#/components/schemas/RevenueCurrency'
+        kind:
+          $ref: '#/components/schemas/RevenueEventKind'
+        source:
+          $ref: '#/components/schemas/RevenueEventSource'
+        externalId:
+          type: string
+          description: Optional external id (dedupe key when present, scoped per tenant+source).
+        customerId:
+          type: string
+          description: Optional customer id, if known.
+        description:
+          type: string
+          maxLength: 240
+          description: Optional human label (e.g. "Filler appointment").
+        redactedMetadata:
+          type: object
+          additionalProperties:
+            type: string
+          description: |
+            Optional, allowlisted metadata only. Must not include PHI/PII beyond what is already permitted.
+    RevenueEventCreateResponse:
+      type: object
+      required:
+        - revenueEventId
+        - deduped
+      properties:
+        revenueEventId:
+          type: string
+        deduped:
+          type: boolean
+          description: True if this request matched an existing idempotency key / externalId.
+    MoneyBreakdown:
+      type: object
+      required: [amountCents, currency]
+      properties:
+        amountCents:
+          type: integer
+        currency:
+          $ref: '#/components/schemas/RevenueCurrency'
+    RevenueRollup:
+      type: object
+      required:
+        - total
+        - direct
+        - assisted
+        - unattributed
+      properties:
+        total:
+          $ref: '#/components/schemas/MoneyBreakdown'
+        direct:
+          $ref: '#/components/schemas/MoneyBreakdown'
+        assisted:
+          $ref: '#/components/schemas/MoneyBreakdown'
+        unattributed:
+          $ref: '#/components/schemas/MoneyBreakdown'
+    RevenueTopCampaign:
+      type: object
+      required: [campaignId, campaignKey, attributed]
+      properties:
+        campaignId:
+          type: string
+        campaignKey:
+          type: string
+        attributed:
+          $ref: '#/components/schemas/MoneyBreakdown'
+        direct:
+          $ref: '#/components/schemas/MoneyBreakdown'
+        assisted:
+          $ref: '#/components/schemas/MoneyBreakdown'
+    RevenueSummaryDiagnostics:
+      type: object
+      required: [durationMs, prismaCalls]
+      properties:
+        durationMs:
+          type: integer
+          minimum: 0
+        prismaCalls:
+          type: integer
+          minimum: 0
+    RevenueSummaryResponse:
+      type: object
+      required:
+        - tenantId
+        - model
+        - windowDaysDirect
+        - windowDaysAssisted
+        - range
+        - rollup
+        - topCampaigns
+      properties:
+        tenantId:
+          type: string
+        model:
+          $ref: '#/components/schemas/RevenueAttributionModel'
+        windowDaysDirect:
+          type: integer
+          enum: [7]
+        windowDaysAssisted:
+          type: integer
+          enum: [30]
+        range:
+          type: object
+          required: [from, to]
+          properties:
+            from:
+              type: string
+              format: date-time
+            to:
+              type: string
+              format: date-time
+        rollup:
+          $ref: '#/components/schemas/RevenueRollup'
+        topCampaigns:
+          type: array
+          maxItems: 5
+          items:
+            $ref: '#/components/schemas/RevenueTopCampaign'
+        diagnostics:
+          allOf:
+            - $ref: '#/components/schemas/RevenueSummaryDiagnostics'
+          description: Present only when REVENUE_OPS_DIAGNOSTICS=1.
+          nullable: true

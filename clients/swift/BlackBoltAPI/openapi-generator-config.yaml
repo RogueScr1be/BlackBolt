@@ -1,0 +1,7 @@
+# Apple Swift OpenAPI Generator plugin config file.
+# This is not OpenAPI Generator (Java CLI) configuration.
+generate:
+  - types
+  - client
+accessModifier: public
+namingStrategy: idiomatic

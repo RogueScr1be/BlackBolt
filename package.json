@@ -1,0 +1,33 @@
+{
+  "name": "blackbolt-tier1",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Black Bolt Tier-1 monorepo scaffold",
+  "engines": {
+    "node": "24.13.1"
+  },
+  "workspaces": [
+    "apps/api"
+  ],
+  "scripts": {
+    "contract:lint": "node scripts/validate-openapi.mjs",
+    "contract:breaking": "node scripts/check-breaking-api.mjs",
+    "contract:coverage": "node scripts/check-openapi-coverage.mjs",
+    "contract:invariants": "node scripts/check-postmark-invariants-contract.mjs",
+    "contract:ci": "npm run contract:lint && npm run contract:breaking && npm run contract:coverage && npm run contract:invariants",
+    "ci:postmark:smoke": "npm run api:test -- postmark-send.processor.spec.ts postmark-webhooks.spec.ts",
+    "test:postmark": "npm --workspace @blackbolt/api run test -- --testPathPattern postmark",
+    "api:build": "npm --workspace @blackbolt/api run build",
+    "api:start": "npm --workspace @blackbolt/api run start",
+    "api:start:prod": "npm --workspace @blackbolt/api run start:api",
+    "worker:start:prod": "npm --workspace @blackbolt/api run start:worker",
+    "api:test": "npm --workspace @blackbolt/api run test",
+    "prisma:generate": "npm --workspace @blackbolt/api exec -- prisma generate --schema ../../prisma/schema.prisma && node scripts/prisma-schema-hash.mjs",
+    "prisma:hash:check": "node scripts/prisma-schema-hash.mjs --check",
+    "prisma:migrations:check": "node scripts/check-migration-immutability.mjs",
+    "prisma:migrations:chain": "node scripts/check-migration-immutability.mjs --write-chain",
+    "prisma:migrate:deploy": "npm --workspace @blackbolt/api exec -- prisma migrate deploy --schema ../../prisma/schema.prisma",
+    "swift:generate": "node scripts/generate-swift-client.mjs",
+    "test:offline": "TEST_OFFLINE=1 npm run contract:ci && npm run api:test"
+  }
+}

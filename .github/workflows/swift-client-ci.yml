@@ -1,0 +1,39 @@
+name: swift-client-ci
+
+on:
+  pull_request:
+    paths:
+      - 'contracts/openapi/**'
+      - 'clients/swift/**'
+      - 'scripts/generate-swift-client.mjs'
+      - 'scripts/gen-swift-client.sh'
+      - '.github/workflows/swift-client-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'contracts/openapi/**'
+      - 'clients/swift/**'
+
+jobs:
+  swift-client:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.13.1'
+      - name: Verify Node version pin
+        run: |
+          test "$(node -v)" = "v24.13.1"
+          echo "Node version OK: $(node -v)"
+      - uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: '6.2.3'
+      - name: Verify Swift version
+        run: swift --version
+      - name: Install dependencies
+        run: npm install
+      - name: Generate Swift client
+        run: ./scripts/gen-swift-client.sh
+      - name: Build Swift package
+        run: swift build --package-path clients/swift/BlackBoltAPI

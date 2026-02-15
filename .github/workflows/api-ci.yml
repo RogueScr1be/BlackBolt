@@ -1,0 +1,94 @@
+name: api-ci
+
+on:
+  pull_request:
+    paths:
+      - 'apps/api/**'
+      - 'prisma/**'
+      - 'package.json'
+      - '.github/workflows/api-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'apps/api/**'
+      - 'prisma/**'
+
+jobs:
+  api-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.13.1'
+          cache: 'npm'
+      - name: Verify Node version pin
+        run: |
+          test "$(node -v)" = "v24.13.1"
+          echo "Node version OK: $(node -v)"
+      - name: Enforce migration immutability chain
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: node scripts/check-migration-immutability.mjs "$BASE_SHA" "$HEAD_SHA"
+      - name: Enforce lockfile guardrail on PRs
+        if: github.event_name == 'pull_request'
+        env:
+          PR_LABELS: ${{ toJson(github.event.pull_request.labels.*.name) }}
+        run: |
+          set -euo pipefail
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          CHANGED="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
+          if echo "$CHANGED" | grep -Eq '(^|/)(package-lock\.json|npm-shrinkwrap\.json)$'; then
+            echo "Lockfile change detected."
+            if echo "$PR_LABELS" | grep -q 'deps-update'; then
+              echo "Allowed by PR label deps-update."
+              exit 0
+            fi
+
+            if git log --format=%s "$BASE_SHA..$HEAD_SHA" | grep -Eq '\[deps-update\]|deps-update:'; then
+              echo "Allowed by commit message deps-update tag."
+              exit 0
+            fi
+
+            echo "ERROR: Lockfile changed without deps-update label or deps-update commit tag."
+            exit 1
+          fi
+          echo "No lockfile changes detected."
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+      - name: Generate Prisma client
+        run: npm run prisma:generate
+      - name: Enforce Prisma schema hash sync on PRs
+        if: github.event_name == 'pull_request'
+        run: |
+          set -euo pipefail
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          if git diff --name-only "$BASE_SHA" "$HEAD_SHA" | grep -q '^prisma/schema.prisma$'; then
+            if ! git diff --name-only "$BASE_SHA" "$HEAD_SHA" | grep -Eq '^prisma/migrations/.+/migration\.sql$'; then
+              echo "ERROR: prisma/schema.prisma changed without a migration file."
+              exit 1
+            fi
+            npm run prisma:hash:check
+            if ! git diff --quiet -- prisma/schema.prisma.sha256; then
+              echo "ERROR: prisma/schema.prisma changed but prisma/schema.prisma.sha256 is stale."
+              echo "Run npm run prisma:generate and commit updated stamp."
+              git --no-pager diff -- prisma/schema.prisma.sha256 || true
+              exit 1
+            fi
+          fi
+      - name: Build API
+        run: npm run api:build
+      - name: Fast safety gate (Postmark)
+        run: npm run ci:postmark:smoke
+      - name: Run API tests
+        run: npm run api:test

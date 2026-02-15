@@ -1,0 +1,654 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  OWNER
+  ADMIN
+  OPERATOR
+  VIEWER
+}
+
+enum SuppressionKind {
+  BOUNCE
+  COMPLAINT
+  UNSUBSCRIBE
+  MANUAL
+}
+
+enum JobRunState {
+  QUEUED
+  RUNNING
+  RETRYING
+  SUCCEEDED
+  FAILED
+  DEAD_LETTERED
+}
+
+enum ImportStatus {
+  QUEUED
+  RUNNING
+  SUCCEEDED
+  FAILED
+}
+
+enum CustomerSegment {
+  SEGMENT_0_90
+  SEGMENT_90_365
+  SEGMENT_365_PLUS
+}
+
+enum CampaignMessageStatus {
+  QUEUED
+  SENDING
+  SENT
+  SENT_SIMULATED
+  FAILED
+  PAUSED
+}
+
+enum DeliveryState {
+  QUEUED
+  SENT
+  DELIVERED
+  BOUNCED
+  SPAMCOMPLAINT
+  UNSUBSCRIBED
+}
+
+enum RevenueEventKind {
+  INVOICE
+  PAYMENT
+  SALE
+}
+
+enum RevenueEventSource {
+  MANUAL
+  IMPORT
+  API
+}
+
+enum RevenueAttributionModel {
+  LAST_TOUCH
+}
+
+model Tenant {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  gbpAccountId String? @map("gbp_account_id")
+  gbpLocationId String? @map("gbp_location_id")
+  gbpAccessTokenRef String? @map("gbp_access_token_ref")
+  gbpIntegrationStatus String @default("DISCONNECTED") @map("gbp_integration_status")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  users                 User[]
+  tenantPolicies        TenantPolicy[]
+  customers             Customer[]
+  suppressions          Suppression[]
+  reviews               Review[]
+  reviewClassifications ReviewClassification[]
+  draftMessages         DraftMessage[]
+  approvalItems         ApprovalItem[]
+  campaigns             Campaign[]
+  campaignMessages      CampaignMessage[]
+  sendEvents            SendEvent[]
+  linkCodes             LinkCode[]
+  clickEvents           ClickEvent[]
+  auditLogs             AuditLog[]
+  jobRuns               JobRun[]
+  customerImports       CustomerImport[]
+  customerImportRows    CustomerImportRow[]
+  suppressionImports    SuppressionImport[]
+  suppressionImportRows SuppressionImportRow[]
+  suppressionEntries    SuppressionEntry[]
+  integrationAlerts     IntegrationAlert[]
+  gbpSyncStates         GbpSyncState[]
+  postmarkWebhookEvents PostmarkWebhookEvent[]
+  postmarkSendControl   PostmarkSendControl?
+  revenueEvents         RevenueEvent[]
+  revenueAttributions   RevenueAttribution[]
+
+  @@map("tenants")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  tenantId     String   @map("tenant_id")
+  email        String
+  displayName  String?  @map("display_name")
+  role         UserRole @default(OPERATOR)
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  approvals    ApprovalItem[] @relation("ApprovalActor")
+  auditLogs    AuditLog[]
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+  @@map("users")
+}
+
+model TenantPolicy {
+  id          String   @id @default(cuid())
+  tenantId    String   @map("tenant_id")
+  policyKey   String   @map("policy_key")
+  policyJson  Json     @map("policy_json")
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@unique([tenantId, policyKey])
+  @@index([tenantId])
+  @@map("tenant_policies")
+}
+
+model Customer {
+  id              String   @id @default(cuid())
+  tenantId        String   @map("tenant_id")
+  externalRef     String?  @map("external_ref")
+  email           String
+  displayName     String?  @map("display_name")
+  lastServiceDate DateTime? @map("last_service_date")
+  segment         CustomerSegment @default(SEGMENT_365_PLUS)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  suppressions    Suppression[]
+  reviews         Review[]
+  draftMessages   DraftMessage[]
+  campaignMessages CampaignMessage[]
+  suppressionEntries SuppressionEntry[]
+  revenueEvents   RevenueEvent[]
+
+  @@unique([tenantId, email])
+  @@unique([tenantId, externalRef])
+  @@index([tenantId])
+  @@map("customers")
+}
+
+model CustomerImport {
+  id            String       @id @default(cuid())
+  tenantId      String       @map("tenant_id")
+  status        ImportStatus @default(QUEUED)
+  totalRows     Int          @default(0) @map("total_rows")
+  processedRows Int          @default(0) @map("processed_rows")
+  succeededRows Int          @default(0) @map("succeeded_rows")
+  failedRows    Int          @default(0) @map("failed_rows")
+  duplicateRows Int          @default(0) @map("duplicate_rows")
+  errorJson     Json?        @map("error_json")
+  createdAt     DateTime     @default(now()) @map("created_at")
+  finishedAt    DateTime?    @map("finished_at")
+
+  tenant        Tenant       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  rows          CustomerImportRow[]
+
+  @@index([tenantId, status])
+  @@map("customer_imports")
+}
+
+model CustomerImportRow {
+  id             String          @id @default(cuid())
+  tenantId       String          @map("tenant_id")
+  importId       String          @map("import_id")
+  rowNum         Int             @map("row_num")
+  rawJson        Json            @map("raw_json")
+  normalizedJson Json?           @map("normalized_json")
+  errorCode      String?         @map("error_code")
+  errorMessage   String?         @map("error_message")
+  createdAt      DateTime        @default(now()) @map("created_at")
+
+  tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  import         CustomerImport  @relation(fields: [importId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, importId, rowNum])
+  @@index([tenantId, importId])
+  @@map("customer_import_rows")
+}
+
+model SuppressionImport {
+  id            String       @id @default(cuid())
+  tenantId      String       @map("tenant_id")
+  status        ImportStatus @default(QUEUED)
+  totalRows     Int          @default(0) @map("total_rows")
+  processedRows Int          @default(0) @map("processed_rows")
+  succeededRows Int          @default(0) @map("succeeded_rows")
+  failedRows    Int          @default(0) @map("failed_rows")
+  duplicateRows Int          @default(0) @map("duplicate_rows")
+  errorJson     Json?        @map("error_json")
+  createdAt     DateTime     @default(now()) @map("created_at")
+  finishedAt    DateTime?    @map("finished_at")
+
+  tenant        Tenant       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  rows          SuppressionImportRow[]
+
+  @@index([tenantId, status])
+  @@map("suppression_imports")
+}
+
+model SuppressionImportRow {
+  id             String            @id @default(cuid())
+  tenantId       String            @map("tenant_id")
+  importId       String            @map("import_id")
+  rowNum         Int               @map("row_num")
+  rawJson        Json              @map("raw_json")
+  normalizedJson Json?             @map("normalized_json")
+  errorCode      String?           @map("error_code")
+  errorMessage   String?           @map("error_message")
+  createdAt      DateTime          @default(now()) @map("created_at")
+
+  tenant         Tenant            @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  import         SuppressionImport @relation(fields: [importId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, importId, rowNum])
+  @@index([tenantId, importId])
+  @@map("suppression_import_rows")
+}
+
+model SuppressionEntry {
+  id          String    @id @default(cuid())
+  tenantId    String    @map("tenant_id")
+  customerId  String?   @map("customer_id")
+  email       String
+  channel     String
+  reason      String?
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  customer    Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, email, channel])
+  @@index([tenantId, active])
+  @@map("suppression_entries")
+}
+
+model Suppression {
+  id           String          @id @default(cuid())
+  tenantId     String          @map("tenant_id")
+  customerId   String          @map("customer_id")
+  kind         SuppressionKind
+  reason       String?
+  isActive     Boolean         @default(true) @map("is_active")
+  createdAt    DateTime        @default(now()) @map("created_at")
+
+  tenant       Tenant          @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  customer     Customer        @relation(fields: [customerId], references: [id], onDelete: Restrict)
+
+  @@unique([tenantId, customerId, kind])
+  @@index([tenantId])
+  @@map("suppressions")
+}
+
+model Review {
+  id               String   @id @default(cuid())
+  tenantId         String   @map("tenant_id")
+  customerId       String?  @map("customer_id")
+  sourceReviewId   String   @map("source_review_id")
+  source           String
+  rating           Int?
+  reviewBody       String?  @map("body")
+  reviewerName     String?  @map("reviewer_name")
+  reviewedAt       DateTime? @map("reviewed_at")
+  redactedJson     Json?    @map("redacted_json")
+  payloadHash      String?  @map("payload_hash")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  customer         Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  classifications  ReviewClassification[]
+  draftMessages    DraftMessage[]
+
+  @@unique([tenantId, source, sourceReviewId])
+  @@index([tenantId])
+  @@map("reviews")
+}
+
+model ReviewClassification {
+  id             String   @id @default(cuid())
+  tenantId       String   @map("tenant_id")
+  reviewId       String   @map("review_id")
+  modelVersion   String   @map("model_version")
+  label          String
+  confidence     Decimal  @db.Decimal(5, 4)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  review         Review   @relation(fields: [reviewId], references: [id], onDelete: Restrict)
+
+  @@unique([tenantId, reviewId, modelVersion])
+  @@index([tenantId])
+  @@map("review_classifications")
+}
+
+model DraftMessage {
+  id               String   @id @default(cuid())
+  tenantId         String   @map("tenant_id")
+  reviewId         String?  @map("review_id")
+  customerId       String   @map("customer_id")
+  templateVersion  String   @map("template_version")
+  status           String
+  bodyText         String   @map("body_text")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  review           Review?  @relation(fields: [reviewId], references: [id], onDelete: SetNull)
+  customer         Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  approvalItems    ApprovalItem[]
+  campaignMessages CampaignMessage[]
+
+  @@unique([tenantId, reviewId, templateVersion])
+  @@index([tenantId])
+  @@map("draft_messages")
+}
+
+model ApprovalItem {
+  id               String   @id @default(cuid())
+  tenantId         String   @map("tenant_id")
+  draftMessageId   String   @map("draft_message_id")
+  requiredRole     UserRole @map("required_role")
+  status           String
+  approvedByUserId String?  @map("approved_by_user_id")
+  approvedAt       DateTime? @map("approved_at")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  draftMessage     DraftMessage @relation(fields: [draftMessageId], references: [id], onDelete: Restrict)
+  approvedByUser   User? @relation("ApprovalActor", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, draftMessageId])
+  @@index([tenantId])
+  @@map("approval_items")
+}
+
+model Campaign {
+  id              String   @id @default(cuid())
+  tenantId        String   @map("tenant_id")
+  campaignKey     String   @map("campaign_key")
+  name            String
+  status          String
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  messages        CampaignMessage[]
+
+  @@unique([tenantId, campaignKey])
+  @@index([tenantId])
+  @@map("campaigns")
+}
+
+model CampaignMessage {
+  id               String   @id @default(cuid())
+  tenantId         String   @map("tenant_id")
+  campaignId       String   @map("campaign_id")
+  customerId       String   @map("customer_id")
+  draftMessageId   String?  @map("draft_message_id")
+  /// Deterministic: sha256(tenant_id + campaign_id + customer_id + template_version + send_window)
+  sendDedupeKey    String   @map("send_dedupe_key")
+  /// DB CHECK (migration 20260214213000): delivery_state='SENT' requires provider_message_id.
+  providerMessageId String? @map("provider_message_id")
+  status           CampaignMessageStatus @default(QUEUED)
+  deliveryState    DeliveryState? @map("delivery_state")
+  claimedAt        DateTime? @map("claimed_at")
+  claimedBy        String? @map("claimed_by")
+  sendAttempt      Int @default(0) @map("send_attempt")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  campaign         Campaign @relation(fields: [campaignId], references: [id], onDelete: Restrict)
+  customer         Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  draftMessage     DraftMessage? @relation(fields: [draftMessageId], references: [id], onDelete: SetNull)
+  sendEvents       SendEvent[]
+  linkCodes        LinkCode[]
+  revenueAttributions RevenueAttribution[]
+
+  @@unique([tenantId, sendDedupeKey])
+  @@unique([tenantId, providerMessageId])
+  @@index([tenantId])
+  @@map("campaign_messages")
+}
+
+model RevenueEvent {
+  id               String             @id @default(cuid())
+  tenantId         String             @map("tenant_id")
+  tenant           Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  occurredAt       DateTime           @map("occurred_at")
+  amountCents      Int                @map("amount_cents")
+  currency         String             @db.VarChar(3)
+
+  kind             RevenueEventKind
+  source           RevenueEventSource
+  externalId       String?            @map("external_id") @db.VarChar(128)
+
+  customerId       String?            @map("customer_id")
+  customer         Customer?          @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  description      String?            @db.VarChar(240)
+  idempotencyKey   String             @map("idempotency_key") @db.VarChar(160)
+  redactedMetadata Json?              @map("redacted_metadata")
+
+  createdAt        DateTime           @default(now()) @map("created_at")
+  updatedAt        DateTime           @updatedAt @map("updated_at")
+
+  attributions     RevenueAttribution[]
+
+  @@index([tenantId, occurredAt], map: "revenue_events_tenant_occurred_at_idx")
+  @@unique([tenantId, idempotencyKey], map: "revenue_events_tenant_idempotency_key_uq")
+  @@unique([tenantId, source, externalId], map: "revenue_events_tenant_source_external_id_uq")
+  @@map("revenue_events")
+}
+
+model RevenueAttribution {
+  id                 String                  @id @default(cuid())
+  tenantId           String                  @map("tenant_id")
+  tenant             Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  model              RevenueAttributionModel @default(LAST_TOUCH)
+
+  revenueEventId     String                  @map("revenue_event_id")
+  revenueEvent       RevenueEvent            @relation(fields: [revenueEventId], references: [id], onDelete: Cascade)
+
+  campaignMessageId  String                  @map("campaign_message_id")
+  campaignMessage    CampaignMessage         @relation(fields: [campaignMessageId], references: [id], onDelete: Cascade)
+
+  attributedCents    Int                     @map("attributed_cents")
+  isDirect           Boolean                 @map("is_direct")
+  dedupeKey          String                  @map("dedupe_key") @db.VarChar(96)
+
+  createdAt          DateTime                @default(now()) @map("created_at")
+
+  @@index([tenantId, createdAt], map: "revenue_attributions_tenant_created_at_idx")
+  @@index([tenantId, campaignMessageId], map: "revenue_attributions_tenant_campaign_message_idx")
+  @@unique([tenantId, dedupeKey], map: "revenue_attributions_tenant_dedupe_key_uq")
+  @@map("revenue_attributions")
+}
+
+model SendEvent {
+  id                String   @id @default(cuid())
+  tenantId          String   @map("tenant_id")
+  campaignMessageId String   @map("campaign_message_id")
+  provider          String
+  providerEventId   String   @map("provider_event_id")
+  providerMessageId String?  @map("provider_message_id")
+  eventType         String   @map("event_type")
+  occurredAt        DateTime @map("occurred_at")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  tenant            Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  campaignMessage   CampaignMessage @relation(fields: [campaignMessageId], references: [id], onDelete: Restrict)
+
+  @@unique([tenantId, providerEventId, eventType])
+  @@index([tenantId, providerMessageId])
+  @@index([tenantId])
+  @@map("send_events")
+}
+
+model LinkCode {
+  id                String   @id @default(cuid())
+  tenantId          String   @map("tenant_id")
+  campaignMessageId String   @map("campaign_message_id")
+  code              String
+  destinationUrl    String   @map("destination_url")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  tenant            Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  campaignMessage   CampaignMessage @relation(fields: [campaignMessageId], references: [id], onDelete: Restrict)
+  clickEvents       ClickEvent[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@map("link_codes")
+}
+
+model ClickEvent {
+  id          String   @id @default(cuid())
+  tenantId    String   @map("tenant_id")
+  linkCodeId  String   @map("link_code_id")
+  clickedAt   DateTime @default(now()) @map("clicked_at")
+  userAgent   String?  @map("user_agent")
+  ipHash      String?  @map("ip_hash")
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  linkCode    LinkCode @relation(fields: [linkCodeId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, clickedAt])
+  @@map("click_events")
+}
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  tenantId     String   @map("tenant_id")
+  actorUserId  String?  @map("actor_user_id")
+  action       String
+  entityType   String   @map("entity_type")
+  entityId     String   @map("entity_id")
+  metadataJson Json?    @map("metadata_json")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  actorUser    User?    @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, createdAt])
+  @@map("audit_logs")
+}
+
+model JobRun {
+  id              String   @id @default(cuid())
+  tenantId        String   @map("tenant_id")
+  queueName       String   @map("queue_name")
+  jobName         String   @map("job_name")
+  jobId           String   @map("job_id")
+  idempotencyKey  String   @map("idempotency_key")
+  payloadHash     String?  @map("payload_hash")
+  metadataJson    Json?    @map("metadata_json")
+  state           String
+  attempts        Int      @default(0)
+  errorCode       String?  @map("error_code")
+  errorMessage    String?  @map("error_message")
+  enqueuedAt      DateTime @default(now()) @map("enqueued_at")
+  startedAt       DateTime? @map("started_at")
+  finishedAt      DateTime? @map("finished_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@unique([tenantId, queueName, jobId])
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId, state])
+  @@map("job_runs")
+}
+
+model IntegrationAlert {
+  id           String   @id @default(cuid())
+  tenantId     String   @map("tenant_id")
+  integration  String
+  code         String
+  severity     String
+  message      String
+  metadataJson Json?    @map("metadata_json")
+  createdAt    DateTime @default(now()) @map("created_at")
+  resolvedAt   DateTime? @map("resolved_at")
+
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, createdAt])
+  @@map("integration_alerts")
+}
+
+model GbpSyncState {
+  id               String    @id @default(cuid())
+  tenantId         String    @map("tenant_id")
+  locationId       String    @map("location_id")
+  nextPageToken    String?   @map("next_page_token")
+  lastSeenReviewAt DateTime? @map("last_seen_review_at")
+  lastSuccessAt    DateTime? @map("last_success_at")
+  cooldownUntil    DateTime? @map("cooldown_until")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  tenant           Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@unique([tenantId, locationId])
+  @@index([tenantId, cooldownUntil])
+  @@map("gbp_sync_states")
+}
+
+model PostmarkWebhookEvent {
+  id                String    @id @default(cuid())
+  tenantId          String?   @map("tenant_id")
+  providerEventId   String    @map("provider_event_id")
+  providerMessageId String?   @map("provider_message_id")
+  sourceIp          String?   @map("source_ip")
+  eventType         String    @map("event_type")
+  receivedAt        DateTime  @map("received_at")
+  payloadRedactedJson Json    @map("payload_redacted_json")
+  payloadHash       String    @map("payload_hash")
+  reconcileStatus   String    @default("PENDING") @map("reconcile_status")
+  reconcileAttempts Int       @default(0) @map("reconcile_attempts")
+  nextRetryAt       DateTime? @map("next_retry_at")
+  lastError         String?   @map("last_error")
+  processedAt       DateTime? @map("processed_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  tenant            Tenant?   @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+
+  @@unique([providerEventId])
+  @@index([tenantId, createdAt])
+  @@index([sourceIp, createdAt])
+  @@index([reconcileStatus, nextRetryAt])
+  @@map("postmark_webhook_events")
+}
+
+model PostmarkSendControl {
+  tenantId                  String   @id @map("tenant_id")
+  pausedUntil               DateTime? @map("paused_until")
+  pauseReason               String?   @map("pause_reason")
+  lastErrorClass            String?   @map("last_error_class")
+  resumeChecklistAck        Boolean   @default(false) @map("resume_checklist_ack")
+  resumeChecklistAckActor   String?   @map("resume_checklist_ack_actor")
+  resumeChecklistAckAt      DateTime? @map("resume_checklist_ack_at")
+  policyVersion             Int       @default(0) @map("policy_version")
+  updatedAt                 DateTime  @updatedAt @map("updated_at")
+  createdAt                 DateTime  @default(now()) @map("created_at")
+
+  tenant                    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@map("postmark_send_controls")
+}

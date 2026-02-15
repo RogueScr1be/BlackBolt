@@ -1,0 +1,15 @@
+node_modules/
+.npm/
+dist/
+build/
+coverage/
+.env
+.env.*
+!.env.example
+.DS_Store
+prisma/dev.db
+clients/swift/BlackBoltAPI/.build/
+clients/swift/BlackBoltAPI/.swiftpm/
+
+clients/swift/BlackBoltOperator/.build/
+clients/swift/BlackBoltOperator/.swiftpm/
