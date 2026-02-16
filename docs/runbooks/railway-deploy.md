@@ -79,8 +79,19 @@ If Railway reports that the latest deployment cannot be redeployed (building/dep
 - Run smoke script:
 - `bash scripts/smoke/railway-smoke.sh <apiBaseUrl> <tenantId> <basicAuthOrDash>`
 
+## Baseline Freeze Checklist (Before UI/Operator Releases)
+1. Select one git SHA for the release window.
+2. Set `BUILD_SHA` to that SHA on both API and Worker.
+3. Deploy both services from that SHA only.
+4. Confirm same SHA in both boot banners.
+5. Confirm smoke script passes before shipping Operator UI changes.
+
 ## Worker Health Surrogate
 - Worker has no HTTP endpoint by design.
 - Surrogate check is API-backed operator data:
 - `GET /v1/tenants/{tenantId}/integrations/postmark/operator-summary` returns `200` and valid JSON.
 - Manual fallback (if surrogate looks stale): inspect `blackbolt-worker` logs for active queue processing and recent startup banner with expected `build_sha`.
+
+## Operator Runbook
+- Command-center usage and KPI cadence:
+- `docs/runbooks/operator-command-center.md`

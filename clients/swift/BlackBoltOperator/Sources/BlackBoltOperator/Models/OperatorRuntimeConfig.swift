@@ -6,6 +6,7 @@ final class OperatorRuntimeConfig: ObservableObject {
         static let apiBaseURL = "operator.apiBaseURL"
         static let tenantId = "operator.tenantId"
         static let authHeader = "operator.authHeader"
+        static let ackPrefix = "operator.ackAlerts."
     }
 
     private let defaults: UserDefaults
@@ -57,5 +58,32 @@ final class OperatorRuntimeConfig: ObservableObject {
         }
         let encoded = Data(raw.utf8).base64EncodedString()
         return "Basic \(encoded)"
+    }
+
+    func acknowledgedAlertIDs() -> Set<String> {
+        let key = "\(Keys.ackPrefix)\(tenantId)"
+        let values = defaults.array(forKey: key) as? [String] ?? []
+        return Set(values)
+    }
+
+    func markAlertAcknowledged(_ id: String) {
+        var values = acknowledgedAlertIDs()
+        values.insert(id)
+        persistAcknowledgedAlertIDs(values)
+    }
+
+    func unacknowledgeAlert(_ id: String) {
+        var values = acknowledgedAlertIDs()
+        values.remove(id)
+        persistAcknowledgedAlertIDs(values)
+    }
+
+    func clearAcknowledgedAlerts() {
+        persistAcknowledgedAlertIDs(Set<String>())
+    }
+
+    private func persistAcknowledgedAlertIDs(_ ids: Set<String>) {
+        let key = "\(Keys.ackPrefix)\(tenantId)"
+        defaults.set(Array(ids).sorted(), forKey: key)
     }
 }

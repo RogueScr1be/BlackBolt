@@ -14,11 +14,6 @@ private struct ReviewPage: Decodable {
     let nextCursor: String?
 }
 
-private struct PollResponse: Decodable {
-    let jobId: String?
-    let queue: String
-}
-
 struct ReviewsListView: View {
     @EnvironmentObject var runtime: OperatorRuntimeConfig
     @State private var reviews: [ReviewRow] = []

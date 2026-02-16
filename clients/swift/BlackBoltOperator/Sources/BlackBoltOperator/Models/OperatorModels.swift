@@ -106,3 +106,64 @@ struct RevenueSummaryRollup: Decodable {
     let assisted: MoneyBreakdown
     let unattributed: MoneyBreakdown
 }
+
+struct HealthResponse: Decodable {
+    let ok: Bool
+}
+
+struct PostmarkRollupWindow: Decodable {
+    let sent: Int
+    let simulated: Int
+    let failed: Int
+}
+
+struct PostmarkRollups: Decodable {
+    let last1h: PostmarkRollupWindow
+    let last24h: PostmarkRollupWindow
+}
+
+struct PostmarkInvariantBreach: Decodable {
+    let active: Bool
+    let code: String?
+    let severity: String?
+    let message: String?
+    let detectedAt: String?
+}
+
+struct PostmarkInvariantSet: Decodable {
+    let sendStateBreach: PostmarkInvariantBreach
+}
+
+struct PostmarkOperatorSummary: Decodable {
+    let tenantId: String
+    let paused: Bool
+    let pausedUntil: String?
+    let pauseReason: String?
+    let resumeChecklistAck: Bool
+    let rollups: PostmarkRollups
+    let invariants: PostmarkInvariantSet
+}
+
+struct PollResponse: Decodable {
+    let jobId: String?
+    let queue: String
+}
+
+struct OperatorActionResponse: Decodable {
+    let resumed: Bool?
+    let reason: String?
+}
+
+struct OperatorAlert: Identifiable, Hashable {
+    enum Severity: String {
+        case critical
+        case warning
+        case info
+    }
+
+    let id: String
+    let severity: Severity
+    let title: String
+    let message: String
+    let source: String
+}

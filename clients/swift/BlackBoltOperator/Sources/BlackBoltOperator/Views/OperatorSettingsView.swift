@@ -2,7 +2,6 @@ import SwiftUI
 
 struct OperatorSettingsView: View {
     @EnvironmentObject var runtime: OperatorRuntimeConfig
-    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -16,14 +15,6 @@ struct OperatorSettingsView: View {
                 TextField("Auth Header or user:pass", text: $runtime.authHeader)
             }
             .formStyle(.grouped)
-
-            HStack {
-                Spacer()
-                Button("Done") {
-                    dismiss()
-                }
-                .keyboardShortcut(.defaultAction)
-            }
         }
         .padding(20)
         .frame(minWidth: 580, minHeight: 300)
