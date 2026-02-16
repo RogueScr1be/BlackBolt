@@ -9,26 +9,27 @@ struct AnalyticsView: View {
                 .font(.title3)
                 .fontWeight(.semibold)
 
-            if let payload = store.payload {
+            if let dashboard = store.dashboard {
                 GroupBox("Comparative Table") {
                     HStack {
-                        metric("Revenue", "\(payload.kpis.revenueMonth)")
+                        metric("Revenue", "\(dashboard.kpis.revenueMonth)")
                         Spacer()
-                        metric("Bookings", "\(payload.kpis.attributedBookingsMonth)")
+                        metric("Bookings", "\(dashboard.kpis.attributedBookingsMonth)")
                         Spacer()
-                        metric("Conversion", String(format: "%.2f%%", payload.kpis.emailConversionRate * 100))
+                        metric("Conversion", String(format: "%.2f%%", dashboard.kpis.emailConversionRate * 100))
                     }
-                }
-
-                GroupBox("Health Trends") {
-                    Text("Deliverability: \(payload.health.deliverability)")
-                    Text("Review velocity: \(payload.health.reviewVelocity)")
-                    Text("Engagement trend: \(payload.health.engagementTrend)")
-                    Text("Worker liveness: \(payload.health.workerLiveness)")
                 }
             } else {
                 Text("No analytics available")
                     .foregroundColor(.secondary)
+            }
+
+            if let metrics = store.tenantMetrics {
+                GroupBox("Metrics Range: \(metrics.range)") {
+                    Text("Revenue points: \(metrics.revenueSeries.count)")
+                    Text("Booking points: \(metrics.bookingSeries.count)")
+                    Text("Review points: \(metrics.reviewSeries.count)")
+                }
             }
             Spacer()
         }

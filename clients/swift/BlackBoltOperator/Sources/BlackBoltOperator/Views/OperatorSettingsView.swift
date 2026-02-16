@@ -12,6 +12,7 @@ struct OperatorSettingsView: View {
             Form {
                 TextField("API Base URL", text: $runtime.apiBaseURL)
                 TextField("Tenant ID", text: $runtime.tenantId)
+                TextField("Operator Key (X-Operator-Key)", text: $runtime.operatorKey)
                 TextField("Auth Header or user:pass", text: $runtime.authHeader)
             }
             .formStyle(.grouped)

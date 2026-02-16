@@ -6,13 +6,12 @@ struct TenantsView: View {
 
     var body: some View {
         HStack(spacing: 16) {
-            List {
-                Section("Tenants") {
-                    Text(runtime.tenantId)
-                }
-                Section("Filters") {
-                    Text("Sort: Health score")
-                    Text("Filter: Action required")
+            List(store.tenants) { tenant in
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(tenant.name)
+                    Text(tenant.slug)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
             }
             .frame(minWidth: 220, maxWidth: 260)
@@ -22,27 +21,33 @@ struct TenantsView: View {
                     .font(.title3)
                     .fontWeight(.semibold)
 
-                if let health = store.payload?.health {
-                    Text("Deliverability: \(health.deliverability)")
-                    Text("Review Velocity: \(health.reviewVelocity)")
-                    Text("Engagement Trend: \(health.engagementTrend)")
-                    Text("Worker Liveness: \(health.workerLiveness)")
+                if let detail = store.tenantDetail {
+                    Text("Name: \(detail.name)")
+                    Text("Slug: \(detail.slug)")
+                    Text("Health score: \(detail.healthScore)")
+                    Text("Action required: \(detail.actionRequiredCount)")
+                    Text("Created: \(detail.createdAt)")
                 }
 
                 GroupBox("Revenue Timeline") {
-                    ForEach(store.payload?.activityFeed.filter({ $0.eventType == "revenue_event" }).prefix(5) ?? []) { item in
-                        HStack {
-                            Text(item.createdAt)
-                                .font(.caption2)
-                            Spacer()
-                            Text("\(item.amountCents ?? 0) cents")
-                                .font(.body.monospacedDigit())
+                    if let metrics = store.tenantMetrics {
+                        ForEach(metrics.revenueSeries.prefix(6)) { point in
+                            HStack {
+                                Text(point.date)
+                                Spacer()
+                                Text("\(point.amountCents) cents")
+                                    .font(.body.monospacedDigit())
+                            }
+                        }
+                        if metrics.revenueSeries.isEmpty {
+                            Text("No metrics yet")
+                                .foregroundColor(.secondary)
                         }
                     }
                 }
 
                 GroupBox("Review Trigger Log") {
-                    ForEach(store.payload?.activityFeed.filter({ $0.eventType == "review_ingested" }).prefix(5) ?? []) { item in
+                    ForEach(store.events.filter({ $0.eventType == "review_ingested" }).prefix(5)) { item in
                         Text(item.summary)
                             .font(.caption)
                     }

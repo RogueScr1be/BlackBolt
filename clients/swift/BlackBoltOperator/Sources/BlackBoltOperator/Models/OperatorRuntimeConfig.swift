@@ -6,6 +6,7 @@ final class OperatorRuntimeConfig: ObservableObject {
         static let apiBaseURL = "operator.apiBaseURL"
         static let tenantId = "operator.tenantId"
         static let authHeader = "operator.authHeader"
+        static let operatorKey = "operator.operatorKey"
         static let ackPrefix = "operator.ackAlerts."
     }
 
@@ -23,11 +24,16 @@ final class OperatorRuntimeConfig: ObservableObject {
         didSet { defaults.set(authHeader, forKey: Keys.authHeader) }
     }
 
+    @Published var operatorKey: String {
+        didSet { defaults.set(operatorKey, forKey: Keys.operatorKey) }
+    }
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         self.apiBaseURL = defaults.string(forKey: Keys.apiBaseURL) ?? "https://blackbolt-api-production.up.railway.app"
         self.tenantId = defaults.string(forKey: Keys.tenantId) ?? "tenant-demo"
         self.authHeader = defaults.string(forKey: Keys.authHeader) ?? ""
+        self.operatorKey = defaults.string(forKey: Keys.operatorKey) ?? ""
     }
 
     func request(path: String, method: String = "GET") throws -> URLRequest {
@@ -53,6 +59,10 @@ final class OperatorRuntimeConfig: ObservableObject {
         req.httpMethod = method
         req.addValue(tenantId, forHTTPHeaderField: "x-tenant-id")
         req.addValue("operator", forHTTPHeaderField: "x-user-id")
+        let key = operatorKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !key.isEmpty {
+            req.addValue(key, forHTTPHeaderField: "X-Operator-Key")
+        }
         if let auth = resolvedAuthorizationHeader() {
             req.addValue(auth, forHTTPHeaderField: "Authorization")
         }
