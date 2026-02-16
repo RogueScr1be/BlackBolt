@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { ReviewsService } from '../reviews/reviews.service';
 import { PostmarkOpsService } from '../postmark/postmark-ops.service';
@@ -171,7 +172,7 @@ export class OperatorService {
         action: 'OPERATOR_INTERVENTION_RESUME_POSTMARK',
         entityType: 'operator.intervention',
         entityId: tenantId,
-        metadataJson: resumed as unknown as Record<string, unknown>
+        metadataJson: resumed as Prisma.InputJsonValue
       }
     });
 
