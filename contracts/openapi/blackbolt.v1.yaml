@@ -22,6 +22,126 @@ paths:
               schema:
                 $ref: '#/components/schemas/HealthResponse'
 
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [operator]
+      summary: Operator dashboard summary
+      description: Returns top-level KPI summary and dashboard widget counts for the scoped tenant.
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/OperatorKeyHeader'
+      responses:
+        '200':
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardSummaryResponse'
+
+  /events:
+    get:
+      operationId: listOperatorEvents
+      tags: [operator]
+      summary: List operator activity events
+      description: Returns tenant-scoped event feed items ordered newest-first.
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/OperatorKeyHeader'
+        - name: since
+          in: query
+          required: false
+          schema: { type: string, format: date-time }
+      responses:
+        '200':
+          description: Event list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperatorEventsResponse'
+
+  /alerts:
+    get:
+      operationId: listOperatorAlerts
+      tags: [operator]
+      summary: List operator alerts
+      description: Returns tenant-scoped alerts; default state is open.
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/OperatorKeyHeader'
+        - name: state
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [open, all]
+      responses:
+        '200':
+          description: Alert list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperatorAlertsResponse'
+
+  /tenants:
+    get:
+      operationId: listOperatorTenants
+      tags: [operator]
+      summary: List operator-visible tenants
+      description: Returns tenant list for the current operator scope.
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/OperatorKeyHeader'
+      responses:
+        '200':
+          description: Tenant list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperatorTenantListResponse'
+
+  /tenants/{tenantId}:
+    get:
+      operationId: getOperatorTenant
+      tags: [operator]
+      summary: Get operator tenant detail
+      description: Returns detail for a tenant scoped by tenant header and path.
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/OperatorKeyHeader'
+        - $ref: '#/components/parameters/TenantIdPath'
+      responses:
+        '200':
+          description: Tenant detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperatorTenantDetail'
+
+  /tenants/{tenantId}/metrics:
+    get:
+      operationId: getOperatorTenantMetrics
+      tags: [operator]
+      summary: Get operator tenant metrics time series
+      description: Returns tenant metrics series for dashboard ranges.
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/OperatorKeyHeader'
+        - $ref: '#/components/parameters/TenantIdPath'
+        - name: range
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [30d, 90d, ytd]
+      responses:
+        '200':
+          description: Tenant metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperatorTenantMetricsResponse'
+
   /v1/auth/login:
     post:
       operationId: authLogin
@@ -504,6 +624,11 @@ components:
   parameters:
     TenantHeader:
       name: x-tenant-id
+      in: header
+      required: true
+      schema: { type: string }
+    OperatorKeyHeader:
+      name: X-Operator-Key
       in: header
       required: true
       schema: { type: string }
@@ -1045,6 +1170,102 @@ components:
             - $ref: '#/components/schemas/RevenueSummaryDiagnostics'
           description: Present only when REVENUE_OPS_DIAGNOSTICS=1.
           nullable: true
+    DashboardSummaryWidget:
+      type: object
+      required: [open_alerts, events_last_24h, last_updated_at]
+      properties:
+        open_alerts: { type: integer }
+        events_last_24h: { type: integer }
+        last_updated_at: { type: string, format: date-time }
+    DashboardSummaryResponse:
+      type: object
+      required: [tenant_id, kpis, widgets]
+      properties:
+        tenant_id: { type: string }
+        kpis: { $ref: '#/components/schemas/OperatorKPI' }
+        widgets: { $ref: '#/components/schemas/DashboardSummaryWidget' }
+    OperatorEvent:
+      type: object
+      required: [id, event_type, tenant_id, summary, created_at]
+      properties:
+        id: { type: string }
+        event_type: { type: string }
+        tenant_id: { type: string }
+        summary: { type: string }
+        amount_cents: { type: integer, nullable: true }
+        created_at: { type: string, format: date-time }
+    OperatorEventsResponse:
+      type: object
+      required: [items, next_cursor]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/OperatorEvent' }
+        next_cursor: { type: string, nullable: true }
+    OperatorAlertListItem:
+      allOf:
+        - $ref: '#/components/schemas/OperatorAlert'
+        - type: object
+          required: [state]
+          properties:
+            state: { type: string, enum: [open, resolved] }
+    OperatorAlertsResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/OperatorAlertListItem' }
+    OperatorTenantSummary:
+      type: object
+      required: [id, slug, name, health_score, action_required_count]
+      properties:
+        id: { type: string }
+        slug: { type: string }
+        name: { type: string }
+        health_score: { type: integer, minimum: 0, maximum: 100 }
+        action_required_count: { type: integer }
+    OperatorTenantListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/OperatorTenantSummary' }
+    OperatorTenantDetail:
+      allOf:
+        - $ref: '#/components/schemas/OperatorTenantSummary'
+        - type: object
+          required: [created_at]
+          properties:
+            created_at: { type: string, format: date-time }
+    MetricPointMoney:
+      type: object
+      required: [date, amount_cents]
+      properties:
+        date: { type: string, format: date }
+        amount_cents: { type: integer }
+    MetricPointCount:
+      type: object
+      required: [date, count]
+      properties:
+        date: { type: string, format: date }
+        count: { type: integer }
+    OperatorTenantMetricsResponse:
+      type: object
+      required: [tenant_id, range, revenue_series, booking_series, review_series]
+      properties:
+        tenant_id: { type: string }
+        range: { type: string, enum: [30d, 90d, ytd] }
+        revenue_series:
+          type: array
+          items: { $ref: '#/components/schemas/MetricPointMoney' }
+        booking_series:
+          type: array
+          items: { $ref: '#/components/schemas/MetricPointCount' }
+        review_series:
+          type: array
+          items: { $ref: '#/components/schemas/MetricPointCount' }
     OperatorInterventionResponse:
       type: object
       required: [ok, intervention]

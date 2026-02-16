@@ -15,6 +15,10 @@ import { ReviewsModule } from './modules/reviews/reviews.module';
 import { PostmarkModule } from './modules/postmark/postmark.module';
 import { RevenueModule } from './modules/revenue/revenue.module';
 import { OperatorModule } from './modules/operator/operator.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { EventsModule } from './modules/events/events.module';
+import { AlertsModule } from './modules/alerts/alerts.module';
+import { OperatorTenantsModule } from './modules/operator-tenants/operator-tenants.module';
 
 @Module({
   imports: [
@@ -30,7 +34,11 @@ import { OperatorModule } from './modules/operator/operator.module';
     ReviewsModule,
     PostmarkModule,
     RevenueModule,
-    OperatorModule
+    OperatorModule,
+    DashboardModule,
+    EventsModule,
+    AlertsModule,
+    OperatorTenantsModule
   ],
   providers: [
     {

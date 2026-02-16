@@ -38,7 +38,7 @@ struct CampaignEngineView: View {
             }
 
             GroupBox("Recent Workflow Activity") {
-                ForEach(store.payload?.activityFeed.prefix(8) ?? []) { item in
+                ForEach(store.events.prefix(8)) { item in
                     Text("\(item.eventType): \(item.summary)")
                         .font(.caption)
                 }

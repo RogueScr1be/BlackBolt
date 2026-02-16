@@ -58,7 +58,7 @@ struct AlertsHubView: View {
         }
     }
 
-    private var sortedAlerts: [CommandCenterAlert] {
+    private var sortedAlerts: [OperatorAlertListItem] {
         store.unresolvedAlerts.sorted { lhs, rhs in
             severityRank(lhs.severity) > severityRank(rhs.severity)
         }

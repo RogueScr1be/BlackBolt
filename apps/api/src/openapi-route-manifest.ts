@@ -20,5 +20,11 @@ export const OPENAPI_OPERATION_IDS = [
   'retryGbpIngestionIntervention',
   'resumePostmarkIntervention',
   'ackAlertIntervention',
-  'getMonthlyReport'
+  'getMonthlyReport',
+  'getDashboardSummary',
+  'listOperatorEvents',
+  'listOperatorAlerts',
+  'listOperatorTenants',
+  'getOperatorTenant',
+  'getOperatorTenantMetrics'
 ] as const;

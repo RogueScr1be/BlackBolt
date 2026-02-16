@@ -163,6 +163,18 @@ struct OperatorKPI: Decodable {
     let actionRequiredCount: Int
 }
 
+struct DashboardWidgets: Decodable {
+    let openAlerts: Int
+    let eventsLast24h: Int
+    let lastUpdatedAt: String
+}
+
+struct DashboardSummaryResponse: Decodable {
+    let tenantId: String
+    let kpis: OperatorKPI
+    let widgets: DashboardWidgets
+}
+
 struct OperatorHealth: Decodable {
     let deliverability: String
     let reviewVelocity: String
@@ -193,6 +205,11 @@ struct OperatorActivityEvent: Decodable, Identifiable {
     var id: String { "\(eventType)-\(createdAt)-\(summary)" }
 }
 
+struct OperatorEventsResponse: Decodable {
+    let items: [OperatorActivityEvent]
+    let nextCursor: String?
+}
+
 struct CommandCenterPayload: Decodable {
     let tenantId: String
     let kpis: OperatorKPI
@@ -206,6 +223,66 @@ struct InterventionResponse: Decodable {
     let intervention: String
     let alertId: String?
     let resolvedAt: String?
+}
+
+struct OperatorAlertListItem: Decodable, Identifiable, Hashable {
+    let id: String
+    let type: String
+    let severity: String
+    let state: String
+    let tenantId: String
+    let title: String
+    let suggestedAction: String
+    let executeCapability: String
+    let createdAt: String
+    let resolvedAt: String?
+}
+
+struct OperatorAlertsResponse: Decodable {
+    let items: [OperatorAlertListItem]
+}
+
+struct OperatorTenantSummary: Decodable, Identifiable {
+    let id: String
+    let slug: String
+    let name: String
+    let healthScore: Int
+    let actionRequiredCount: Int
+}
+
+struct OperatorTenantListResponse: Decodable {
+    let items: [OperatorTenantSummary]
+}
+
+struct OperatorTenantDetail: Decodable {
+    let id: String
+    let slug: String
+    let name: String
+    let healthScore: Int
+    let actionRequiredCount: Int
+    let createdAt: String
+}
+
+struct MoneyMetricPoint: Decodable, Identifiable {
+    let date: String
+    let amountCents: Int
+
+    var id: String { date }
+}
+
+struct CountMetricPoint: Decodable, Identifiable {
+    let date: String
+    let count: Int
+
+    var id: String { date }
+}
+
+struct OperatorTenantMetricsResponse: Decodable {
+    let tenantId: String
+    let range: String
+    let revenueSeries: [MoneyMetricPoint]
+    let bookingSeries: [CountMetricPoint]
+    let reviewSeries: [CountMetricPoint]
 }
 
 struct MonthlyReportTotals: Decodable {

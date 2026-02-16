@@ -2,7 +2,12 @@ import Foundation
 
 @MainActor
 final class OperatorShellStore: ObservableObject {
-    @Published var payload: CommandCenterPayload?
+    @Published var dashboard: DashboardSummaryResponse?
+    @Published var events: [OperatorActivityEvent] = []
+    @Published var alerts: [OperatorAlertListItem] = []
+    @Published var tenants: [OperatorTenantSummary] = []
+    @Published var tenantDetail: OperatorTenantDetail?
+    @Published var tenantMetrics: OperatorTenantMetricsResponse?
     @Published var report: MonthlyReportPayload?
     @Published var isLoading = false
     @Published var errorMessage: String?
@@ -12,8 +17,35 @@ final class OperatorShellStore: ObservableObject {
         defer { isLoading = false }
 
         do {
-            let request = try runtime.request(path: "/v1/tenants/\(runtime.tenantId)/operator/command-center")
-            payload = try await OperatorHTTP.fetchJSON(request, as: CommandCenterPayload.self)
+            let dashboardReq = try runtime.request(path: "/dashboard/summary")
+            let alertsReq = try runtime.request(path: "/alerts?state=open")
+            let eventsReq = try runtime.request(path: "/events")
+            let tenantsReq = try runtime.request(path: "/tenants")
+            let tenantReq = try runtime.request(path: "/tenants/\(runtime.tenantId)")
+            let metricsReq = try runtime.request(path: "/tenants/\(runtime.tenantId)/metrics?range=30d")
+
+            async let dashboardTask = OperatorHTTP.fetchJSON(dashboardReq, as: DashboardSummaryResponse.self)
+            async let alertsTask = OperatorHTTP.fetchJSON(alertsReq, as: OperatorAlertsResponse.self)
+            async let eventsTask = OperatorHTTP.fetchJSON(eventsReq, as: OperatorEventsResponse.self)
+            async let tenantsTask = OperatorHTTP.fetchJSON(tenantsReq, as: OperatorTenantListResponse.self)
+            async let tenantTask = OperatorHTTP.fetchJSON(tenantReq, as: OperatorTenantDetail.self)
+            async let metricsTask = OperatorHTTP.fetchJSON(metricsReq, as: OperatorTenantMetricsResponse.self)
+
+            let (dashboardResp, alertsResp, eventsResp, tenantsResp, tenantResp, metricsResp) = try await (
+                dashboardTask,
+                alertsTask,
+                eventsTask,
+                tenantsTask,
+                tenantTask,
+                metricsTask
+            )
+
+            dashboard = dashboardResp
+            alerts = alertsResp.items
+            events = eventsResp.items
+            tenants = tenantsResp.items
+            tenantDetail = tenantResp
+            tenantMetrics = metricsResp
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -50,12 +82,12 @@ final class OperatorShellStore: ObservableObject {
         }
     }
 
-    var criticalAlerts: [CommandCenterAlert] {
-        payload?.alerts.filter { $0.resolvedAt == nil && $0.severity == "critical" } ?? []
+    var criticalAlerts: [OperatorAlertListItem] {
+        alerts.filter { $0.state == "open" && $0.severity == "critical" }
     }
 
-    var unresolvedAlerts: [CommandCenterAlert] {
-        payload?.alerts.filter { $0.resolvedAt == nil } ?? []
+    var unresolvedAlerts: [OperatorAlertListItem] {
+        alerts.filter { $0.state == "open" }
     }
 
     private func post(runtime: OperatorRuntimeConfig, path: String, body: String?) async throws -> Data {

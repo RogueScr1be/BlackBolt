@@ -86,3 +86,4 @@
 - Interventions are constrained to retry GBP ingestion, resume Postmark, and ack alert with audit logs.
 - Reactivation policy must remain deterministic with confidence gate `0.8` default / `0.9` strict.
 - Keep same-SHA release discipline and smoke-script gate as mandatory before live declaration.
+- Before reporting verification status, always check local SHA and sync state (`git rev-parse --short HEAD`, `git pull`) to avoid reporting from stale commits.
