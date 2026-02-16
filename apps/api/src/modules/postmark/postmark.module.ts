@@ -13,12 +13,19 @@ import { TenancyModule } from '../tenancy/tenancy.module';
 import { PostmarkMetricsService } from './postmark-metrics.service';
 import { PostmarkWebhookLimiterService } from './postmark-webhook-limiter.service';
 
+const isWorker = process.env.APP_ROLE === 'worker';
+const queueImports = isWorker
+  ? [
+      BullModule.registerQueue({ name: QUEUES.POSTMARK_WEBHOOK_RECONCILE }),
+      BullModule.registerQueue({ name: QUEUES.POSTMARK_SEND })
+    ]
+  : [];
+
 @Module({
   imports: [
     PrismaModule,
     TenancyModule,
-    BullModule.registerQueue({ name: QUEUES.POSTMARK_WEBHOOK_RECONCILE }),
-    BullModule.registerQueue({ name: QUEUES.POSTMARK_SEND })
+    ...queueImports
   ],
   controllers: [PostmarkController, PostmarkOpsController],
   providers: [

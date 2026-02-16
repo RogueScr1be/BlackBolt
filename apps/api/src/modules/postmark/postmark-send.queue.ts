@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit, Optional, ServiceUnavailableException } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { QUEUES } from '../queues/queue.constants';
@@ -18,15 +18,24 @@ type PostmarkSendSweeperJobPayload = {
 @Injectable()
 export class PostmarkSendQueue implements OnModuleInit {
   constructor(
+    @Optional()
     @InjectQueue(QUEUES.POSTMARK_SEND)
-    private readonly queue: Queue<PostmarkSendJobPayload | PostmarkSendSweeperJobPayload>
+    private readonly queue?: Queue<PostmarkSendJobPayload | PostmarkSendSweeperJobPayload>
   ) {}
 
   async onModuleInit() {
+    if (!this.queue) {
+      return;
+    }
+
     await this.scheduleSweeper();
   }
 
   async enqueue(input: PostmarkSendJobPayload) {
+    if (!this.queue) {
+      throw new ServiceUnavailableException('Postmark send queue is unavailable');
+    }
+
     const jobId = `postmark-send:${input.tenantId}:${input.campaignMessageId}`;
     const job = await this.queue.add(POSTMARK_SEND_JOB_NAME, input, {
       jobId,
@@ -40,6 +49,10 @@ export class PostmarkSendQueue implements OnModuleInit {
   }
 
   private async scheduleSweeper() {
+    if (!this.queue) {
+      return;
+    }
+
     const disabled = process.env.POSTMARK_SEND_SWEEPER_DISABLED === '1';
     if (disabled) {
       return;

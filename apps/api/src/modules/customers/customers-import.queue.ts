@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional, ServiceUnavailableException } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { QUEUES } from '../queues/queue.constants';
@@ -11,9 +11,17 @@ export type CustomerImportJobPayload = {
 
 @Injectable()
 export class CustomersImportQueue {
-  constructor(@InjectQueue(QUEUES.CUSTOMERS_IMPORT) private readonly queue: Queue<CustomerImportJobPayload>) {}
+  constructor(
+    @Optional()
+    @InjectQueue(QUEUES.CUSTOMERS_IMPORT)
+    private readonly queue?: Queue<CustomerImportJobPayload>
+  ) {}
 
   async enqueue(input: CustomerImportJobPayload) {
+    if (!this.queue) {
+      throw new ServiceUnavailableException('Customers import queue is unavailable');
+    }
+
     const idempotencyKey = `${CUSTOMER_IMPORT_IDEMPOTENCY_PREFIX}:${input.tenantId}:${input.importId}`;
 
     await this.queue.add(CUSTOMER_IMPORT_JOB_NAME, input, {

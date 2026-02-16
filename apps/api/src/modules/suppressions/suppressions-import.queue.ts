@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional, ServiceUnavailableException } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { QUEUES } from '../queues/queue.constants';
@@ -15,11 +15,16 @@ export type SuppressionImportJobPayload = {
 @Injectable()
 export class SuppressionsImportQueue {
   constructor(
+    @Optional()
     @InjectQueue(QUEUES.SUPPRESSIONS_IMPORT)
-    private readonly queue: Queue<SuppressionImportJobPayload>
+    private readonly queue?: Queue<SuppressionImportJobPayload>
   ) {}
 
   async enqueue(input: SuppressionImportJobPayload) {
+    if (!this.queue) {
+      throw new ServiceUnavailableException('Suppressions import queue is unavailable');
+    }
+
     const idempotencyKey = `${SUPPRESSION_IMPORT_IDEMPOTENCY_PREFIX}:${input.tenantId}:${input.suppressionImportId}`;
 
     await this.queue.add(SUPPRESSION_IMPORT_JOB_NAME, input, {

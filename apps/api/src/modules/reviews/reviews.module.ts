@@ -9,13 +9,16 @@ import { ReviewsController } from './reviews.controller';
 import { ReviewsQueue } from './reviews.queue';
 import { ReviewsService } from './reviews.service';
 
+const isWorker = process.env.APP_ROLE === 'worker';
+const queueImports = isWorker ? [BullModule.registerQueue({ name: QUEUES.GBP_INGEST })] : [];
+
 @Module({
   imports: [
     PrismaModule,
     QueuesModule,
     TenancyModule,
     GbpModule,
-    BullModule.registerQueue({ name: QUEUES.GBP_INGEST })
+    ...queueImports
   ],
   controllers: [ReviewsController],
   providers: [ReviewsService, ReviewsQueue]

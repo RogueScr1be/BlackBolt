@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional, ServiceUnavailableException } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { createHash } from 'node:crypto';
@@ -26,9 +26,17 @@ export type GbpPageFetchJobPayload = {
 
 @Injectable()
 export class ReviewsQueue {
-  constructor(@InjectQueue(QUEUES.GBP_INGEST) private readonly queue: Queue<GbpPollTriggerJobPayload | GbpPageFetchJobPayload>) {}
+  constructor(
+    @Optional()
+    @InjectQueue(QUEUES.GBP_INGEST)
+    private readonly queue?: Queue<GbpPollTriggerJobPayload | GbpPageFetchJobPayload>
+  ) {}
 
   async enqueuePollTrigger(input: { tenantId: string; locationId: string }) {
+    if (!this.queue) {
+      throw new ServiceUnavailableException('GBP ingest queue is unavailable');
+    }
+
     const timeBucket = new Date().toISOString().slice(0, 13);
     const idempotencyKey = `${GBP_INGEST_IDEMPOTENCY_PREFIX}:${input.tenantId}:${input.locationId}:${timeBucket}`;
 
@@ -62,6 +70,10 @@ export class ReviewsQueue {
     pagesRemaining: number;
     deadlineAtEpochMs: number;
   }) {
+    if (!this.queue) {
+      throw new ServiceUnavailableException('GBP ingest queue is unavailable');
+    }
+
     const cursorHash = this.hashCursor(input.cursor);
     const idempotencyKey =
       `${GBP_INGEST_IDEMPOTENCY_PREFIX}:${input.tenantId}:${input.locationId}:${cursorHash}:${GBP_INGEST_IDEMPOTENCY_VERSION}`;

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional, ServiceUnavailableException } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { createHash } from 'node:crypto';
@@ -12,9 +12,17 @@ export type PostmarkReconcileJobPayload = {
 
 @Injectable()
 export class PostmarkQueue {
-  constructor(@InjectQueue(QUEUES.POSTMARK_WEBHOOK_RECONCILE) private readonly queue: Queue<PostmarkReconcileJobPayload>) {}
+  constructor(
+    @Optional()
+    @InjectQueue(QUEUES.POSTMARK_WEBHOOK_RECONCILE)
+    private readonly queue?: Queue<PostmarkReconcileJobPayload>
+  ) {}
 
   async enqueueReconcile(input: PostmarkReconcileJobPayload) {
+    if (!this.queue) {
+      throw new ServiceUnavailableException('Postmark reconcile queue is unavailable');
+    }
+
     const key = createHash('sha256').update(`${input.webhookEventId}:${input.providerMessageId}`).digest('hex').slice(0, 24);
     const jobId = `postmark-reconcile:${key}`;
 

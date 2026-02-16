@@ -11,12 +11,15 @@ import { CustomersImportService } from './customers-import.service';
 import { CustomersImportQueue } from './customers-import.queue';
 import { CustomersService } from './customers.service';
 
+const isWorker = process.env.APP_ROLE === 'worker';
+const queueImports = isWorker ? [BullModule.registerQueue({ name: QUEUES.CUSTOMERS_IMPORT })] : [];
+
 @Module({
   imports: [
     TenancyModule,
     PrismaModule,
     QueuesModule,
-    BullModule.registerQueue({ name: QUEUES.CUSTOMERS_IMPORT })
+    ...queueImports
   ],
   controllers: [CustomersController, CustomersImportsStatusController],
   providers: [CustomersImportService, CustomersImportQueue, CustomersService],
