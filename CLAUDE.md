@@ -25,17 +25,20 @@
 ## Web Deploy Reality
 - If using `expo export -p web`, treat hosting as static only.
 - Any `/api/*` expectation must map to explicit serverless deployment or an external backend URL.
+- For Railway service domains, ensure `targetPort` matches the app `PORT` used at runtime; mismatches can produce edge `502 Application failed to respond` even when app logs show successful boot.
 
 ## Validation Contracts
 - Runtime validators return `{ valid, errors }` and must never throw.
 - If tests reference missing exported symbols, restore exports via re-export first; only re-implement when no source exists.
 - Prisma TypeScript enum types come from generated client, not helper TS files; after schema enum changes, regenerate Prisma client before debugging type unions.
+- If modules branch on `process.env.APP_ROLE`, set `APP_ROLE` in the entrypoint before importing role-sensitive modules (use lazy/dynamic import to avoid import-eval races).
 
 ## Ingestion Safety
 - Customer/suppression imports must stay queue-driven and idempotent (`tenantId + importId`).
 - Reject PHI-like CSV columns at ingestion boundaries before persistence.
 - Multi-tenant APIs must enforce both tenant header context and route-tenant match.
 - Ingestion state transitions must be explicit and consistent: start `RUNNING`, finish `SUCCEEDED`, terminal failure `FAILED`.
+- Tenant resolution should tolerate guard execution before interceptors by deriving `tenantId`/`userId` from headers when request context fields are unset.
 
 ## Prisma Ops
 - If `prisma/schema.prisma` changes, run `npm run prisma:generate` before pushing (CI enforces schema hash sync).
