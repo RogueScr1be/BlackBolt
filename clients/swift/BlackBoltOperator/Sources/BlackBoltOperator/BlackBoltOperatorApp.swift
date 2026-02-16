@@ -4,6 +4,7 @@ import SwiftUI
 struct BlackBoltOperatorApp: App {
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var lock = OperatorLock()
+    @StateObject private var runtime = OperatorRuntimeConfig()
 
     var body: some Scene {
         WindowGroup {
@@ -11,16 +12,8 @@ struct BlackBoltOperatorApp: App {
                 if lock.isLocked {
                     OperatorLockView(lock: lock)
                 } else {
-                    TabView {
-                        ImportsListView()
-                            .tabItem { Text("Imports") }
-                        CustomersListView()
-                            .tabItem { Text("Customers") }
-                        ReviewsListView()
-                            .tabItem { Text("Reviews") }
-                        RevenueSummaryView()
-                            .tabItem { Text("Revenue") }
-                    }
+                    OperatorRootView()
+                        .environmentObject(runtime)
                 }
             }
             .frame(minWidth: 960, minHeight: 640)

@@ -20,7 +20,7 @@ private struct PollResponse: Decodable {
 }
 
 struct ReviewsListView: View {
-    @State private var tenantId = "tenant-demo"
+    @EnvironmentObject var runtime: OperatorRuntimeConfig
     @State private var reviews: [ReviewRow] = []
     @State private var summary: GbpOperatorSummary?
     @State private var pollStatus: String = "Idle"
@@ -29,7 +29,6 @@ struct ReviewsListView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                TextField("Tenant ID", text: $tenantId)
                 Button("Poll GBP") {
                     Task { await poll() }
                 }
@@ -40,6 +39,9 @@ struct ReviewsListView: View {
                     Task { await loadSummary() }
                 }
             }
+            Text("Tenant: \(runtime.tenantId)")
+                .font(.caption)
+                .foregroundColor(.secondary)
 
             Text("Ingestion status: \(pollStatus)")
                 .font(.caption)
@@ -90,12 +92,9 @@ struct ReviewsListView: View {
 
     private func poll() async {
         do {
-            let url = URL(string: "http://localhost:3000/v1/tenants/\(tenantId)/reviews/poll")!
-            var req = URLRequest(url: url)
-            req.httpMethod = "POST"
-            req.addValue(tenantId, forHTTPHeaderField: "x-tenant-id")
-            req.addValue("operator", forHTTPHeaderField: "x-user-id")
-            let (data, _) = try await URLSession.shared.data(for: req)
+            let req = try runtime.request(path: "/v1/tenants/\(runtime.tenantId)/reviews/poll", method: "POST")
+            let (data, response) = try await URLSession.shared.data(for: req)
+            try ensureSuccess(response: response, data: data)
             let result = try JSONDecoder().decode(PollResponse.self, from: data)
             pollStatus = "Queued \(result.jobId ?? "none") on \(result.queue)"
             errorMessage = nil
@@ -108,11 +107,9 @@ struct ReviewsListView: View {
 
     private func loadReviews() async {
         do {
-            let url = URL(string: "http://localhost:3000/v1/tenants/\(tenantId)/reviews")!
-            var req = URLRequest(url: url)
-            req.addValue(tenantId, forHTTPHeaderField: "x-tenant-id")
-            req.addValue("operator", forHTTPHeaderField: "x-user-id")
-            let (data, _) = try await URLSession.shared.data(for: req)
+            let req = try runtime.request(path: "/v1/tenants/\(runtime.tenantId)/reviews")
+            let (data, response) = try await URLSession.shared.data(for: req)
+            try ensureSuccess(response: response, data: data)
             let page = try JSONDecoder().decode(ReviewPage.self, from: data)
             reviews = page.items
             errorMessage = nil
@@ -123,15 +120,27 @@ struct ReviewsListView: View {
 
     private func loadSummary() async {
         do {
-            let url = URL(string: "http://localhost:3000/v1/tenants/\(tenantId)/integrations/gbp/operator-summary")!
-            var req = URLRequest(url: url)
-            req.addValue(tenantId, forHTTPHeaderField: "x-tenant-id")
-            req.addValue("operator", forHTTPHeaderField: "x-user-id")
-            let (data, _) = try await URLSession.shared.data(for: req)
+            let req = try runtime.request(path: "/v1/tenants/\(runtime.tenantId)/integrations/gbp/operator-summary")
+            let (data, response) = try await URLSession.shared.data(for: req)
+            try ensureSuccess(response: response, data: data)
             summary = try JSONDecoder().decode(GbpOperatorSummary.self, from: data)
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    private func ensureSuccess(response: URLResponse, data: Data) throws {
+        guard let http = response as? HTTPURLResponse else {
+            throw URLError(.badServerResponse)
+        }
+        guard (200 ... 299).contains(http.statusCode) else {
+            let body = String(data: data, encoding: .utf8) ?? ""
+            throw NSError(
+                domain: "OperatorHTTPError",
+                code: http.statusCode,
+                userInfo: [NSLocalizedDescriptionKey: "HTTP \(http.statusCode): \(body)"]
+            )
         }
     }
 }

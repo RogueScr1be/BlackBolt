@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct RevenueSummaryView: View {
-    @State private var tenantId = "tenant-demo"
+    @EnvironmentObject var runtime: OperatorRuntimeConfig
     @State private var summary: RevenueSummaryResponse?
     @State private var errorMessage: String?
     @State private var isLoading = false
@@ -10,12 +10,14 @@ struct RevenueSummaryView: View {
         List {
             Section {
                 HStack {
-                    TextField("Tenant ID", text: $tenantId)
                     Button("Refresh") {
                         Task { await loadSummary() }
                     }
                     .disabled(isLoading)
                 }
+                Text("Tenant: \(runtime.tenantId)")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
             }
 
             if let summary {
@@ -80,15 +82,27 @@ struct RevenueSummaryView: View {
         defer { isLoading = false }
 
         do {
-            let url = URL(string: "http://localhost:3000/v1/tenants/\(tenantId)/revenue/summary")!
-            var req = URLRequest(url: url)
-            req.addValue(tenantId, forHTTPHeaderField: "x-tenant-id")
-            req.addValue("operator", forHTTPHeaderField: "x-user-id")
-            let (data, _) = try await URLSession.shared.data(for: req)
+            let req = try runtime.request(path: "/v1/tenants/\(runtime.tenantId)/revenue/summary")
+            let (data, response) = try await URLSession.shared.data(for: req)
+            try ensureSuccess(response: response, data: data)
             summary = try JSONDecoder().decode(RevenueSummaryResponse.self, from: data)
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    private func ensureSuccess(response: URLResponse, data: Data) throws {
+        guard let http = response as? HTTPURLResponse else {
+            throw URLError(.badServerResponse)
+        }
+        guard (200 ... 299).contains(http.statusCode) else {
+            let body = String(data: data, encoding: .utf8) ?? ""
+            throw NSError(
+                domain: "OperatorHTTPError",
+                code: http.statusCode,
+                userInfo: [NSLocalizedDescriptionKey: "HTTP \(http.statusCode): \(body)"]
+            )
         }
     }
 

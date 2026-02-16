@@ -34,15 +34,34 @@
 - Verify both services print the same `build_sha` value in startup logs.
 
 ## Deploy Steps (Copy/Paste)
-1. Confirm target commit SHA.
+1. Confirm target commit SHA and set in both services:
+- `railway variable set --service blackbolt-api BUILD_SHA=<sha>`
+- `railway variable set --service blackbolt-worker BUILD_SHA=<sha>`
 2. Trigger deploy for both `blackbolt-api` and `blackbolt-worker` from that same SHA.
-3. Verify both deployments show identical commit SHA in Railway.
+3. Verify both deployments show identical commit SHA in Railway and in boot banner logs.
 4. Run health checks:
 - API service logs show startup succeeded.
 - Worker service logs show startup succeeded and queue processors initialized.
 5. Confirm runtime connectivity:
 - API can reach Postgres + Redis.
 - Worker can reach Postgres + Redis.
+
+## When `railway redeploy` Fails
+If Railway reports that the latest deployment cannot be redeployed (building/deploying/removed):
+1. Wait for current deploy to finish and run deploy again from the UI or CLI.
+2. If stuck, trigger a fresh deploy from the same commit SHA for each service.
+3. Never mix SHAs between API and Worker while recovering.
+
+## First-Fatal-Line Triage
+1. If no boot banner appears, check service start command and build command.
+2. If banner appears and process exits, capture the first fatal line after banner and fix that exact dependency first.
+3. Treat repeated Redis localhost errors (`127.0.0.1:6379`) as miswired `REDIS_URL` in service variables.
+
+## Rollback
+1. Identify last known good SHA from both service logs.
+2. Set `BUILD_SHA` on API + Worker to that SHA.
+3. Deploy both services from that same SHA.
+4. Verify both boot banners show identical rollback SHA before reopening traffic-dependent operations.
 
 ## Post-Deploy Verification
 - `blackbolt-api` responds on `/health`.
