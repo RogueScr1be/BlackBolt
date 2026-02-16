@@ -48,9 +48,17 @@
 
 ## When `railway redeploy` Fails
 If Railway reports that the latest deployment cannot be redeployed (building/deploying/removed):
-1. Wait for current deploy to finish and run deploy again from the UI or CLI.
-2. If stuck, trigger a fresh deploy from the same commit SHA for each service.
+1. Use the Railway UI service deploy gate for each service (`blackbolt-api`, `blackbolt-worker`).
+2. Trigger a fresh deploy from the same commit SHA for each service.
 3. Never mix SHAs between API and Worker while recovering.
+4. Confirm each service shows at least one running replica before moving to smoke checks.
+
+## No-Logs Triage Checklist (Worker)
+1. Verify you are looking at the `blackbolt-worker` service log stream (not API/Postgres/Redis).
+2. Verify replica count is greater than zero.
+3. Verify there is an active deployment attached to the worker service.
+4. Verify first startup line appears in logs (boot banner).
+5. If no startup line appears, retrigger deploy from the same SHA in UI and re-check.
 
 ## First-Fatal-Line Triage
 1. If no boot banner appears, check service start command and build command.

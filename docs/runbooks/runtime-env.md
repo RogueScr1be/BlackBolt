@@ -2,11 +2,15 @@
 
 ## Required Environment Variables
 
-These must be present for both `blackbolt-api` and `blackbolt-worker`:
+### `blackbolt-api`
+- `DATABASE_URL`
+- `REDIS_URL` optional
+
+### `blackbolt-worker`
 - `DATABASE_URL`
 - `REDIS_URL`
 
-Startup fails fast if either is missing.
+Startup fails fast for required variables per role.
 
 ## Recommended Project-Wide Variables (Shared)
 - `DATABASE_URL` (from Railway Postgres)

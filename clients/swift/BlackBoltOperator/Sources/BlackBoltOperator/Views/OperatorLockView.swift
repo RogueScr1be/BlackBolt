@@ -2,7 +2,13 @@ import AppKit
 import SwiftUI
 
 struct OperatorLockView: View {
+    private enum Field: Hashable {
+        case passcode
+        case confirm
+    }
+
     @ObservedObject var lock: OperatorLock
+    @FocusState private var focusedField: Field?
 
     private var canSubmit: Bool {
         switch lock.mode {
@@ -23,14 +29,20 @@ struct OperatorLockView: View {
                     .fontWeight(.semibold)
                 Text("Operator Console")
                     .foregroundColor(.secondary)
+                Text(lock.mode == .setPasscode ? "Set Passcode" : "Unlock")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
             }
 
             VStack(alignment: .leading, spacing: 12) {
                 if lock.mode == .setPasscode {
                     SecureField("Set passcode (4-8 digits)", text: $lock.passcodeInput)
+                        .focused($focusedField, equals: .passcode)
                     SecureField("Confirm passcode", text: $lock.confirmInput)
+                        .focused($focusedField, equals: .confirm)
                 } else {
                     SecureField("Passcode", text: $lock.passcodeInput)
+                        .focused($focusedField, equals: .passcode)
                 }
             }
 
@@ -65,5 +77,21 @@ struct OperatorLockView: View {
         }
         .padding(24)
         .frame(minWidth: 420, maxWidth: 460)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            focusPrimaryField()
+        }
+        .onAppear {
+            focusPrimaryField()
+        }
+        .onChange(of: lock.mode) { _, _ in
+            focusPrimaryField()
+        }
+    }
+
+    private func focusPrimaryField() {
+        DispatchQueue.main.async {
+            focusedField = .passcode
+        }
     }
 }
