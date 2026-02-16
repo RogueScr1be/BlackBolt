@@ -3,13 +3,14 @@ import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { json } from 'express';
 
-import { AppModule } from './app.module';
 import type { RequestWithContext } from './common/request-context';
-import { buildBootBanner, validateRequiredRuntimeEnv } from './runtime/env';
+import { buildBootBanner, validateApiRuntimeEnv } from './runtime/env';
 
 async function bootstrapApi() {
+  process.env.APP_ROLE = 'api';
+
   try {
-    validateRequiredRuntimeEnv();
+    validateApiRuntimeEnv();
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown environment validation error';
     console.error(`[boot] role=api env_validation=failed error="${message}"`);
@@ -23,6 +24,7 @@ async function bootstrapApi() {
     })
   );
 
+  const { AppModule } = await import('./app.module');
   const app = await NestFactory.create(AppModule);
   app.use(
     json({

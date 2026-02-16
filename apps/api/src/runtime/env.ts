@@ -1,4 +1,6 @@
 const REQUIRED_BASE_ENV = ['DATABASE_URL', 'REDIS_URL'] as const;
+const REQUIRED_API_ENV = ['DATABASE_URL'] as const;
+const REQUIRED_WORKER_ENV = REQUIRED_BASE_ENV;
 
 export function requireEnv(name: string): string {
   const value = process.env[name];
@@ -11,6 +13,28 @@ export function requireEnv(name: string): string {
 
 export function validateRequiredRuntimeEnv(): void {
   const missing = REQUIRED_BASE_ENV.filter((name) => {
+    const value = process.env[name];
+    return !value || value.trim().length === 0;
+  });
+
+  if (missing.length > 0) {
+    throw new Error(`Missing required environment variable(s): ${missing.join(', ')}`);
+  }
+}
+
+export function validateApiRuntimeEnv(): void {
+  const missing = REQUIRED_API_ENV.filter((name) => {
+    const value = process.env[name];
+    return !value || value.trim().length === 0;
+  });
+
+  if (missing.length > 0) {
+    throw new Error(`Missing required environment variable(s): ${missing.join(', ')}`);
+  }
+}
+
+export function validateWorkerRuntimeEnv(): void {
+  const missing = REQUIRED_WORKER_ENV.filter((name) => {
     const value = process.env[name];
     return !value || value.trim().length === 0;
   });

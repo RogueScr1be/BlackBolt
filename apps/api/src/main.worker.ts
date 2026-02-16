@@ -1,13 +1,30 @@
 import 'reflect-metadata';
 
 import { NestFactory } from '@nestjs/core';
+import Redis from 'ioredis';
 
-import { WorkerModule } from './worker.module';
-import { buildBootBanner, validateRequiredRuntimeEnv } from './runtime/env';
+import { buildBootBanner, requireEnv, validateWorkerRuntimeEnv } from './runtime/env';
+
+async function preflightRedisConnection() {
+  const client = new Redis(requireEnv('REDIS_URL'), {
+    lazyConnect: false,
+    maxRetriesPerRequest: 1,
+    enableOfflineQueue: false
+  });
+
+  try {
+    await client.ping();
+  } finally {
+    client.disconnect();
+  }
+}
 
 async function bootstrapWorker() {
+  process.env.APP_ROLE = 'worker';
+
   try {
-    validateRequiredRuntimeEnv();
+    validateWorkerRuntimeEnv();
+    await preflightRedisConnection();
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown environment validation error';
     console.error(`[boot] role=worker env_validation=failed error="${message}"`);
@@ -21,6 +38,7 @@ async function bootstrapWorker() {
     })
   );
 
+  const { WorkerModule } = await import('./worker.module');
   await NestFactory.createApplicationContext(WorkerModule, {
     logger: ['error', 'warn', 'log']
   });
