@@ -9,12 +9,9 @@ struct BlackBoltOperatorApp: App {
     var body: some Scene {
         WindowGroup {
             Group {
-                if lock.isLocked {
-                    OperatorLockView(lock: lock)
-                } else {
-                    OperatorRootView()
-                        .environmentObject(runtime)
-                }
+                // Temporary 1.0 visibility bypass; re-enable lock after UI validation.
+                OperatorRootView()
+                    .environmentObject(runtime)
             }
             .frame(minWidth: 960, minHeight: 640)
             .onChange(of: scenePhase) { _, newPhase in
