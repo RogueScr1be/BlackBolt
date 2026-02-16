@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
+import { requireEnv } from '../../runtime/env';
 import { PrismaModule } from '../prisma/prisma.module';
 import { QueuesModule } from '../queues/queues.module';
 import { TenancyModule } from '../tenancy/tenancy.module';
@@ -10,7 +11,14 @@ import { ReviewsQueue } from './reviews.queue';
 import { ReviewsService } from './reviews.service';
 
 const isWorker = process.env.APP_ROLE === 'worker';
-const queueImports = isWorker ? [BullModule.registerQueue({ name: QUEUES.GBP_INGEST })] : [];
+const queueImports = isWorker
+  ? [
+      BullModule.registerQueue({
+        name: QUEUES.GBP_INGEST,
+        connection: { url: requireEnv('REDIS_URL') }
+      })
+    ]
+  : [];
 
 @Module({
   imports: [

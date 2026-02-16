@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 
+import { requireEnv } from '../../runtime/env';
 import { PrismaModule } from '../prisma/prisma.module';
 import { QUEUES } from '../queues/queue.constants';
 import { PostmarkClient } from './postmark.client';
@@ -16,8 +17,14 @@ import { PostmarkWebhookLimiterService } from './postmark-webhook-limiter.servic
 @Module({
   imports: [
     PrismaModule,
-    BullModule.registerQueue({ name: QUEUES.POSTMARK_WEBHOOK_RECONCILE }),
-    BullModule.registerQueue({ name: QUEUES.POSTMARK_SEND })
+    BullModule.registerQueue({
+      name: QUEUES.POSTMARK_WEBHOOK_RECONCILE,
+      connection: { url: requireEnv('REDIS_URL') }
+    }),
+    BullModule.registerQueue({
+      name: QUEUES.POSTMARK_SEND,
+      connection: { url: requireEnv('REDIS_URL') }
+    })
   ],
   providers: [
     PostmarkService,
