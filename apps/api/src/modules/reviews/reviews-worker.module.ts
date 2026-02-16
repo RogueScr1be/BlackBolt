@@ -17,6 +17,10 @@ import { ReviewsQueue } from './reviews.queue';
     BullModule.registerQueue({
       name: QUEUES.GBP_INGEST,
       connection: { url: requireEnv('REDIS_URL') }
+    }),
+    BullModule.registerQueue({
+      name: QUEUES.POSTMARK_SEND,
+      connection: { url: requireEnv('REDIS_URL') }
     })
   ],
   providers: [ReviewsQueue, ReviewsProcessor]

@@ -1,37 +1,32 @@
-# Automation Policy (Phase 0 Baseline)
+# Automation Policy (BlackBolt 1.0 Locked)
 
-## Scope
-Applies to all Black Bolt automated actions across lanes 1-5.
+## Trigger Scope
+- Trigger only on newly ingested review where:
+  - rating is `5`
+  - classification is `genuine_positive`
 
-## Global Constraints
-1. No PHI storage.
-2. Monolith only (NestJS).
-3. Prisma only.
-4. No scraper ingestion; GBP API only.
-5. Postmark only for email.
+## Deterministic Confidence Formula
+- `+0.4` rating is 5
+- `+0.2` review length > 20 words
+- `+0.2` no risk flags
+- `+0.2` service mentioned present
 
-## Confidence Thresholds
-1. Low risk auto-action: `>= 0.80`
-2. Medium risk auto-action: `>= 0.90`
-3. High risk auto-action: `>= 0.97`
-4. Critical risk: manual approval required
+## Approval Gate
+- Default auto-send threshold: `>= 0.8`
+- Strict vertical threshold: `>= 0.9`
+- Any risk flag forces manual lane
 
-## Throttles (Default)
-1. Automated sends per tenant: `120/hour`
-2. Campaign launches per tenant: `4/hour`
-3. Global Postmark send rate soft cap: `30/sec`
-4. GBP ingest cap per tenant: `5/sec`
-5. GBP global ingest cap: `40/sec`
+## Segment Policy
+- Default mode: `last_seen_90_365`
+- Volume mode: includes `365_plus`
+- Gentle mode: uses `0_90`
 
-## Auto-Pause Triggers
-1. Bounce rate `> 5%` over 1h or `> 3%` over 24h.
-2. Spam complaint rate `> 0.1%` over 24h.
-3. Provider/API 5xx rate `> 2%` over 15m.
-4. Queue failure rate `> 10%` over 15m.
-5. Webhook signature failures `> 10` over 10m.
+## Send Window + Template Constraints
+- Default send window: next business day at `10:00` local policy time
+- Template selection is deterministic by hash rotation (`reviewId % N`)
+- Use constrained template structure only (no freeform drift)
 
-## Recovery Requirements
-1. Pause affected lane immediately when trigger fires.
-2. Open incident and capture audit trail.
-3. Execute lane-specific recovery checklist.
-4. Resume only with explicit operator approval.
+## Safety Constraints
+- No PHI storage
+- No medical claims in generated copy
+- `POSTMARK_SEND_DISABLED=1` remains active until final go-live gate

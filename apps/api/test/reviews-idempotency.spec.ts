@@ -29,8 +29,15 @@ describe('GBP review ingestion idempotency and paging', () => {
     const reviewsQueue = {
       enqueuePageFetch: jest.fn().mockResolvedValue({ jobId: 'page-job-1' })
     };
+    const postmarkSendQueue = { add: jest.fn().mockResolvedValue({}) };
 
-    const processor = new ReviewsProcessor(prisma as never, ledger as never, gbpClient as never, reviewsQueue as never);
+    const processor = new ReviewsProcessor(
+      prisma as never,
+      ledger as never,
+      gbpClient as never,
+      reviewsQueue as never,
+      postmarkSendQueue as never
+    );
     const job = {
       id: 'gbp-ingest:tenant-1:loc-1:2026-01-01T10',
       name: GBP_POLL_TRIGGER_JOB_NAME,
@@ -44,7 +51,7 @@ describe('GBP review ingestion idempotency and paging', () => {
   });
 
   it('dedupes page jobs by cursor idempotency key', async () => {
-    const upsert = jest.fn().mockResolvedValue(undefined);
+    const upsert = jest.fn().mockResolvedValue({ id: 'review-1' });
     const prisma = {
       tenant: {
         findUnique: jest.fn().mockResolvedValue({
@@ -59,7 +66,10 @@ describe('GBP review ingestion idempotency and paging', () => {
       gbpSyncState: {
         upsert: jest.fn().mockResolvedValue({})
       },
-      review: { upsert },
+      review: {
+        findUnique: jest.fn().mockResolvedValue({ id: 'review-1' }),
+        upsert
+      },
       integrationAlert: { create: jest.fn().mockResolvedValue({}) }
     };
 
@@ -76,7 +86,7 @@ describe('GBP review ingestion idempotency and paging', () => {
         reviews: [
           {
             sourceReviewId: 'rev-1',
-            rating: 5,
+            rating: 4,
             body: 'Great service',
             reviewerName: 'Alex',
             reviewedAt: new Date().toISOString(),
@@ -89,7 +99,14 @@ describe('GBP review ingestion idempotency and paging', () => {
     };
 
     const reviewsQueue = { enqueuePageFetch: jest.fn() };
-    const processor = new ReviewsProcessor(prisma as never, ledger as never, gbpClient as never, reviewsQueue as never);
+    const postmarkSendQueue = { add: jest.fn().mockResolvedValue({}) };
+    const processor = new ReviewsProcessor(
+      prisma as never,
+      ledger as never,
+      gbpClient as never,
+      reviewsQueue as never,
+      postmarkSendQueue as never
+    );
 
     const job = {
       id: 'gbp-ingest:tenant-1:loc-1:cursorhash:v1',
@@ -104,7 +121,7 @@ describe('GBP review ingestion idempotency and paging', () => {
   });
 
   it('processes one page then enqueues the next cursor page', async () => {
-    const upsert = jest.fn().mockResolvedValue(undefined);
+    const upsert = jest.fn().mockResolvedValue({ id: 'review-1' });
     const syncStateUpsert = jest.fn().mockResolvedValue({});
     const enqueuePageFetch = jest.fn().mockResolvedValue({ jobId: 'page-job-2' });
     const prisma = {
@@ -121,7 +138,10 @@ describe('GBP review ingestion idempotency and paging', () => {
       gbpSyncState: {
         upsert: syncStateUpsert
       },
-      review: { upsert },
+      review: {
+        findUnique: jest.fn().mockResolvedValue({ id: 'review-1' }),
+        upsert
+      },
       integrationAlert: { create: jest.fn().mockResolvedValue({}) }
     };
 
@@ -135,7 +155,7 @@ describe('GBP review ingestion idempotency and paging', () => {
         reviews: [
           {
             sourceReviewId: 'rev-1',
-            rating: 5,
+            rating: 4,
             body: 'Great service',
             reviewerName: 'Alex',
             reviewedAt: new Date().toISOString(),
@@ -148,7 +168,14 @@ describe('GBP review ingestion idempotency and paging', () => {
     };
 
     const reviewsQueue = { enqueuePageFetch };
-    const processor = new ReviewsProcessor(prisma as never, ledger as never, gbpClient as never, reviewsQueue as never);
+    const postmarkSendQueue = { add: jest.fn().mockResolvedValue({}) };
+    const processor = new ReviewsProcessor(
+      prisma as never,
+      ledger as never,
+      gbpClient as never,
+      reviewsQueue as never,
+      postmarkSendQueue as never
+    );
     const job = {
       id: 'gbp-ingest:tenant-1:loc-1:start:v1',
       name: GBP_PAGE_FETCH_JOB_NAME,

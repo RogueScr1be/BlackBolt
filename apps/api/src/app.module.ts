@@ -14,6 +14,7 @@ import { IntegrationsModule } from './modules/integrations/integrations.module';
 import { ReviewsModule } from './modules/reviews/reviews.module';
 import { PostmarkModule } from './modules/postmark/postmark.module';
 import { RevenueModule } from './modules/revenue/revenue.module';
+import { OperatorModule } from './modules/operator/operator.module';
 
 @Module({
   imports: [
@@ -28,7 +29,8 @@ import { RevenueModule } from './modules/revenue/revenue.module';
     IntegrationsModule,
     ReviewsModule,
     PostmarkModule,
-    RevenueModule
+    RevenueModule,
+    OperatorModule
   ],
   providers: [
     {

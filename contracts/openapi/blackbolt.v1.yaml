@@ -401,6 +401,100 @@ paths:
               schema:
                 $ref: '#/components/schemas/PostmarkResumeResponse'
 
+  /v1/tenants/{tenantId}/operator/command-center:
+    get:
+      operationId: getOperatorCommandCenter
+      tags: [operator]
+      summary: Aggregate command center payload for operator dashboard
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/TenantIdPath'
+      responses:
+        '200':
+          description: Operator command-center aggregate
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommandCenterPayload'
+
+  /v1/tenants/{tenantId}/interventions/retry-gbp-ingestion:
+    post:
+      operationId: retryGbpIngestionIntervention
+      tags: [operator, interventions]
+      summary: Retry GBP ingestion for a tenant
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/TenantIdPath'
+      responses:
+        '200':
+          description: GBP retry intervention accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperatorInterventionResponse'
+
+  /v1/tenants/{tenantId}/interventions/resume-postmark:
+    post:
+      operationId: resumePostmarkIntervention
+      tags: [operator, interventions]
+      summary: Resume Postmark send path after checklist acknowledgement
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/TenantIdPath'
+      responses:
+        '200':
+          description: Postmark resume intervention result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperatorInterventionResponse'
+
+  /v1/tenants/{tenantId}/interventions/ack-alert:
+    post:
+      operationId: ackAlertIntervention
+      tags: [operator, interventions]
+      summary: Acknowledge and resolve an alert
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/TenantIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [alert_id]
+              properties:
+                alert_id: { type: string }
+      responses:
+        '200':
+          description: Alert acknowledged
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperatorInterventionResponse'
+
+  /v1/tenants/{tenantId}/reports/monthly:
+    get:
+      operationId: getMonthlyReport
+      tags: [reports, operator]
+      summary: Monthly one-page report payload
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/TenantIdPath'
+        - name: month
+          in: query
+          required: false
+          description: YYYY-MM, defaults to current UTC month.
+          schema: { type: string, pattern: '^\d{4}-\d{2}$' }
+      responses:
+        '200':
+          description: Monthly report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MonthlyReportPayload'
+
 components:
   securitySchemes:
     bearerAuth:
@@ -951,3 +1045,111 @@ components:
             - $ref: '#/components/schemas/RevenueSummaryDiagnostics'
           description: Present only when REVENUE_OPS_DIAGNOSTICS=1.
           nullable: true
+    OperatorInterventionResponse:
+      type: object
+      required: [ok, intervention]
+      properties:
+        ok: { type: boolean }
+        intervention: { type: string }
+        queued:
+          type: object
+          nullable: true
+          properties:
+            queue: { type: string }
+            jobId: { type: string, nullable: true }
+            cooldownUntil: { type: string, format: date-time, nullable: true }
+        result:
+          type: object
+          nullable: true
+          additionalProperties: true
+        alert_id: { type: string, nullable: true }
+        resolved_at: { type: string, format: date-time, nullable: true }
+    OperatorKPI:
+      type: object
+      required: [revenue_month, attributed_bookings_month, new_5star_reviews_month, email_conversion_rate, portfolio_health_score, action_required_count]
+      properties:
+        revenue_month: { type: integer }
+        attributed_bookings_month: { type: integer }
+        new_5star_reviews_month: { type: integer }
+        email_conversion_rate: { type: number }
+        portfolio_health_score: { type: integer, minimum: 0, maximum: 100 }
+        action_required_count: { type: integer }
+    OperatorHealth:
+      type: object
+      required: [deliverability, review_velocity, engagement_trend, worker_liveness, last_pipeline_run]
+      properties:
+        deliverability: { type: string, enum: [healthy, warning, critical] }
+        review_velocity: { type: string, enum: [healthy, warning, critical] }
+        engagement_trend: { type: string, enum: [healthy, warning, critical] }
+        worker_liveness: { type: string, enum: [healthy, warning, critical] }
+        last_pipeline_run: { type: string, format: date-time, nullable: true }
+    OperatorAlert:
+      type: object
+      required: [id, type, severity, tenant_id, title, suggested_action, execute_capability, created_at, resolved_at]
+      properties:
+        id: { type: string }
+        type: { type: string }
+        severity: { type: string, enum: [critical, warning, info] }
+        tenant_id: { type: string }
+        title: { type: string }
+        suggested_action: { type: string }
+        execute_capability: { type: string, enum: [retry-gbp-ingestion, resume-postmark, ack-alert, none] }
+        created_at: { type: string, format: date-time }
+        resolved_at: { type: string, format: date-time, nullable: true }
+    OperatorActivityEvent:
+      type: object
+      required: [event_type, tenant_id, summary, created_at]
+      properties:
+        event_type: { type: string }
+        tenant_id: { type: string }
+        summary: { type: string }
+        amount_cents: { type: integer, nullable: true }
+        created_at: { type: string, format: date-time }
+    CommandCenterPayload:
+      type: object
+      required: [tenant_id, kpis, health, alerts, activity_feed]
+      properties:
+        tenant_id: { type: string }
+        kpis: { $ref: '#/components/schemas/OperatorKPI' }
+        health: { $ref: '#/components/schemas/OperatorHealth' }
+        alerts:
+          type: array
+          items: { $ref: '#/components/schemas/OperatorAlert' }
+        activity_feed:
+          type: array
+          items: { $ref: '#/components/schemas/OperatorActivityEvent' }
+    MonthlyReportEstimate:
+      type: object
+      required: [conservative_bookings, base_bookings, aggressive_bookings]
+      properties:
+        conservative_bookings: { type: integer }
+        base_bookings: { type: integer }
+        aggressive_bookings: { type: integer }
+    MonthlyReportTotals:
+      type: object
+      required: [revenue_cents, attributed_cents, bookings_count, sent_count, click_count]
+      properties:
+        revenue_cents: { type: integer }
+        attributed_cents: { type: integer }
+        bookings_count: { type: integer }
+        sent_count: { type: integer }
+        click_count: { type: integer }
+    MonthlyReportBenefit:
+      type: object
+      required: [benefit, mentions]
+      properties:
+        benefit: { type: string }
+        mentions: { type: integer }
+    MonthlyReportPayload:
+      type: object
+      required: [tenant_id, month, generated_at, totals, estimates, praised_benefits, narrative]
+      properties:
+        tenant_id: { type: string }
+        month: { type: string, pattern: '^\d{4}-\d{2}$' }
+        generated_at: { type: string, format: date-time }
+        totals: { $ref: '#/components/schemas/MonthlyReportTotals' }
+        estimates: { $ref: '#/components/schemas/MonthlyReportEstimate' }
+        praised_benefits:
+          type: array
+          items: { $ref: '#/components/schemas/MonthlyReportBenefit' }
+        narrative: { type: string }

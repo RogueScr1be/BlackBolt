@@ -44,6 +44,6 @@ const queueImports = isWorker
     PostmarkPolicyService,
     PostmarkOpsService
   ],
-  exports: [PostmarkService]
+  exports: [PostmarkService, PostmarkOpsService]
 })
 export class PostmarkModule {}

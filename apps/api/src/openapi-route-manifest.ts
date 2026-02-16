@@ -15,5 +15,10 @@ export const OPENAPI_OPERATION_IDS = [
   'getRevenueSummary',
   'receivePostmarkWebhook',
   'getPostmarkOperatorSummary',
-  'resumePostmarkSends'
+  'resumePostmarkSends',
+  'getOperatorCommandCenter',
+  'retryGbpIngestionIntervention',
+  'resumePostmarkIntervention',
+  'ackAlertIntervention',
+  'getMonthlyReport'
 ] as const;

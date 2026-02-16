@@ -41,7 +41,14 @@ describe('GBP auth failure terminal behavior', () => {
     };
 
     const reviewsQueue = { enqueuePageFetch: jest.fn() };
-    const processor = new ReviewsProcessor(prisma as never, ledger as never, gbpClient as never, reviewsQueue as never);
+    const postmarkSendQueue = { add: jest.fn().mockResolvedValue({}) };
+    const processor = new ReviewsProcessor(
+      prisma as never,
+      ledger as never,
+      gbpClient as never,
+      reviewsQueue as never,
+      postmarkSendQueue as never
+    );
     const job = {
       id: 'gbp-ingest:tenant-1:loc-1:start:v1',
       name: GBP_PAGE_FETCH_JOB_NAME,

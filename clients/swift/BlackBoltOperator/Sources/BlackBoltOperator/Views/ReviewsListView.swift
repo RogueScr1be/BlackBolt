@@ -50,7 +50,7 @@ struct ReviewsListView: View {
                         if let run = summary.latestJobRun {
                             Text("Latest Run: \(run.state) (\(run.id))")
                             if let telemetry = run.metadataJson {
-                                Text("Telemetry pages=\(telemetry.pages_fetched ?? 0) fetched=\(telemetry.reviews_fetched ?? 0) upserted=\(telemetry.upserted ?? 0) skipped=\(telemetry.skipped ?? 0)")
+                                Text("Telemetry pages=\(telemetry.pagesFetched ?? 0) fetched=\(telemetry.reviewsFetched ?? 0) upserted=\(telemetry.upserted ?? 0) skipped=\(telemetry.skipped ?? 0)")
                                     .font(.caption)
                             }
                         }

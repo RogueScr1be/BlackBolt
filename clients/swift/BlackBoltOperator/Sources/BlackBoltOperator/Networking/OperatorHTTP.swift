@@ -4,7 +4,9 @@ enum OperatorHTTP {
     static func fetchJSON<T: Decodable>(_ request: URLRequest, as type: T.Type) async throws -> T {
         let (data, response) = try await URLSession.shared.data(for: request)
         try ensureSuccess(response: response, data: data)
-        return try JSONDecoder().decode(T.self, from: data)
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        return try decoder.decode(T.self, from: data)
     }
 
     static func perform(_ request: URLRequest) async throws -> Data {

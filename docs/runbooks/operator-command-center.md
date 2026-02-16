@@ -1,32 +1,44 @@
 # Operator Command Center Runbook
 
-## Daily Loop
-1. Open `BlackBolt Operator.app`.
-2. Review `Command` tab:
-   - Revenue snapshot
-   - Health snapshot
-   - Alert queue (`What needs me now`)
-3. If alerts exist, move to `Interventions`.
-4. Apply only scoped actions:
-   - Retry GBP ingestion
-   - Resume Postmark sends (with checklist acknowledgement)
-   - Acknowledge reviewed alerts (local operator state)
-5. Use `Evidence` for drill-down diagnostics (`Revenue`, `Reviews`, `Customers`, `Imports`).
-6. Close app. Runtime remains active on Railway.
+## Daily Operator SOP (<10 minutes)
+1. Open `BlackBolt Operator.app` from Dock.
+2. Land on `Dashboard` and answer:
+   - money flow
+   - system health
+   - required actions
+3. If critical/warning alerts exist, move to `Alerts` immediately.
+4. Execute only scoped interventions:
+   - retry GBP ingestion
+   - resume Postmark (after checklist)
+   - acknowledge alert
+5. Spot-check `Campaign Engine` for queued/manual-lane work.
+6. Use `Reports` only when monthly proof is needed.
+7. Close app.
 
-## Release Gate (Single Operator)
-- API `/health` returns 200.
-- Smoke passes:
-  - `bash scripts/smoke/railway-smoke.sh <apiBaseUrl> <tenantId> <basicAuthOrDash>`
-- API and Worker boot banners print identical `build_sha`.
-- Worker has no `127.0.0.1:6379` Redis errors.
+## Navigation (Locked IA)
+- Dashboard
+- Tenants
+- Campaign Engine
+- Alerts
+- Analytics
+- Reports
+- Settings
 
-## Weekly KPIs
-- Attributed revenue trend (`last24h`, `last1h`).
-- Unresolved alert volume and age.
-- GBP ingestion freshness (`lastSuccessAt` recency).
-- Postmark paused state duration.
+## Weekly KPI SOP
+1. Review portfolio health score trend.
+2. Review attributed bookings and revenue trend.
+3. Review unresolved alert age and count.
+4. Review worker liveness and last pipeline run recency.
 
-## Safety Defaults
-- Keep `POSTMARK_SEND_DISABLED=1` until explicit send go-live.
-- Treat invariant breaches as release-blocking operational incidents.
+## Release Checklist (Same-SHA Rule)
+1. Verify API `/health` returns 200.
+2. Verify API + worker startup banners show identical `build_sha`.
+3. Verify no worker Redis localhost fallback (`127.0.0.1:6379`).
+4. Run smoke script and require pass:
+   - `bash scripts/smoke/railway-smoke.sh <apiBaseUrl> <tenantId> <basicAuthOrDash>`
+5. Keep `POSTMARK_SEND_DISABLED=1` until explicit final go-live gate.
+
+## Rollback
+1. Redeploy prior known-good SHA to both API and worker.
+2. Verify same-SHA alignment in boot banners.
+3. Re-run smoke script before declaring rollback complete.

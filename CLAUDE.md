@@ -79,3 +79,10 @@
 - When invariant codes are defined in both runtime and OpenAPI, enforce cross-sync with a dedicated contract-sync test.
 - Migration SQL files under `prisma/migrations/**/migration.sql` are immutable; CI must fail on edits/deletes/renames outside brand-new migration directories.
 - Stale `SENDING` claims must be recovered by sweeper policy (re-queue or fail) with explicit integration alerts.
+
+## BlackBolt 1.0 Recovery Tracking
+- Locked IA is now sidebar-first with sections: Dashboard, Tenants, Campaign Engine, Alerts, Analytics, Reports, Settings.
+- Command-center aggregate endpoint is canonical for operator landing data.
+- Interventions are constrained to retry GBP ingestion, resume Postmark, and ack alert with audit logs.
+- Reactivation policy must remain deterministic with confidence gate `0.8` default / `0.9` strict.
+- Keep same-SHA release discipline and smoke-script gate as mandatory before live declaration.

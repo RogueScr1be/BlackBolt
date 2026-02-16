@@ -25,12 +25,12 @@ struct CustomersPage: Decodable {
 }
 
 struct GbpTelemetry: Decodable {
-    let pages_fetched: Int?
-    let reviews_fetched: Int?
+    let pagesFetched: Int?
+    let reviewsFetched: Int?
     let upserted: Int?
     let skipped: Int?
-    let cooldown_applied: Bool?
-    let error_class: String?
+    let cooldownApplied: Bool?
+    let errorClass: String?
 }
 
 struct LatestGbpJobRun: Decodable {
@@ -152,6 +152,91 @@ struct PollResponse: Decodable {
 struct OperatorActionResponse: Decodable {
     let resumed: Bool?
     let reason: String?
+}
+
+struct OperatorKPI: Decodable {
+    let revenueMonth: Int
+    let attributedBookingsMonth: Int
+    let new5starReviewsMonth: Int
+    let emailConversionRate: Double
+    let portfolioHealthScore: Int
+    let actionRequiredCount: Int
+}
+
+struct OperatorHealth: Decodable {
+    let deliverability: String
+    let reviewVelocity: String
+    let engagementTrend: String
+    let workerLiveness: String
+    let lastPipelineRun: String?
+}
+
+struct CommandCenterAlert: Decodable, Identifiable, Hashable {
+    let id: String
+    let type: String
+    let severity: String
+    let tenantId: String
+    let title: String
+    let suggestedAction: String
+    let executeCapability: String
+    let createdAt: String
+    let resolvedAt: String?
+}
+
+struct OperatorActivityEvent: Decodable, Identifiable {
+    let eventType: String
+    let tenantId: String
+    let summary: String
+    let amountCents: Int?
+    let createdAt: String
+
+    var id: String { "\(eventType)-\(createdAt)-\(summary)" }
+}
+
+struct CommandCenterPayload: Decodable {
+    let tenantId: String
+    let kpis: OperatorKPI
+    let health: OperatorHealth
+    let alerts: [CommandCenterAlert]
+    let activityFeed: [OperatorActivityEvent]
+}
+
+struct InterventionResponse: Decodable {
+    let ok: Bool
+    let intervention: String
+    let alertId: String?
+    let resolvedAt: String?
+}
+
+struct MonthlyReportTotals: Decodable {
+    let revenueCents: Int
+    let attributedCents: Int
+    let bookingsCount: Int
+    let sentCount: Int
+    let clickCount: Int
+}
+
+struct MonthlyReportEstimates: Decodable {
+    let conservativeBookings: Int
+    let baseBookings: Int
+    let aggressiveBookings: Int
+}
+
+struct MonthlyReportBenefit: Decodable, Identifiable {
+    let benefit: String
+    let mentions: Int
+
+    var id: String { benefit }
+}
+
+struct MonthlyReportPayload: Decodable {
+    let tenantId: String
+    let month: String
+    let generatedAt: String
+    let totals: MonthlyReportTotals
+    let estimates: MonthlyReportEstimates
+    let praisedBenefits: [MonthlyReportBenefit]
+    let narrative: String
 }
 
 struct OperatorAlert: Identifiable, Hashable {

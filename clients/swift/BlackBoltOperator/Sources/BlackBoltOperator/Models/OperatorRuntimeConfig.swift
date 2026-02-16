@@ -37,7 +37,18 @@ final class OperatorRuntimeConfig: ObservableObject {
         }
 
         let normalizedPath = path.hasPrefix("/") ? String(path.dropFirst()) : path
-        let url = baseURL.appendingPathComponent(normalizedPath)
+        guard let percentEncoded = normalizedPath.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) else {
+            throw URLError(.badURL)
+        }
+        let pieces = normalizedPath.split(separator: "?", maxSplits: 1, omittingEmptySubsequences: false)
+        let pathPart = String(pieces[0])
+        var components = URLComponents(url: baseURL.appendingPathComponent(pathPart), resolvingAgainstBaseURL: false)
+        if pieces.count == 2 {
+            components?.percentEncodedQuery = String(pieces[1])
+        }
+        guard let url = components?.url ?? URL(string: base + "/" + percentEncoded) else {
+            throw URLError(.badURL)
+        }
         var req = URLRequest(url: url)
         req.httpMethod = method
         req.addValue(tenantId, forHTTPHeaderField: "x-tenant-id")

@@ -209,3 +209,18 @@
 - Context: `SENDING` rows can stall after crash windows even with claim/idempotency guards.
 - Decision: add scheduled sweeper job (`postmark-send-sweeper`) to recover stale `SENDING` rows (`provider_message_id IS NULL`) by re-queueing when safe or failing when paused/max-attempts hit, with integration alerts.
 - Consequence: stalled claims self-heal or fail visibly without indefinite operator toil.
+
+## 2026-02-16 — Command-center aggregate API for Operator IA
+- Context: Operator dashboard required a single read endpoint to meet the <10 minute daily loop and avoid client-side fan-out latency.
+- Decision: add `GET /v1/tenants/:tenantId/operator/command-center` aggregating KPI, health, alerts, and activity feed from existing modules without adding broad CRUD.
+- Consequence: dashboard render path is now deterministic and additive, with one canonical contract for alert-priority UX.
+
+## 2026-02-16 — Scoped intervention endpoints with mandatory audit trail
+- Context: Operator needed one-tap actions while preserving tight blast radius and auditability.
+- Decision: add thin intervention endpoints (`retry-gbp-ingestion`, `resume-postmark`, `ack-alert`) that call existing service capabilities and always emit `audit_logs` records.
+- Consequence: operator actions are fast and reversible while retaining strict write-scope control.
+
+## 2026-02-16 — Deterministic reactivation workflow completion on ingest
+- Context: previously, newly ingested reviews were persisted but did not execute full reactivation workflow states.
+- Decision: extend GBP ingest worker to run deterministic workflow gating for newly inserted reviews (classification, confidence policy, segment selection, constrained draft creation, approval/manual lane split, and send scheduling queue).
+- Consequence: 5-star genuine positives now move through automated path by default with risk/manual overrides, aligned to 1.0 policy constraints.

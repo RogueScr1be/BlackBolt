@@ -10,15 +10,12 @@ import { ReviewsController } from './reviews.controller';
 import { ReviewsQueue } from './reviews.queue';
 import { ReviewsService } from './reviews.service';
 
-const isWorker = process.env.APP_ROLE === 'worker';
-const queueImports = isWorker
-  ? [
-      BullModule.registerQueue({
-        name: QUEUES.GBP_INGEST,
-        connection: { url: requireEnv('REDIS_URL') }
-      })
-    ]
-  : [];
+const queueImports = [
+  BullModule.registerQueue({
+    name: QUEUES.GBP_INGEST,
+    connection: { url: requireEnv('REDIS_URL') }
+  })
+];
 
 @Module({
   imports: [
@@ -29,6 +26,7 @@ const queueImports = isWorker
     ...queueImports
   ],
   controllers: [ReviewsController],
-  providers: [ReviewsService, ReviewsQueue]
+  providers: [ReviewsService, ReviewsQueue],
+  exports: [ReviewsService]
 })
 export class ReviewsModule {}
