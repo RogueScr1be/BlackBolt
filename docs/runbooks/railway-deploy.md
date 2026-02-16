@@ -75,6 +75,7 @@ If Railway reports that the latest deployment cannot be redeployed (building/dep
 - `blackbolt-api` responds on `/health`.
 - Worker process stays up (no crash loop).
 - No env validation failures for `DATABASE_URL` or `REDIS_URL`.
+- API and Worker startup banners show identical `build_sha`.
 - Run smoke script:
 - `bash scripts/smoke/railway-smoke.sh <apiBaseUrl> <tenantId> <basicAuthOrDash>`
 

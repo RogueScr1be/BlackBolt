@@ -22,6 +22,8 @@
     "api:start:prod": "npm --workspace @blackbolt/api run start:api",
     "worker:start:prod": "npm --workspace @blackbolt/api run start:worker",
     "operator:start": "bash scripts/start-operator.sh",
+    "operator:package": "bash scripts/operator/package-macos-app.sh",
+    "repo:check-duplicates": "node scripts/check-no-suffixed-duplicates.mjs",
     "api:test": "npm --workspace @blackbolt/api run test",
     "prisma:generate": "npm --workspace @blackbolt/api exec -- prisma generate --schema ../../prisma/schema.prisma && node scripts/prisma-schema-hash.mjs",
     "prisma:hash:check": "node scripts/prisma-schema-hash.mjs --check",
