@@ -1,7 +1,8 @@
 # Operator Command Center Runbook
 
 ## Daily Operator SOP (<10 minutes)
-1. Open `BlackBolt Operator.app` from Dock.
+1. Launch Operator from source using the canonical latest-build guard:
+   - `bash scripts/operator/open-latest.sh`
 2. Land on `Dashboard` and answer:
    - money flow
    - system health
@@ -14,6 +15,15 @@
 5. Spot-check `Campaign Engine` for queued/manual-lane work.
 6. Use `Reports` only when monthly proof is needed.
 7. Close app.
+
+## Launch Policy (No Hybrid Browser Window)
+- Dashboard launch is local Swift Operator only; do not use browser links as the primary path.
+- Canonical command:
+  - `bash scripts/operator/open-latest.sh`
+- Optional override when intentionally testing a non-latest checkout:
+  - `bash scripts/operator/open-latest.sh --allow-behind`
+- Packaged app launch remains available but is non-authoritative for "latest build":
+  - `open "$HOME/Applications/BlackBolt Operator.app"`
 
 ## Navigation (Locked IA)
 - Dashboard
