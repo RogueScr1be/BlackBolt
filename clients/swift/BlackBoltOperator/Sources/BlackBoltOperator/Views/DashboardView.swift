@@ -15,7 +15,15 @@ struct DashboardView: View {
                     Button("Refresh") {
                         Task { await store.refresh(runtime: runtime) }
                     }
-                    .disabled(store.isLoading)
+                    .disabled(store.isLoading || store.connectionState == .invalidConfig)
+                }
+
+                if store.connectionState == .invalidConfig {
+                    GroupBox("Connection Setup Required") {
+                        Text("Set API Base URL, Tenant ID, and Operator Key in Settings before refresh.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
                 }
 
                 if let dashboard = store.dashboard {
@@ -93,9 +101,21 @@ struct DashboardView: View {
                     }
                 }
 
-                if let error = store.errorMessage {
-                    Text(error)
-                        .foregroundColor(.red)
+                if let error = store.lastError {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(error.message)
+                            .foregroundColor(.red)
+                        if let path = error.path {
+                            Text("Request: \(path)")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
+                        if let status = error.httpStatus {
+                            Text("HTTP status: \(status)")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
+                    }
                 }
             }
             .padding(16)

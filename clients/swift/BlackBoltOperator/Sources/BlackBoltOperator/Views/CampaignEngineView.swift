@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct CampaignEngineView: View {
+    @EnvironmentObject var runtime: OperatorRuntimeConfig
     @ObservedObject var store: OperatorShellStore
 
     var body: some View {
@@ -41,6 +42,18 @@ struct CampaignEngineView: View {
                 ForEach(store.events.prefix(8)) { item in
                     Text("\(item.eventType): \(item.summary)")
                         .font(.caption)
+                }
+            }
+            if let error = store.lastError {
+                HStack {
+                    Text(error.message)
+                        .font(.caption)
+                        .foregroundColor(.red)
+                    Spacer()
+                    Button("Retry") {
+                        Task { await store.refresh(runtime: runtime) }
+                    }
+                    .disabled(store.connectionState == .invalidConfig || store.isLoading)
                 }
             }
             Spacer()

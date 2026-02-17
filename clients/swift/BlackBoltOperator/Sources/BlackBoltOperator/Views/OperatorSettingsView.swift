@@ -16,8 +16,25 @@ struct OperatorSettingsView: View {
                 TextField("Auth Header or user:pass", text: $runtime.authHeader)
             }
             .formStyle(.grouped)
+
+            GroupBox("Build Info") {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Build SHA: \(buildSHA)")
+                        .font(.caption)
+                    Text("Current API Base URL: \(runtime.apiBaseURL)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
         }
         .padding(20)
         .frame(minWidth: 580, minHeight: 300)
+    }
+
+    private var buildSHA: String {
+        if let value = Bundle.main.object(forInfoDictionaryKey: "BlackBoltBuildSHA") as? String, !value.isEmpty {
+            return value
+        }
+        return ProcessInfo.processInfo.environment["BUILD_SHA"] ?? "unknown"
     }
 }

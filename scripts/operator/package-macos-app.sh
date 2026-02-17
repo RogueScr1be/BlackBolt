@@ -60,4 +60,8 @@ if [ -f "${ICON_PATH}" ]; then
   /usr/libexec/PlistBuddy -c "Add :CFBundleIconFile string AppIcon" "${CONTENTS_DIR}/Info.plist" >/dev/null 2>&1 || true
 fi
 
+BUILD_SHA="${BUILD_SHA:-$(git -C "${ROOT_DIR}" rev-parse --short HEAD)}"
+/usr/libexec/PlistBuddy -c "Add :BlackBoltBuildSHA string ${BUILD_SHA}" "${CONTENTS_DIR}/Info.plist" >/dev/null 2>&1 \
+  || /usr/libexec/PlistBuddy -c "Set :BlackBoltBuildSHA ${BUILD_SHA}" "${CONTENTS_DIR}/Info.plist"
+
 echo "[operator:package] built ${APP_BUNDLE}"

@@ -5,54 +5,82 @@ struct AlertsHubView: View {
     @ObservedObject var store: OperatorShellStore
 
     var body: some View {
-        List {
-            if store.unresolvedAlerts.isEmpty {
-                Text("No unresolved alerts")
-                    .foregroundColor(.secondary)
-            } else {
-                ForEach(sortedAlerts) { alert in
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack {
-                            Text(alert.severity.uppercased())
-                                .font(.caption)
-                                .fontWeight(.bold)
-                            Text(alert.title)
-                                .font(.headline)
-                            Spacer()
-                            Text(alert.type)
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
-                        }
+        VStack(alignment: .leading, spacing: 8) {
+            if let status = store.interventionStatusMessage {
+                Text(status)
+                    .font(.caption)
+                    .foregroundColor(status.contains("failed") ? .red : .green)
+            }
 
-                        Text(alert.suggestedAction)
-                            .font(.caption)
-
-                        HStack {
-                            if alert.executeCapability != "none" {
-                                Button("Execute") {
-                                    Task {
-                                        await store.executeIntervention(
-                                            runtime: runtime,
-                                            capability: alert.executeCapability,
-                                            alertID: alert.id
-                                        )
-                                    }
-                                }
-                            }
-                            if alert.executeCapability != "ack-alert" {
-                                Button("Acknowledge") {
-                                    Task {
-                                        await store.executeIntervention(
-                                            runtime: runtime,
-                                            capability: "ack-alert",
-                                            alertID: alert.id
-                                        )
-                                    }
-                                }
-                            }
-                        }
+            if let error = store.lastError {
+                HStack {
+                    Text(error.message)
+                        .font(.caption)
+                        .foregroundColor(.red)
+                    Spacer()
+                    Button("Retry") {
+                        Task { await store.refresh(runtime: runtime) }
                     }
-                    .padding(.vertical, 4)
+                    .disabled(store.connectionState == .invalidConfig || store.isLoading)
+                }
+            }
+
+            List {
+                if store.unresolvedAlerts.isEmpty {
+                    Text("No unresolved alerts")
+                        .foregroundColor(.secondary)
+                } else {
+                    ForEach(sortedAlerts) { alert in
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack {
+                                Text(alert.severity.uppercased())
+                                    .font(.caption)
+                                    .fontWeight(.bold)
+                                Text(alert.title)
+                                    .font(.headline)
+                                Spacer()
+                                Text(alert.type)
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                            }
+
+                            Text(alert.suggestedAction)
+                                .font(.caption)
+
+                            HStack {
+                                if alert.executeCapability != "none" {
+                                    Button("Execute") {
+                                        Task {
+                                            await store.executeIntervention(
+                                                runtime: runtime,
+                                                capability: alert.executeCapability,
+                                                alertID: alert.id
+                                            )
+                                        }
+                                    }
+                                    .disabled(store.connectionState == .invalidConfig || store.isLoading)
+                                }
+                                if alert.executeCapability != "ack-alert" {
+                                    Button("Acknowledge") {
+                                        Task {
+                                            await store.executeIntervention(
+                                                runtime: runtime,
+                                                capability: "ack-alert",
+                                                alertID: alert.id
+                                            )
+                                        }
+                                    }
+                                    .disabled(store.connectionState == .invalidConfig || store.isLoading)
+                                }
+                            }
+                            if store.connectionState == .invalidConfig {
+                                Text("Configure API Base URL, Tenant ID, and Operator Key in Settings.")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
                 }
             }
         }

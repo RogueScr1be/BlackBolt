@@ -22,9 +22,9 @@ BlackBolt 1.0 single-operator command center for review-driven reactivation.
 - Require same `build_sha` across API and worker before declaring release.
 - Smoke script is mandatory before release: `bash scripts/smoke/railway-smoke.sh <apiBaseUrl> <tenantId> <basicAuthOrDash>`.
 
-## Operator Launch (Canonical Latest Build)
-- Canonical launch path for the Dashboard is source-run with freshness guard:
+## Operator Launch (Daily Standalone App)
+- Primary daily path is the installed macOS app in `~/Applications/BlackBolt Operator.app`.
+- Build + install/update in one command:
+  - `npm run operator:install`
+- Use source-run freshness guard only for developer verification:
   - `bash scripts/operator/open-latest.sh`
-- This script fetches `origin/main`, compares SHAs, and refuses to launch if local checkout is behind.
-- Browser/dashboard URLs are not the canonical Operator launch path.
-- Packaged app (`~/Applications/BlackBolt Operator.app`) is secondary and may lag until repackaged.

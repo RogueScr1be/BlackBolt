@@ -87,4 +87,4 @@
 - Reactivation policy must remain deterministic with confidence gate `0.8` default / `0.9` strict.
 - Keep same-SHA release discipline and smoke-script gate as mandatory before live declaration.
 - Before reporting verification status, always check local SHA and sync state (`git rev-parse --short HEAD`, `git pull`) to avoid reporting from stale commits.
-- Canonical Operator dashboard launch path is `bash scripts/operator/open-latest.sh` (source-run + SHA freshness check); do not use browser links as authoritative launch.
+- Daily Operator dashboard launch path is the installed app (`~/Applications/BlackBolt Operator.app`); `bash scripts/operator/open-latest.sh` is developer fallback for source freshness checks. Do not use browser links as authoritative launch.

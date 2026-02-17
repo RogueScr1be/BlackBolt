@@ -1,5 +1,22 @@
 import Foundation
 
+enum OperatorConnectionState: Equatable {
+    case ready
+    case invalidConfig
+    case networkError
+    case authError
+    case serverError
+}
+
+struct OperatorAppError: Error, Equatable, Identifiable {
+    let code: String
+    let message: String
+    let httpStatus: Int?
+    let path: String?
+
+    var id: String { "\(code)-\(httpStatus ?? 0)-\(path ?? "")" }
+}
+
 struct ImportStatusRow: Decodable, Identifiable {
     let importId: String
     let status: String

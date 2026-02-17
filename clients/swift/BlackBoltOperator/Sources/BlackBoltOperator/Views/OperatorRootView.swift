@@ -36,6 +36,24 @@ struct OperatorRootView: View {
             .navigationTitle("Operator")
         } content: {
             VStack(spacing: 0) {
+                if let lastError = store.lastError {
+                    HStack(spacing: 10) {
+                        Text(statusLabel(for: store.connectionState))
+                            .font(.caption)
+                            .fontWeight(.bold)
+                        Text(lastError.message)
+                            .font(.caption)
+                        Spacer()
+                        Button("Open Settings") { selection = .settings }
+                        Button("Retry") {
+                            Task { await store.refresh(runtime: runtime) }
+                        }
+                        .disabled(store.isLoading || store.connectionState == .invalidConfig)
+                    }
+                    .padding(10)
+                    .background(Color.orange.opacity(0.2))
+                }
+
                 if let critical = store.criticalAlerts.first {
                     HStack {
                         Text("CRITICAL ALERT")
@@ -81,5 +99,20 @@ struct OperatorRootView: View {
 
     private var unresolvedAlertCount: Int {
         store.unresolvedAlerts.count
+    }
+
+    private func statusLabel(for state: OperatorConnectionState) -> String {
+        switch state {
+        case .ready:
+            return "READY"
+        case .invalidConfig:
+            return "NOT CONFIGURED"
+        case .networkError:
+            return "NETWORK"
+        case .authError:
+            return "AUTH"
+        case .serverError:
+            return "SERVER"
+        }
     }
 }

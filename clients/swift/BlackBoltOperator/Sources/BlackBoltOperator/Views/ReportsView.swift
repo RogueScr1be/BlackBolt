@@ -21,6 +21,7 @@ struct ReportsView: View {
                         await store.loadMonthlyReport(runtime: runtime, month: month)
                     }
                 }
+                .disabled(store.connectionState == .invalidConfig || store.isLoading)
                 Button("Export PDF") {
                     exportCurrentReport()
                 }
@@ -59,6 +60,18 @@ struct ReportsView: View {
                 Text(exportMessage)
                     .font(.caption)
                     .foregroundColor(.secondary)
+            }
+            if let error = store.lastError {
+                HStack {
+                    Text(error.message)
+                        .font(.caption)
+                        .foregroundColor(.red)
+                    Spacer()
+                    Button("Retry") {
+                        Task { await store.loadMonthlyReport(runtime: runtime, month: month) }
+                    }
+                    .disabled(store.connectionState == .invalidConfig || store.isLoading)
+                }
             }
             Spacer()
         }
