@@ -240,3 +240,9 @@
 - Decision: implement tenant-scoped SOS case storage (`sos_cases`, `sos_case_payloads`, `sos_artifacts`, `sos_stripe_webhook_events`), add `POST /v1/webhooks/stripe` for `payment_intent.succeeded`, and enqueue worker processing on `sos.case.orchestration` with idempotency key `sos-case:create:{tenantId}:{paymentIntentId}`.
 - Decision: process Drive folder creation in worker via Google service account credentials (`GOOGLE_SERVICE_ACCOUNT_JSON`) under configured root (`SOS_DRIVE_ROOT_FOLDER_ID`), and persist folder artifact metadata as canonical output.
 - Consequence: first SOS runnable slice is now deterministic and auditable (`stripe webhook` -> `case row` -> `drive folder artifact`) with dedupe semantics across webhook, queue job id, and job-run ledger.
+
+## 2026-02-18 — SOS Phase 3 intake payment-intent contract
+- Context: client-side SOS booking flow needs a deterministic API surface to create Stripe PaymentIntents carrying canonical metadata required by webhook orchestration.
+- Decision: add unauthenticated `POST /v1/sos/intake/payment-intents` to create Stripe PaymentIntents with required SOS metadata keys (`sos_tenant_id`, consult type, parent/baby identity fields), validate tenant existence up front, and enforce server-side idempotency key generation when caller does not provide one.
+- Decision: call Stripe REST API directly from API service using `STRIPE_SECRET_KEY` and return only minimal client-safe payment intent details (`id`, `client_secret`, `status`, `amount`, `currency`, `idempotencyKey`).
+- Consequence: Phase 3 now has a runnable intake->payment trigger surface that feeds the existing Phase 2 webhook pipeline; live execution remains blocked only by missing runtime Stripe credentials.

@@ -1,5 +1,9 @@
 export type StripePaymentIntent = {
   id: string;
+  client_secret?: string | null;
+  amount?: number;
+  currency?: string;
+  status?: string;
   metadata?: Record<string, string | undefined> | null;
 };
 
@@ -29,4 +33,28 @@ export type SosCanonicalPayload = {
     name: string;
     dob: string;
   };
+};
+
+export type SosCreatePaymentIntentRequest = {
+  tenantId: string;
+  consultType: string;
+  parentName: string;
+  parentEmail: string;
+  parentPhone: string;
+  parentAddress: string;
+  babyName: string;
+  babyDob: string;
+  amountCents: number;
+  currency?: string;
+  idempotencyKey?: string;
+};
+
+export type SosCreatePaymentIntentResponse = {
+  accepted: true;
+  paymentIntentId: string;
+  clientSecret: string | null;
+  status: string | null;
+  amount: number;
+  currency: string;
+  idempotencyKey: string;
 };

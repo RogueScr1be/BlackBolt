@@ -20,6 +20,7 @@ export const OPENAPI_OPERATION_IDS = [
   'redirectTrackedLink',
   'receivePostmarkWebhook',
   'receiveStripeWebhook',
+  'createSosPaymentIntent',
   'getPostmarkOperatorSummary',
   'resumePostmarkSends',
   'getOperatorCommandCenter',

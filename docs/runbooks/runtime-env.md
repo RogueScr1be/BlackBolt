@@ -23,6 +23,7 @@ Startup fails fast for required variables per role.
 
 ### `blackbolt-api`
 - `PORT` (Railway usually injects this)
+- `STRIPE_SECRET_KEY` (required for SOS intake payment-intent creation endpoint)
 - `STRIPE_WEBHOOK_SECRET` (required for `/v1/webhooks/stripe` signature verification)
 - `REDIS_URL` is required when SOS Stripe webhook orchestration is enabled (queue-backed flow).
 - Postmark webhook auth/security envs used by webhook endpoint:

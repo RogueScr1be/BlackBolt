@@ -1,9 +1,15 @@
 import { createHash } from 'node:crypto';
-import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadGatewayException, BadRequestException, Injectable, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { SOS_REQUIRED_PAYMENT_METADATA_KEYS, STRIPE_WEBHOOK_EVENT_NAME } from './sos.constants';
-import type { SosCanonicalPayload, StripeEventPayload, StripePaymentIntent } from './sos.types';
+import type {
+  SosCanonicalPayload,
+  SosCreatePaymentIntentRequest,
+  SosCreatePaymentIntentResponse,
+  StripeEventPayload,
+  StripePaymentIntent
+} from './sos.types';
 import { SosQueue } from './sos.queue';
 import { verifyStripeSignature } from './stripe.signature';
 
@@ -142,6 +148,100 @@ export class SosService {
       eventId: webhookEvent.id,
       jobId: queued.jobId,
       idempotencyKey: queued.idempotencyKey
+    };
+  }
+
+  async createPaymentIntent(input: SosCreatePaymentIntentRequest): Promise<SosCreatePaymentIntentResponse> {
+    const stripeSecret = process.env.STRIPE_SECRET_KEY;
+    if (!stripeSecret) {
+      throw new ServiceUnavailableException('STRIPE_SECRET_KEY is required');
+    }
+
+    if (!Number.isInteger(input.amountCents) || input.amountCents <= 0) {
+      throw new BadRequestException('amountCents must be a positive integer');
+    }
+
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: input.tenantId },
+      select: { id: true }
+    });
+    if (!tenant) {
+      throw new BadRequestException('Unknown sos_tenant_id');
+    }
+
+    const metadata: Record<string, string> = {
+      sos_tenant_id: input.tenantId.trim(),
+      sos_consult_type: input.consultType.trim(),
+      sos_parent_name: input.parentName.trim(),
+      sos_parent_email: input.parentEmail.trim(),
+      sos_parent_phone: input.parentPhone.trim(),
+      sos_parent_address: input.parentAddress.trim(),
+      sos_baby_name: input.babyName.trim(),
+      sos_baby_dob: input.babyDob.trim()
+    };
+
+    for (const key of SOS_REQUIRED_PAYMENT_METADATA_KEYS) {
+      if (!metadata[key]) {
+        throw new BadRequestException(`Missing required payment metadata: ${key}`);
+      }
+    }
+
+    const currency = (input.currency ?? 'usd').toLowerCase();
+    const idempotencyKey =
+      input.idempotencyKey?.trim() ||
+      createHash('sha256')
+        .update(
+          JSON.stringify({
+            tenantId: input.tenantId,
+            consultType: input.consultType,
+            amountCents: input.amountCents,
+            currency,
+            parentEmail: input.parentEmail
+          })
+        )
+        .digest('hex')
+        .slice(0, 32);
+
+    const body = new URLSearchParams();
+    body.set('amount', String(input.amountCents));
+    body.set('currency', currency);
+    body.set('automatic_payment_methods[enabled]', 'true');
+    for (const [key, value] of Object.entries(metadata)) {
+      body.set(`metadata[${key}]`, value);
+    }
+
+    const response = await fetch('https://api.stripe.com/v1/payment_intents', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${stripeSecret}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Idempotency-Key': `sos-intake:${idempotencyKey}`
+      },
+      body
+    });
+
+    const text = await response.text();
+    let payload: StripePaymentIntent | { error?: { message?: string } } = {};
+    try {
+      payload = JSON.parse(text) as StripePaymentIntent | { error?: { message?: string } };
+    } catch {
+      payload = {};
+    }
+
+    if (!response.ok || !('id' in payload) || typeof payload.id !== 'string') {
+      const errorMessage =
+        ('error' in payload && payload.error?.message) || `Stripe payment intent request failed (${response.status})`;
+      throw new BadGatewayException(errorMessage);
+    }
+
+    return {
+      accepted: true,
+      paymentIntentId: payload.id,
+      clientSecret: payload.client_secret ?? null,
+      status: payload.status ?? null,
+      amount: typeof payload.amount === 'number' ? payload.amount : input.amountCents,
+      currency: payload.currency ?? currency,
+      idempotencyKey: `sos-intake:${idempotencyKey}`
     };
   }
 

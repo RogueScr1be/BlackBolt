@@ -617,6 +617,44 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /v1/sos/intake/payment-intents:
+    post:
+      operationId: createSosPaymentIntent
+      tags: [sos, payments]
+      summary: Create Stripe payment intent for SOS intake flow
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SosCreatePaymentIntentRequest'
+      responses:
+        '201':
+          description: Payment intent created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SosCreatePaymentIntentResponse'
+        '400':
+          description: Invalid intake payload or unknown tenant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '502':
+          description: Stripe API request failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Stripe credentials unavailable in runtime
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /v1/tenants/{tenantId}/integrations/postmark/operator-summary:
     get:
       operationId: getPostmarkOperatorSummary
@@ -1122,6 +1160,41 @@ components:
           type: string
           nullable: true
           enum: [event_type_ignored]
+    SosCreatePaymentIntentRequest:
+      type: object
+      required:
+        - tenantId
+        - consultType
+        - parentName
+        - parentEmail
+        - parentPhone
+        - parentAddress
+        - babyName
+        - babyDob
+        - amountCents
+      properties:
+        tenantId: { type: string }
+        consultType: { type: string, enum: [remote_video, in_home, insurance, in_office, phone] }
+        parentName: { type: string }
+        parentEmail: { type: string, format: email }
+        parentPhone: { type: string }
+        parentAddress: { type: string }
+        babyName: { type: string }
+        babyDob: { type: string, format: date }
+        amountCents: { type: integer, minimum: 1 }
+        currency: { type: string, minLength: 3, maxLength: 3, default: usd }
+        idempotencyKey: { type: string }
+    SosCreatePaymentIntentResponse:
+      type: object
+      required: [accepted, paymentIntentId, clientSecret, status, amount, currency, idempotencyKey]
+      properties:
+        accepted: { type: boolean }
+        paymentIntentId: { type: string }
+        clientSecret: { type: string, nullable: true }
+        status: { type: string, nullable: true }
+        amount: { type: integer }
+        currency: { type: string }
+        idempotencyKey: { type: string }
     PostmarkSendSummaryItem:
       type: object
       required: [campaignMessageId, status, attempt, lastEventAt]
