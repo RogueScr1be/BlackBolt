@@ -1,0 +1,14 @@
+{
+  "templateId": "soap-note-web-v1",
+  "mappingMode": "structured-web-form",
+  "mappings": {
+    "subjective": { "path": "soap.subjective", "required": true },
+    "objective": { "path": "soap.objective", "required": true },
+    "assessment": { "path": "soap.assessment", "required": true },
+    "plan": { "path": "soap.plan", "required": true },
+    "provider_fax_release": { "path": "consent.shareWithProvider" },
+    "provider_name": { "path": "provider.pediatricianName" },
+    "provider_fax_number": { "path": "provider.faxNumber" }
+  },
+  "unmappedTemplateFields": []
+}

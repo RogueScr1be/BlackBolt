@@ -1,0 +1,14 @@
+{
+  "sourceFile": "web-form://soap-note-v1",
+  "extractedAt": "2026-02-18T00:00:00.000Z",
+  "extractionMethod": "schema-defined",
+  "fields": [
+    "subjective",
+    "objective",
+    "assessment",
+    "plan",
+    "provider_fax_release",
+    "provider_name",
+    "provider_fax_number"
+  ]
+}

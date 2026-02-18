@@ -1,0 +1,14 @@
+{
+  "sourceFile": "/Users/thewhitley/SOS form automation forms/In Home consultation form.pdf",
+  "extractedAt": "2026-02-18T02:23:34.154Z",
+  "extractionMethod": "token-scan:/T over body + inflated streams",
+  "streamScan": {
+    "totalFlateStreamsInflated": 87
+  },
+  "totalDetected": 0,
+  "uniqueCount": 0,
+  "duplicateHandling": "suffix duplicates with __dupN in normalizedFields",
+  "duplicateFields": [],
+  "fields": [],
+  "normalizedFields": []
+}

@@ -1,0 +1,84 @@
+{
+  "templates": [
+    {
+      "templateId": "consult-in-home",
+      "sourceFile": "/Users/thewhitley/SOS form automation forms/In Home consultation form.pdf",
+      "docType": "pdf",
+      "version": 1,
+      "consultType": "in_home",
+      "fieldsFile": "docs/soslactation/templates/consult-in-home/fields.json",
+      "mappingFile": "docs/soslactation/templates/consult-in-home/mapping.json",
+      "status": "active"
+    },
+    {
+      "templateId": "consult-in-office",
+      "sourceFile": "/Users/thewhitley/SOS form automation forms/In Office Consultation – SOS Lactation.pdf",
+      "docType": "pdf",
+      "version": 1,
+      "consultType": "in_office",
+      "fieldsFile": "docs/soslactation/templates/consult-in-office/fields.json",
+      "mappingFile": "docs/soslactation/templates/consult-in-office/mapping.json",
+      "status": "active"
+    },
+    {
+      "templateId": "consult-insurance",
+      "sourceFile": "/Users/thewhitley/SOS form automation forms/Insurance Consultation – SOS Lactation.pdf",
+      "docType": "pdf",
+      "version": 1,
+      "consultType": "insurance",
+      "fieldsFile": "docs/soslactation/templates/consult-insurance/fields.json",
+      "mappingFile": "docs/soslactation/templates/consult-insurance/mapping.json",
+      "status": "active"
+    },
+    {
+      "templateId": "consult-phone",
+      "sourceFile": "/Users/thewhitley/SOS form automation forms/Phone Consultation – SOS Lactation.pdf",
+      "docType": "pdf",
+      "version": 1,
+      "consultType": "phone",
+      "fieldsFile": "docs/soslactation/templates/consult-phone/fields.json",
+      "mappingFile": "docs/soslactation/templates/consult-phone/mapping.json",
+      "status": "active"
+    },
+    {
+      "templateId": "consult-remote-video",
+      "sourceFile": "/Users/thewhitley/SOS form automation forms/Remote Video Consultation – SOS Lactation.pdf",
+      "docType": "pdf",
+      "version": 1,
+      "consultType": "remote_video",
+      "fieldsFile": "docs/soslactation/templates/consult-remote-video/fields.json",
+      "mappingFile": "docs/soslactation/templates/consult-remote-video/mapping.json",
+      "status": "active"
+    },
+    {
+      "templateId": "pedi-intake",
+      "sourceFile": "/Users/thewhitley/SOS form automation forms/SOS Lactation pedi_intake form fillable.pdf",
+      "docType": "pdf",
+      "version": 1,
+      "consultType": "shared",
+      "fieldsFile": "docs/soslactation/templates/pedi-intake/fields.json",
+      "mappingFile": "docs/soslactation/templates/pedi-intake/mapping.json",
+      "status": "active"
+    },
+    {
+      "templateId": "follow-up-email-docx",
+      "sourceFile": "/Users/thewhitley/SOS form automation forms/email template.docx",
+      "docType": "docx",
+      "version": 1,
+      "consultType": "shared",
+      "fieldsFile": "docs/soslactation/templates/follow-up-email-docx/fields.json",
+      "mappingFile": "docs/soslactation/templates/follow-up-email-docx/mapping.json",
+      "status": "active"
+    },
+    {
+      "templateId": "soap-note-web-v1",
+      "sourceFile": "web-form://soap-note-v1",
+      "docType": "pdf",
+      "version": 1,
+      "consultType": "shared",
+      "fieldsFile": "docs/soslactation/templates/soap-note-web-v1/fields.json",
+      "mappingFile": "docs/soslactation/templates/soap-note-web-v1/mapping.json",
+      "status": "active"
+    }
+  ]
+}

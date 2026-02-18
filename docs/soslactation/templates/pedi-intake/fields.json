@@ -1,0 +1,376 @@
+{
+  "sourceFile": "/Users/thewhitley/SOS form automation forms/SOS Lactation pedi_intake form fillable.pdf",
+  "extractedAt": "2026-02-18T02:23:34.582Z",
+  "extractionMethod": "token-scan:/T over body + inflated streams",
+  "streamScan": {
+    "totalFlateStreamsInflated": 796
+  },
+  "totalDetected": 45,
+  "uniqueCount": 45,
+  "duplicateHandling": "suffix duplicates with __dupN in normalizedFields",
+  "duplicateFields": [],
+  "fields": [
+    "Group1",
+    "breast surgeries",
+    "nipple shields",
+    "pumping",
+    "tot 1",
+    "tot 2",
+    "tot 3",
+    "tot4",
+    "tot5",
+    "tot6",
+    "tot 7",
+    "tot 8",
+    "tot 9",
+    "tot10",
+    "tot11",
+    "tot 12",
+    "lip seal",
+    "mobility",
+    "report",
+    "suck",
+    "aero",
+    "Latch",
+    "positioning",
+    "Mothers name",
+    "Babys name",
+    "Babys birthday",
+    "Birthweight",
+    "Discharge weight",
+    "c-sec",
+    "vaginal",
+    "breast---sizes",
+    "supplementation frequency",
+    "pumping frequency",
+    "pumping time",
+    "Check Box2",
+    "Check Box3",
+    "Check Box4",
+    "Check Box5",
+    "Check Box6",
+    "Check Box7",
+    "Check Box8",
+    "Check Box1",
+    "post-feed weight",
+    "supplementation",
+    "mothers name_2"
+  ],
+  "normalizedFields": [
+    {
+      "name": "Group1",
+      "normalizedName": "Group1",
+      "occurrence": 1,
+      "source": "flate-stream-792",
+      "byteOffset": 686
+    },
+    {
+      "name": "breast surgeries",
+      "normalizedName": "breast surgeries",
+      "occurrence": 1,
+      "source": "flate-stream-792",
+      "byteOffset": 783
+    },
+    {
+      "name": "nipple shields",
+      "normalizedName": "nipple shields",
+      "occurrence": 1,
+      "source": "flate-stream-792",
+      "byteOffset": 890
+    },
+    {
+      "name": "pumping",
+      "normalizedName": "pumping",
+      "occurrence": 1,
+      "source": "flate-stream-792",
+      "byteOffset": 993
+    },
+    {
+      "name": "tot 1",
+      "normalizedName": "tot 1",
+      "occurrence": 1,
+      "source": "flate-stream-792",
+      "byteOffset": 1106
+    },
+    {
+      "name": "tot 2",
+      "normalizedName": "tot 2",
+      "occurrence": 1,
+      "source": "flate-stream-792",
+      "byteOffset": 1217
+    },
+    {
+      "name": "tot 3",
+      "normalizedName": "tot 3",
+      "occurrence": 1,
+      "source": "flate-stream-792",
+      "byteOffset": 1328
+    },
+    {
+      "name": "tot4",
+      "normalizedName": "tot4",
+      "occurrence": 1,
+      "source": "flate-stream-792",
+      "byteOffset": 1439
+    },
+    {
+      "name": "tot5",
+      "normalizedName": "tot5",
+      "occurrence": 1,
+      "source": "flate-stream-792",
+      "byteOffset": 1549
+    },
+    {
+      "name": "tot6",
+      "normalizedName": "tot6",
+      "occurrence": 1,
+      "source": "flate-stream-792",
+      "byteOffset": 1659
+    },
+    {
+      "name": "tot 7",
+      "normalizedName": "tot 7",
+      "occurrence": 1,
+      "source": "flate-stream-792",
+      "byteOffset": 1769
+    },
+    {
+      "name": "tot 8",
+      "normalizedName": "tot 8",
+      "occurrence": 1,
+      "source": "flate-stream-792",
+      "byteOffset": 1880
+    },
+    {
+      "name": "tot 9",
+      "normalizedName": "tot 9",
+      "occurrence": 1,
+      "source": "flate-stream-792",
+      "byteOffset": 1991
+    },
+    {
+      "name": "tot10",
+      "normalizedName": "tot10",
+      "occurrence": 1,
+      "source": "flate-stream-792",
+      "byteOffset": 2102
+    },
+    {
+      "name": "tot11",
+      "normalizedName": "tot11",
+      "occurrence": 1,
+      "source": "flate-stream-792",
+      "byteOffset": 2213
+    },
+    {
+      "name": "tot 12",
+      "normalizedName": "tot 12",
+      "occurrence": 1,
+      "source": "flate-stream-792",
+      "byteOffset": 2324
+    },
+    {
+      "name": "lip seal",
+      "normalizedName": "lip seal",
+      "occurrence": 1,
+      "source": "flate-stream-792",
+      "byteOffset": 2439
+    },
+    {
+      "name": "mobility",
+      "normalizedName": "mobility",
+      "occurrence": 1,
+      "source": "flate-stream-792",
+      "byteOffset": 2556
+    },
+    {
+      "name": "report",
+      "normalizedName": "report",
+      "occurrence": 1,
+      "source": "flate-stream-792",
+      "byteOffset": 2655
+    },
+    {
+      "name": "suck",
+      "normalizedName": "suck",
+      "occurrence": 1,
+      "source": "flate-stream-792",
+      "byteOffset": 2770
+    },
+    {
+      "name": "aero",
+      "normalizedName": "aero",
+      "occurrence": 1,
+      "source": "flate-stream-792",
+      "byteOffset": 2832
+    },
+    {
+      "name": "Latch",
+      "normalizedName": "Latch",
+      "occurrence": 1,
+      "source": "flate-stream-792",
+      "byteOffset": 2963
+    },
+    {
+      "name": "positioning",
+      "normalizedName": "positioning",
+      "occurrence": 1,
+      "source": "flate-stream-792",
+      "byteOffset": 3095
+    },
+    {
+      "name": "Mothers name",
+      "normalizedName": "Mothers name",
+      "occurrence": 1,
+      "source": "flate-stream-792",
+      "byteOffset": 3176
+    },
+    {
+      "name": "Babys name",
+      "normalizedName": "Babys name",
+      "occurrence": 1,
+      "source": "flate-stream-792",
+      "byteOffset": 3258
+    },
+    {
+      "name": "Babys birthday",
+      "normalizedName": "Babys birthday",
+      "occurrence": 1,
+      "source": "flate-stream-792",
+      "byteOffset": 3367
+    },
+    {
+      "name": "Birthweight",
+      "normalizedName": "Birthweight",
+      "occurrence": 1,
+      "source": "flate-stream-792",
+      "byteOffset": 3439
+    },
+    {
+      "name": "Discharge weight",
+      "normalizedName": "Discharge weight",
+      "occurrence": 1,
+      "source": "flate-stream-792",
+      "byteOffset": 3508
+    },
+    {
+      "name": "c-sec",
+      "normalizedName": "c-sec",
+      "occurrence": 1,
+      "source": "flate-stream-792",
+      "byteOffset": 3581
+    },
+    {
+      "name": "vaginal",
+      "normalizedName": "vaginal",
+      "occurrence": 1,
+      "source": "flate-stream-792",
+      "byteOffset": 3643
+    },
+    {
+      "name": "breast---sizes",
+      "normalizedName": "breast---sizes",
+      "occurrence": 1,
+      "source": "flate-stream-792",
+      "byteOffset": 3790
+    },
+    {
+      "name": "supplementation frequency",
+      "normalizedName": "supplementation frequency",
+      "occurrence": 1,
+      "source": "flate-stream-792",
+      "byteOffset": 3944
+    },
+    {
+      "name": "pumping frequency",
+      "normalizedName": "pumping frequency",
+      "occurrence": 1,
+      "source": "flate-stream-792",
+      "byteOffset": 4109
+    },
+    {
+      "name": "pumping time",
+      "normalizedName": "pumping time",
+      "occurrence": 1,
+      "source": "flate-stream-792",
+      "byteOffset": 4250
+    },
+    {
+      "name": "Check Box2",
+      "normalizedName": "Check Box2",
+      "occurrence": 1,
+      "source": "flate-stream-792",
+      "byteOffset": 4328
+    },
+    {
+      "name": "Check Box3",
+      "normalizedName": "Check Box3",
+      "occurrence": 1,
+      "source": "flate-stream-792",
+      "byteOffset": 4404
+    },
+    {
+      "name": "Check Box4",
+      "normalizedName": "Check Box4",
+      "occurrence": 1,
+      "source": "flate-stream-792",
+      "byteOffset": 4480
+    },
+    {
+      "name": "Check Box5",
+      "normalizedName": "Check Box5",
+      "occurrence": 1,
+      "source": "flate-stream-792",
+      "byteOffset": 4547
+    },
+    {
+      "name": "Check Box6",
+      "normalizedName": "Check Box6",
+      "occurrence": 1,
+      "source": "flate-stream-792",
+      "byteOffset": 4614
+    },
+    {
+      "name": "Check Box7",
+      "normalizedName": "Check Box7",
+      "occurrence": 1,
+      "source": "flate-stream-792",
+      "byteOffset": 4681
+    },
+    {
+      "name": "Check Box8",
+      "normalizedName": "Check Box8",
+      "occurrence": 1,
+      "source": "flate-stream-792",
+      "byteOffset": 4748
+    },
+    {
+      "name": "Check Box1",
+      "normalizedName": "Check Box1",
+      "occurrence": 1,
+      "source": "flate-stream-792",
+      "byteOffset": 4815
+    },
+    {
+      "name": "post-feed weight",
+      "normalizedName": "post-feed weight",
+      "occurrence": 1,
+      "source": "flate-stream-792",
+      "byteOffset": 4883
+    },
+    {
+      "name": "supplementation",
+      "normalizedName": "supplementation",
+      "occurrence": 1,
+      "source": "flate-stream-792",
+      "byteOffset": 5151
+    },
+    {
+      "name": "mothers name_2",
+      "normalizedName": "mothers name_2",
+      "occurrence": 1,
+      "source": "flate-stream-792",
+      "byteOffset": 5233
+    }
+  ]
+}

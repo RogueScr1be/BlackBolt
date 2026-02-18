@@ -1,0 +1,187 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://soslactation.com/schemas/canonical-case.schema.json",
+  "title": "SOS Lactation Canonical Case",
+  "type": "object",
+  "required": [
+    "case",
+    "patient",
+    "baby",
+    "soap",
+    "provider",
+    "consent",
+    "artifacts",
+    "audit"
+  ],
+  "properties": {
+    "case": {
+      "type": "object",
+      "required": [
+        "consultType",
+        "appointment",
+        "payment",
+        "drive",
+        "timeline"
+      ],
+      "properties": {
+        "caseId": { "type": "string" },
+        "consultType": {
+          "type": "string",
+          "enum": [
+            "remote_video",
+            "in_home",
+            "insurance",
+            "in_office",
+            "phone"
+          ]
+        },
+        "appointment": {
+          "type": "object",
+          "properties": {
+            "scheduledAt": { "type": "string", "format": "date-time" },
+            "timeZone": { "type": "string" },
+            "location": { "type": "string" },
+            "durationMinutes": { "type": "integer" }
+          },
+          "additionalProperties": true
+        },
+        "payment": {
+          "type": "object",
+          "properties": {
+            "depositStatus": {
+              "type": "string",
+              "enum": ["not_required", "pending", "paid", "failed", "refunded"]
+            },
+            "depositAmountCents": { "type": "integer" },
+            "currency": { "type": "string" },
+            "stripePaymentIntentId": { "type": "string" },
+            "paidAt": { "type": "string", "format": "date-time" }
+          },
+          "additionalProperties": true
+        },
+        "drive": {
+          "type": "object",
+          "properties": {
+            "folderName": { "type": "string" },
+            "folderPath": { "type": "string" },
+            "folderUrl": { "type": "string" },
+            "folderId": { "type": "string" }
+          },
+          "additionalProperties": true
+        },
+        "timeline": {
+          "type": "object",
+          "properties": {
+            "intakeCompletedAt": { "type": "string", "format": "date-time" },
+            "consultCompletedAt": { "type": "string", "format": "date-time" },
+            "followUpSentAt": { "type": "string", "format": "date-time" }
+          },
+          "additionalProperties": true
+        },
+        "questionnaires": {
+          "type": "object",
+          "properties": {
+            "pedi": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "patient": {
+      "type": "object",
+      "required": ["parentName", "phone", "email", "address"],
+      "properties": {
+        "parentName": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "address": { "type": "string" },
+        "maternalHistory": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "baby": {
+      "type": "object",
+      "required": ["name", "dob"],
+      "properties": {
+        "name": { "type": "string" },
+        "dob": { "type": "string", "format": "date" },
+        "birthWeight": { "type": "string" },
+        "dischargeWeight": { "type": "string" },
+        "deliveryMethod": {
+          "type": "string",
+          "enum": ["vaginal", "c_section", "unknown"]
+        },
+        "feedingHistory": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "soap": {
+      "type": "object",
+      "required": ["subjective", "objective", "assessment", "plan"],
+      "properties": {
+        "subjective": { "type": "string" },
+        "objective": { "type": "string" },
+        "assessment": { "type": "string" },
+        "plan": { "type": "string" },
+        "sections": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "provider": {
+      "type": "object",
+      "properties": {
+        "pediatricianName": { "type": "string" },
+        "pediatricianPractice": { "type": "string" },
+        "faxNumber": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "consent": {
+      "type": "object",
+      "properties": {
+        "shareWithProvider": { "type": "boolean" },
+        "emailConsent": { "type": "boolean" },
+        "smsConsent": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "artifacts": {
+      "type": "object",
+      "properties": {
+        "intakePdf": { "type": "string" },
+        "soapPdf": { "type": "string" },
+        "pediIntakePdf": { "type": "string" },
+        "followUpLetterPdf": { "type": "string" },
+        "faxPacketPdf": { "type": "string" },
+        "metadataJson": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "audit": {
+      "type": "object",
+      "properties": {
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "createdBy": { "type": "string" },
+        "updatedBy": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}

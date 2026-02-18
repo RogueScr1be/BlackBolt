@@ -1,0 +1,12 @@
+{
+  "sourceFile": "/Users/thewhitley/SOS form automation forms/email template.docx",
+  "extractedAt": "2026-02-18T00:00:00.000Z",
+  "extractionMethod": "manual-placeholder-review:word/document.xml",
+  "fields": [
+    "NAME",
+    "HIS/HER",
+    "WEIGHT",
+    "FEEDING PLAN",
+    "DATE"
+  ]
+}

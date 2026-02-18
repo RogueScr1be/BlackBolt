@@ -91,6 +91,7 @@ Required SOAP fields:
 - SOAP implementation target: structured web capture with canonical storage and PDF output.
 - Source templates are currently stored at `/Users/thewhitley/SOS form automation forms/`.
 - This phase delivers schema/mapping/documentation foundation only; no production integrations are shipped here.
+- First runnable product slice target is webhook-driven case orchestration: `payment_intent.succeeded` -> canonical case row -> Drive folder artifact record.
 
 ## SEO Operations Addendum
 - Website SEO operations for `soslactation.com` are governed by:

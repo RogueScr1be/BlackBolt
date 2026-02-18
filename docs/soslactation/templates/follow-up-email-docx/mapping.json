@@ -1,0 +1,12 @@
+{
+  "templateId": "follow-up-email-docx",
+  "mappingMode": "placeholder-template",
+  "mappings": {
+    "NAME": { "path": "patient.parentName", "required": true },
+    "HIS/HER": { "path": "baby.pronounPossessive", "default": "their" },
+    "WEIGHT": { "path": "baby.feedingHistory.startWeight" },
+    "FEEDING PLAN": { "path": "soap.plan", "required": true },
+    "DATE": { "path": "case.appointment.followUpDate", "format": "date" }
+  },
+  "unmappedTemplateFields": []
+}

@@ -1,0 +1,17 @@
+{
+  "templateId": "consult-in-home",
+  "mappingMode": "virtual-intake-render",
+  "notes": "Template has no machine-readable AcroForm fields; mappings represent canonical intake keys used to render the static PDF.",
+  "mappings": {
+    "virtual.parent_name": { "path": "patient.parentName", "required": true },
+    "virtual.parent_phone": { "path": "patient.phone", "required": true },
+    "virtual.parent_email": { "path": "patient.email", "required": true },
+    "virtual.parent_address": { "path": "patient.address", "required": true },
+    "virtual.baby_name": { "path": "baby.name", "required": true },
+    "virtual.baby_dob": { "path": "baby.dob", "required": true },
+    "virtual.consult_type": { "path": "case.consultType", "default": "in_home", "required": true },
+    "virtual.appointment_datetime": { "path": "case.appointment.scheduledAt" },
+    "virtual.payment_deposit_status": { "path": "case.payment.depositStatus" }
+  },
+  "unmappedTemplateFields": []
+}
