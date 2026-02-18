@@ -716,6 +716,69 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /v1/sos/cases/{caseId}/soap:
+    post:
+      operationId: saveSosSoap
+      tags: [sos, operator]
+      summary: Save SOAP sections into canonical case payload
+      security: []
+      parameters:
+        - name: caseId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: tenantId
+          in: query
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SosSoapInput'
+      responses:
+        '200':
+          description: SOAP saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SosSaveSoapResponse'
+        '400':
+          description: Invalid tenant, case, or soap payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/sos/cases/{caseId}/pedi-intake/generate:
+    post:
+      operationId: generateSosPediIntake
+      tags: [sos, operator]
+      summary: Generate pedi intake artifact from canonical payload
+      security: []
+      parameters:
+        - name: caseId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: tenantId
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Pedi intake artifact generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SosGeneratePediIntakeResponse'
+        '400':
+          description: Invalid tenant/case or missing payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /v1/tenants/{tenantId}/integrations/postmark/operator-summary:
     get:
@@ -1320,6 +1383,28 @@ components:
             generatePediIntake: { type: boolean }
             sendFollowUp: { type: boolean }
             sendProviderFax: { type: boolean }
+    SosSoapInput:
+      type: object
+      required: [subjective, objective, assessment, plan]
+      properties:
+        subjective: { type: string }
+        objective: { type: string }
+        assessment: { type: string }
+        plan: { type: string }
+    SosSaveSoapResponse:
+      type: object
+      required: [caseId, payloadVersion, soapSaved]
+      properties:
+        caseId: { type: string }
+        payloadVersion: { type: integer }
+        soapSaved: { type: boolean }
+    SosGeneratePediIntakeResponse:
+      type: object
+      required: [caseId, artifactType, generatedAt]
+      properties:
+        caseId: { type: string }
+        artifactType: { type: string, enum: [pedi_intake_pdf] }
+        generatedAt: { type: string, format: date-time }
     PostmarkSendSummaryItem:
       type: object
       required: [campaignMessageId, status, attempt, lastEventAt]

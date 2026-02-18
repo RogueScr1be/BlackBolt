@@ -107,4 +107,83 @@ describe('SosService cases', () => {
 
     await expect(service.listCases({ tenantId: 'tenant-missing' })).rejects.toBeInstanceOf(BadRequestException);
   });
+
+  it('saves SOAP into new payload version and creates soap artifact', async () => {
+    const prisma = {
+      tenant: {
+        findUnique: jest.fn().mockResolvedValue({ id: 'tenant-sos' })
+      },
+      sosCase: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'case_1',
+          tenantId: 'tenant-sos'
+        }),
+        update: jest.fn().mockResolvedValue({})
+      },
+      sosCasePayload: {
+        findFirst: jest.fn().mockResolvedValue({
+          version: 1,
+          canonicalJson: { patient: { parentName: 'Leah' } }
+        }),
+        create: jest.fn().mockResolvedValue({
+          version: 2
+        })
+      },
+      sosArtifact: {
+        upsert: jest.fn().mockResolvedValue({})
+      }
+    };
+
+    const service = new SosService(prisma as never, {} as never);
+    const result = await service.saveSoap({
+      tenantId: 'tenant-sos',
+      caseId: 'case_1',
+      soap: {
+        subjective: 's',
+        objective: 'o',
+        assessment: 'a',
+        plan: 'p'
+      }
+    });
+
+    expect(result).toEqual({
+      caseId: 'case_1',
+      payloadVersion: 2,
+      soapSaved: true
+    });
+    expect(prisma.sosArtifact.upsert).toHaveBeenCalled();
+  });
+
+  it('generates pedi artifact record from latest payload', async () => {
+    const prisma = {
+      tenant: {
+        findUnique: jest.fn().mockResolvedValue({ id: 'tenant-sos' })
+      },
+      sosCase: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'case_1',
+          tenantId: 'tenant-sos'
+        })
+      },
+      sosCasePayload: {
+        findFirst: jest.fn().mockResolvedValue({
+          version: 3,
+          canonicalJson: { patient: { parentName: 'Leah' } }
+        })
+      },
+      sosArtifact: {
+        upsert: jest.fn().mockResolvedValue({})
+      }
+    };
+    const service = new SosService(prisma as never, {} as never);
+
+    const result = await service.generatePediIntake({
+      tenantId: 'tenant-sos',
+      caseId: 'case_1'
+    });
+
+    expect(result.caseId).toBe('case_1');
+    expect(result.artifactType).toBe('pedi_intake_pdf');
+    expect(prisma.sosArtifact.upsert).toHaveBeenCalled();
+  });
 });

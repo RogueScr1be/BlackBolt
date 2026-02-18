@@ -1,5 +1,6 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { SosService } from './sos.service';
+import type { SosSoapInput } from './sos.types';
 
 @Controller('v1/sos/cases')
 export class SosCasesController {
@@ -18,5 +19,19 @@ export class SosCasesController {
   @Get(':caseId')
   async getCaseDetail(@Param('caseId') caseId: string, @Query('tenantId') tenantId: string | undefined) {
     return this.sosService.getCaseDetail({ tenantId: tenantId ?? '', caseId });
+  }
+
+  @Post(':caseId/soap')
+  async saveSoap(
+    @Param('caseId') caseId: string,
+    @Query('tenantId') tenantId: string | undefined,
+    @Body() soap: SosSoapInput
+  ) {
+    return this.sosService.saveSoap({ tenantId: tenantId ?? '', caseId, soap });
+  }
+
+  @Post(':caseId/pedi-intake/generate')
+  async generatePediIntake(@Param('caseId') caseId: string, @Query('tenantId') tenantId: string | undefined) {
+    return this.sosService.generatePediIntake({ tenantId: tenantId ?? '', caseId });
   }
 }

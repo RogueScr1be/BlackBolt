@@ -96,3 +96,22 @@ export type SosCaseDetail = {
     sendProviderFax: boolean;
   };
 };
+
+export type SosSoapInput = {
+  subjective: string;
+  objective: string;
+  assessment: string;
+  plan: string;
+};
+
+export type SosSaveSoapResponse = {
+  caseId: string;
+  payloadVersion: number;
+  soapSaved: true;
+};
+
+export type SosGeneratePediIntakeResponse = {
+  caseId: string;
+  artifactType: 'pedi_intake_pdf';
+  generatedAt: string;
+};

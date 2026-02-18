@@ -9,6 +9,9 @@ import type {
   SosCanonicalPayload,
   SosCreatePaymentIntentRequest,
   SosCreatePaymentIntentResponse,
+  SosGeneratePediIntakeResponse,
+  SosSaveSoapResponse,
+  SosSoapInput,
   StripeEventPayload,
   StripePaymentIntent
 } from './sos.types';
@@ -389,6 +392,176 @@ export class SosService {
         sendFollowUp: true,
         sendProviderFax: true
       }
+    };
+  }
+
+  async saveSoap(input: { tenantId: string; caseId: string; soap: SosSoapInput }): Promise<SosSaveSoapResponse> {
+    const tenantId = input.tenantId?.trim();
+    if (!tenantId) {
+      throw new BadRequestException('tenantId is required');
+    }
+    if (!input.caseId?.trim()) {
+      throw new BadRequestException('caseId is required');
+    }
+
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { id: true }
+    });
+    if (!tenant) {
+      throw new BadRequestException('Unknown sos_tenant_id');
+    }
+
+    const sosCase = await this.prisma.sosCase.findFirst({
+      where: {
+        id: input.caseId,
+        tenantId
+      }
+    });
+    if (!sosCase) {
+      throw new BadRequestException('SOS case not found');
+    }
+
+    if (!input.soap.subjective?.trim() || !input.soap.objective?.trim() || !input.soap.assessment?.trim() || !input.soap.plan?.trim()) {
+      throw new BadRequestException('All SOAP sections are required');
+    }
+
+    const latestPayload = await this.prisma.sosCasePayload.findFirst({
+      where: { caseId: sosCase.id },
+      orderBy: { version: 'desc' }
+    });
+    const latestCanonical =
+      latestPayload?.canonicalJson && typeof latestPayload.canonicalJson === 'object' && !Array.isArray(latestPayload.canonicalJson)
+        ? (latestPayload.canonicalJson as Record<string, unknown>)
+        : {};
+
+    const canonicalNext = {
+      ...latestCanonical,
+      soap: {
+        subjective: input.soap.subjective.trim(),
+        objective: input.soap.objective.trim(),
+        assessment: input.soap.assessment.trim(),
+        plan: input.soap.plan.trim()
+      }
+    };
+
+    const newPayload = await this.prisma.sosCasePayload.create({
+      data: {
+        caseId: sosCase.id,
+        version: (latestPayload?.version ?? 0) + 1,
+        canonicalJson: canonicalNext as Prisma.InputJsonValue
+      }
+    });
+
+    await this.prisma.sosArtifact.upsert({
+      where: {
+        caseId_artifactType: {
+          caseId: sosCase.id,
+          artifactType: 'soap_note_pdf'
+        }
+      },
+      update: {
+        fileName: `soap_note_${sosCase.id}.pdf`,
+        metadataJson: {
+          generatedBy: 'phase5',
+          renderStatus: 'pending_pdf_renderer',
+          payloadVersion: newPayload.version
+        } as Prisma.InputJsonValue
+      },
+      create: {
+        tenantId,
+        caseId: sosCase.id,
+        artifactType: 'soap_note_pdf',
+        fileName: `soap_note_${sosCase.id}.pdf`,
+        metadataJson: {
+          generatedBy: 'phase5',
+          renderStatus: 'pending_pdf_renderer',
+          payloadVersion: newPayload.version
+        } as Prisma.InputJsonValue
+      }
+    });
+
+    await this.prisma.sosCase.update({
+      where: { id: sosCase.id },
+      data: { status: 'CONSULTED' }
+    });
+
+    return {
+      caseId: sosCase.id,
+      payloadVersion: newPayload.version,
+      soapSaved: true
+    };
+  }
+
+  async generatePediIntake(input: { tenantId: string; caseId: string }): Promise<SosGeneratePediIntakeResponse> {
+    const tenantId = input.tenantId?.trim();
+    if (!tenantId) {
+      throw new BadRequestException('tenantId is required');
+    }
+    if (!input.caseId?.trim()) {
+      throw new BadRequestException('caseId is required');
+    }
+
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { id: true }
+    });
+    if (!tenant) {
+      throw new BadRequestException('Unknown sos_tenant_id');
+    }
+
+    const sosCase = await this.prisma.sosCase.findFirst({
+      where: {
+        id: input.caseId,
+        tenantId
+      }
+    });
+    if (!sosCase) {
+      throw new BadRequestException('SOS case not found');
+    }
+
+    const latestPayload = await this.prisma.sosCasePayload.findFirst({
+      where: { caseId: sosCase.id },
+      orderBy: { version: 'desc' }
+    });
+    if (!latestPayload) {
+      throw new BadRequestException('SOS case payload missing');
+    }
+
+    await this.prisma.sosArtifact.upsert({
+      where: {
+        caseId_artifactType: {
+          caseId: sosCase.id,
+          artifactType: 'pedi_intake_pdf'
+        }
+      },
+      update: {
+        fileName: `pedi_intake_${sosCase.id}.pdf`,
+        metadataJson: {
+          generatedBy: 'phase5',
+          generationMode: 'canonical_mapping',
+          renderStatus: 'pending_pdf_renderer',
+          payloadVersion: latestPayload.version
+        } as Prisma.InputJsonValue
+      },
+      create: {
+        tenantId,
+        caseId: sosCase.id,
+        artifactType: 'pedi_intake_pdf',
+        fileName: `pedi_intake_${sosCase.id}.pdf`,
+        metadataJson: {
+          generatedBy: 'phase5',
+          generationMode: 'canonical_mapping',
+          renderStatus: 'pending_pdf_renderer',
+          payloadVersion: latestPayload.version
+        } as Prisma.InputJsonValue
+      }
+    });
+
+    return {
+      caseId: sosCase.id,
+      artifactType: 'pedi_intake_pdf',
+      generatedAt: new Date().toISOString()
     };
   }
 

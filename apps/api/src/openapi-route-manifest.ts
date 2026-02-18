@@ -23,6 +23,8 @@ export const OPENAPI_OPERATION_IDS = [
   'createSosPaymentIntent',
   'listSosCases',
   'getSosCaseDetail',
+  'saveSosSoap',
+  'generateSosPediIntake',
   'getPostmarkOperatorSummary',
   'resumePostmarkSends',
   'getOperatorCommandCenter',

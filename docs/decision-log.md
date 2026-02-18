@@ -251,3 +251,8 @@
 - Context: Leah console requires a single SOS case list and case-detail surface before action buttons can be wired reliably.
 - Decision: add `GET /v1/sos/cases` and `GET /v1/sos/cases/{caseId}` with tenant-scoped lookup, canonical identity extraction from latest case payload version, and deterministic action availability flags.
 - Consequence: operator UI can render “New Paid Cases” and case detail from one API surface with no direct Drive browsing dependency.
+
+## 2026-02-18 — SOS Phase 5 SOAP + pedi artifact persistence slice
+- Context: consultation workflow needed executable backend actions for SOAP capture and pedi generation before renderer/fax integrations are finished.
+- Decision: add `POST /v1/sos/cases/{caseId}/soap` to persist structured SOAP into a new canonical payload version and upsert `soap_note_pdf` artifact metadata; add `POST /v1/sos/cases/{caseId}/pedi-intake/generate` to upsert `pedi_intake_pdf` artifact metadata from latest canonical payload.
+- Consequence: Leah-console actions can run end-to-end at data/orchestration level now; actual PDF renderer output is explicitly marked `pending_pdf_renderer` and remains a later integration step.
