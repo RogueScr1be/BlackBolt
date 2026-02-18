@@ -256,3 +256,8 @@
 - Context: consultation workflow needed executable backend actions for SOAP capture and pedi generation before renderer/fax integrations are finished.
 - Decision: add `POST /v1/sos/cases/{caseId}/soap` to persist structured SOAP into a new canonical payload version and upsert `soap_note_pdf` artifact metadata; add `POST /v1/sos/cases/{caseId}/pedi-intake/generate` to upsert `pedi_intake_pdf` artifact metadata from latest canonical payload.
 - Consequence: Leah-console actions can run end-to-end at data/orchestration level now; actual PDF renderer output is explicitly marked `pending_pdf_renderer` and remains a later integration step.
+
+## 2026-02-18 — SOS Phase 6/7 action + sweep service baseline
+- Context: post-consult communication and 30-60 day follow-up loops required executable service actions before external email/fax providers and cron infra are finalized.
+- Decision: add case-level actions `POST /v1/sos/cases/{caseId}/follow-up/send` and `POST /v1/sos/cases/{caseId}/provider-fax/send` that upsert artifacts and audit rows in simulated mode; add `POST /v1/sos/scheduler/followups/run` to queue review/referral artifacts for due cases within configurable day windows.
+- Consequence: workflow actions are runnable and auditable now; provider transport integration and autonomous scheduling remain explicit follow-on hardening steps.

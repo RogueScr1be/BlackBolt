@@ -779,6 +779,94 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /v1/sos/cases/{caseId}/follow-up/send:
+    post:
+      operationId: sendSosFollowUp
+      tags: [sos, operator]
+      summary: Send follow-up letter for SOS case
+      security: []
+      parameters:
+        - name: caseId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: tenantId
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Follow-up send action completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SosSendActionResponse'
+        '400':
+          description: Invalid tenant/case
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/sos/cases/{caseId}/provider-fax/send:
+    post:
+      operationId: sendSosProviderFax
+      tags: [sos, operator]
+      summary: Send provider fax packet for SOS case
+      security: []
+      parameters:
+        - name: caseId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: tenantId
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Provider fax send action completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SosSendActionResponse'
+        '400':
+          description: Invalid tenant/case
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/sos/scheduler/followups/run:
+    post:
+      operationId: runSosFollowupSweep
+      tags: [sos, scheduler]
+      summary: Execute SOS 30-60 day follow-up sweep
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tenantId]
+              properties:
+                tenantId: { type: string }
+                windowStartDays: { type: integer, minimum: 1, maximum: 365, default: 30 }
+                windowEndDays: { type: integer, minimum: 2, maximum: 366, default: 60 }
+      responses:
+        '200':
+          description: Follow-up sweep run summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SosFollowupSweepResponse'
+        '400':
+          description: Invalid tenant or request payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /v1/tenants/{tenantId}/integrations/postmark/operator-summary:
     get:
@@ -1405,6 +1493,27 @@ components:
         caseId: { type: string }
         artifactType: { type: string, enum: [pedi_intake_pdf] }
         generatedAt: { type: string, format: date-time }
+    SosSendActionResponse:
+      type: object
+      required: [caseId, artifactType, sentAt, simulated]
+      properties:
+        caseId: { type: string }
+        artifactType:
+          type: string
+          enum: [follow_up_letter_pdf, provider_fax_packet_pdf]
+        sentAt: { type: string, format: date-time }
+        simulated: { type: boolean }
+    SosFollowupSweepResponse:
+      type: object
+      required: [tenantId, windowStartDays, windowEndDays, dueCount, queuedCount, skippedCount, runAt]
+      properties:
+        tenantId: { type: string }
+        windowStartDays: { type: integer }
+        windowEndDays: { type: integer }
+        dueCount: { type: integer }
+        queuedCount: { type: integer }
+        skippedCount: { type: integer }
+        runAt: { type: string, format: date-time }
     PostmarkSendSummaryItem:
       type: object
       required: [campaignMessageId, status, attempt, lastEventAt]

@@ -34,4 +34,14 @@ export class SosCasesController {
   async generatePediIntake(@Param('caseId') caseId: string, @Query('tenantId') tenantId: string | undefined) {
     return this.sosService.generatePediIntake({ tenantId: tenantId ?? '', caseId });
   }
+
+  @Post(':caseId/follow-up/send')
+  async sendFollowUp(@Param('caseId') caseId: string, @Query('tenantId') tenantId: string | undefined) {
+    return this.sosService.sendFollowUp({ tenantId: tenantId ?? '', caseId });
+  }
+
+  @Post(':caseId/provider-fax/send')
+  async sendProviderFax(@Param('caseId') caseId: string, @Query('tenantId') tenantId: string | undefined) {
+    return this.sosService.sendProviderFax({ tenantId: tenantId ?? '', caseId });
+  }
 }

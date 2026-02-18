@@ -186,4 +186,64 @@ describe('SosService cases', () => {
     expect(result.artifactType).toBe('pedi_intake_pdf');
     expect(prisma.sosArtifact.upsert).toHaveBeenCalled();
   });
+
+  it('sends follow-up as simulated artifact with audit log', async () => {
+    const prisma = {
+      tenant: {
+        findUnique: jest.fn().mockResolvedValue({ id: 'tenant-sos' })
+      },
+      sosCase: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'case_1',
+          tenantId: 'tenant-sos'
+        })
+      },
+      sosArtifact: {
+        upsert: jest.fn().mockResolvedValue({})
+      },
+      auditLog: {
+        create: jest.fn().mockResolvedValue({})
+      }
+    };
+    const service = new SosService(prisma as never, {} as never);
+
+    const result = await service.sendFollowUp({
+      tenantId: 'tenant-sos',
+      caseId: 'case_1'
+    });
+
+    expect(result.artifactType).toBe('follow_up_letter_pdf');
+    expect(result.simulated).toBe(true);
+    expect(prisma.auditLog.create).toHaveBeenCalled();
+  });
+
+  it('runs follow-up sweep and queues only missing review artifacts', async () => {
+    const prisma = {
+      tenant: {
+        findUnique: jest.fn().mockResolvedValue({ id: 'tenant-sos' })
+      },
+      sosCase: {
+        findMany: jest.fn().mockResolvedValue([{ id: 'case_1' }, { id: 'case_2' }])
+      },
+      sosArtifact: {
+        findUnique: jest.fn().mockResolvedValueOnce(null).mockResolvedValueOnce({ id: 'existing' }),
+        create: jest.fn().mockResolvedValue({})
+      },
+      auditLog: {
+        create: jest.fn().mockResolvedValue({})
+      }
+    };
+    const service = new SosService(prisma as never, {} as never);
+
+    const result = await service.runFollowupSweep({
+      tenantId: 'tenant-sos',
+      windowStartDays: 30,
+      windowEndDays: 60
+    });
+
+    expect(result.dueCount).toBe(2);
+    expect(result.queuedCount).toBe(1);
+    expect(result.skippedCount).toBe(1);
+    expect(prisma.sosArtifact.create).toHaveBeenCalledTimes(1);
+  });
 });

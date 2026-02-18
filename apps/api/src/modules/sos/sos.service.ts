@@ -9,8 +9,10 @@ import type {
   SosCanonicalPayload,
   SosCreatePaymentIntentRequest,
   SosCreatePaymentIntentResponse,
+  SosFollowupSweepResponse,
   SosGeneratePediIntakeResponse,
   SosSaveSoapResponse,
+  SosSendActionResponse,
   SosSoapInput,
   StripeEventPayload,
   StripePaymentIntent
@@ -562,6 +564,203 @@ export class SosService {
       caseId: sosCase.id,
       artifactType: 'pedi_intake_pdf',
       generatedAt: new Date().toISOString()
+    };
+  }
+
+  async sendFollowUp(input: { tenantId: string; caseId: string }): Promise<SosSendActionResponse> {
+    return this.sendCaseArtifactAction({
+      tenantId: input.tenantId,
+      caseId: input.caseId,
+      artifactType: 'follow_up_letter_pdf',
+      fileNamePrefix: 'follow_up_letter',
+      auditAction: 'sos.follow_up.send'
+    });
+  }
+
+  async sendProviderFax(input: { tenantId: string; caseId: string }): Promise<SosSendActionResponse> {
+    return this.sendCaseArtifactAction({
+      tenantId: input.tenantId,
+      caseId: input.caseId,
+      artifactType: 'provider_fax_packet_pdf',
+      fileNamePrefix: 'provider_fax_packet',
+      auditAction: 'sos.provider_fax.send'
+    });
+  }
+
+  async runFollowupSweep(input: {
+    tenantId: string;
+    windowStartDays?: number;
+    windowEndDays?: number;
+  }): Promise<SosFollowupSweepResponse> {
+    const tenantId = input.tenantId?.trim();
+    if (!tenantId) {
+      throw new BadRequestException('tenantId is required');
+    }
+
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { id: true }
+    });
+    if (!tenant) {
+      throw new BadRequestException('Unknown sos_tenant_id');
+    }
+
+    const windowStartDays = Math.max(1, Math.min(input.windowStartDays ?? 30, 365));
+    const windowEndDays = Math.max(windowStartDays + 1, Math.min(input.windowEndDays ?? 60, 366));
+    const now = new Date();
+    const start = new Date(now.getTime() - windowEndDays * 24 * 60 * 60 * 1000);
+    const end = new Date(now.getTime() - windowStartDays * 24 * 60 * 60 * 1000);
+
+    const dueCases = await this.prisma.sosCase.findMany({
+      where: {
+        tenantId,
+        createdAt: {
+          gte: start,
+          lte: end
+        }
+      },
+      select: {
+        id: true
+      }
+    });
+
+    let queuedCount = 0;
+    let skippedCount = 0;
+
+    for (const sosCase of dueCases) {
+      const existing = await this.prisma.sosArtifact.findUnique({
+        where: {
+          caseId_artifactType: {
+            caseId: sosCase.id,
+            artifactType: 'review_referral_email'
+          }
+        }
+      });
+
+      if (existing) {
+        skippedCount += 1;
+        continue;
+      }
+
+      await this.prisma.sosArtifact.create({
+        data: {
+          tenantId,
+          caseId: sosCase.id,
+          artifactType: 'review_referral_email',
+          fileName: `review_referral_${sosCase.id}.eml`,
+          metadataJson: {
+            generatedBy: 'phase7',
+            sendStatus: 'pending_dispatch'
+          } as Prisma.InputJsonValue
+        }
+      });
+
+      await this.prisma.auditLog.create({
+        data: {
+          tenantId,
+          action: 'sos.followup.sweep.queue',
+          entityType: 'sos_case',
+          entityId: sosCase.id,
+          metadataJson: {
+            artifactType: 'review_referral_email',
+            windowStartDays,
+            windowEndDays
+          } as Prisma.InputJsonValue
+        }
+      });
+      queuedCount += 1;
+    }
+
+    return {
+      tenantId,
+      windowStartDays,
+      windowEndDays,
+      dueCount: dueCases.length,
+      queuedCount,
+      skippedCount,
+      runAt: now.toISOString()
+    };
+  }
+
+  private async sendCaseArtifactAction(input: {
+    tenantId: string;
+    caseId: string;
+    artifactType: 'follow_up_letter_pdf' | 'provider_fax_packet_pdf';
+    fileNamePrefix: string;
+    auditAction: string;
+  }): Promise<SosSendActionResponse> {
+    const tenantId = input.tenantId?.trim();
+    if (!tenantId) {
+      throw new BadRequestException('tenantId is required');
+    }
+    if (!input.caseId?.trim()) {
+      throw new BadRequestException('caseId is required');
+    }
+
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { id: true }
+    });
+    if (!tenant) {
+      throw new BadRequestException('Unknown sos_tenant_id');
+    }
+
+    const sosCase = await this.prisma.sosCase.findFirst({
+      where: {
+        id: input.caseId,
+        tenantId
+      }
+    });
+    if (!sosCase) {
+      throw new BadRequestException('SOS case not found');
+    }
+
+    await this.prisma.sosArtifact.upsert({
+      where: {
+        caseId_artifactType: {
+          caseId: sosCase.id,
+          artifactType: input.artifactType
+        }
+      },
+      update: {
+        fileName: `${input.fileNamePrefix}_${sosCase.id}.pdf`,
+        metadataJson: {
+          sendStatus: 'simulated_sent',
+          sentAt: new Date().toISOString(),
+          integration: 'phase6_placeholder'
+        } as Prisma.InputJsonValue
+      },
+      create: {
+        tenantId,
+        caseId: sosCase.id,
+        artifactType: input.artifactType,
+        fileName: `${input.fileNamePrefix}_${sosCase.id}.pdf`,
+        metadataJson: {
+          sendStatus: 'simulated_sent',
+          sentAt: new Date().toISOString(),
+          integration: 'phase6_placeholder'
+        } as Prisma.InputJsonValue
+      }
+    });
+
+    await this.prisma.auditLog.create({
+      data: {
+        tenantId,
+        action: input.auditAction,
+        entityType: 'sos_case',
+        entityId: sosCase.id,
+        metadataJson: {
+          artifactType: input.artifactType,
+          simulated: true
+        } as Prisma.InputJsonValue
+      }
+    });
+
+    return {
+      caseId: sosCase.id,
+      artifactType: input.artifactType,
+      sentAt: new Date().toISOString(),
+      simulated: true
     };
   }
 

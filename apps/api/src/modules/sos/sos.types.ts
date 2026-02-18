@@ -115,3 +115,20 @@ export type SosGeneratePediIntakeResponse = {
   artifactType: 'pedi_intake_pdf';
   generatedAt: string;
 };
+
+export type SosSendActionResponse = {
+  caseId: string;
+  artifactType: 'follow_up_letter_pdf' | 'provider_fax_packet_pdf';
+  sentAt: string;
+  simulated: boolean;
+};
+
+export type SosFollowupSweepResponse = {
+  tenantId: string;
+  windowStartDays: number;
+  windowEndDays: number;
+  dueCount: number;
+  queuedCount: number;
+  skippedCount: number;
+  runAt: string;
+};
