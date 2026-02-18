@@ -655,6 +655,68 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /v1/sos/cases:
+    get:
+      operationId: listSosCases
+      tags: [sos, operator]
+      summary: List SOS cases for operator console
+      security: []
+      parameters:
+        - name: tenantId
+          in: query
+          required: true
+          schema: { type: string }
+        - name: status
+          in: query
+          required: false
+          schema: { type: string }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 100, default: 25 }
+      responses:
+        '200':
+          description: SOS case list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SosCaseListResponse'
+        '400':
+          description: Invalid tenant or query
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/sos/cases/{caseId}:
+    get:
+      operationId: getSosCaseDetail
+      tags: [sos, operator]
+      summary: Get SOS case detail for operator console
+      security: []
+      parameters:
+        - name: caseId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: tenantId
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: SOS case detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SosCaseDetail'
+        '400':
+          description: Invalid tenant or case id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /v1/tenants/{tenantId}/integrations/postmark/operator-summary:
     get:
       operationId: getPostmarkOperatorSummary
@@ -1195,6 +1257,69 @@ components:
         amount: { type: integer }
         currency: { type: string }
         idempotencyKey: { type: string }
+    SosCaseListItem:
+      type: object
+      required: [caseId, tenantId, consultType, status, createdAt, parentName, babyName, driveFolderUrl]
+      properties:
+        caseId: { type: string }
+        tenantId: { type: string }
+        consultType: { type: string }
+        status: { type: string }
+        createdAt: { type: string, format: date-time }
+        parentName: { type: string, nullable: true }
+        babyName: { type: string, nullable: true }
+        driveFolderUrl: { type: string, nullable: true }
+    SosCaseListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/SosCaseListItem' }
+    SosCaseDetail:
+      type: object
+      required:
+        - caseId
+        - tenantId
+        - consultType
+        - status
+        - createdAt
+        - driveFolderId
+        - driveFolderUrl
+        - patient
+        - baby
+        - actions
+      properties:
+        caseId: { type: string }
+        tenantId: { type: string }
+        consultType: { type: string }
+        status: { type: string }
+        createdAt: { type: string, format: date-time }
+        driveFolderId: { type: string, nullable: true }
+        driveFolderUrl: { type: string, nullable: true }
+        patient:
+          type: object
+          required: [parentName, email, phone, address]
+          properties:
+            parentName: { type: string, nullable: true }
+            email: { type: string, nullable: true }
+            phone: { type: string, nullable: true }
+            address: { type: string, nullable: true }
+        baby:
+          type: object
+          required: [name, dob]
+          properties:
+            name: { type: string, nullable: true }
+            dob: { type: string, nullable: true }
+        actions:
+          type: object
+          required: [openFolder, soapNotes, generatePediIntake, sendFollowUp, sendProviderFax]
+          properties:
+            openFolder: { type: boolean }
+            soapNotes: { type: boolean }
+            generatePediIntake: { type: boolean }
+            sendFollowUp: { type: boolean }
+            sendProviderFax: { type: boolean }
     PostmarkSendSummaryItem:
       type: object
       required: [campaignMessageId, status, attempt, lastEventAt]

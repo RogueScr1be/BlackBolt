@@ -4,6 +4,8 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { SOS_REQUIRED_PAYMENT_METADATA_KEYS, STRIPE_WEBHOOK_EVENT_NAME } from './sos.constants';
 import type {
+  SosCaseDetail,
+  SosCaseListItem,
   SosCanonicalPayload,
   SosCreatePaymentIntentRequest,
   SosCreatePaymentIntentResponse,
@@ -19,6 +21,40 @@ function requiredMetadata(metadata: Record<string, string | undefined>, key: str
     throw new BadRequestException(`Missing required payment metadata: ${key}`);
   }
   return value;
+}
+
+function extractCanonicalIdentity(canonicalJson: Prisma.JsonValue | null | undefined): {
+  parentName: string | null;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  babyName: string | null;
+  babyDob: string | null;
+} {
+  if (!canonicalJson || typeof canonicalJson !== 'object' || Array.isArray(canonicalJson)) {
+    return {
+      parentName: null,
+      email: null,
+      phone: null,
+      address: null,
+      babyName: null,
+      babyDob: null
+    };
+  }
+
+  const value = canonicalJson as {
+    patient?: { parentName?: string; email?: string; phone?: string; address?: string };
+    baby?: { name?: string; dob?: string };
+  };
+
+  return {
+    parentName: value.patient?.parentName ?? null,
+    email: value.patient?.email ?? null,
+    phone: value.patient?.phone ?? null,
+    address: value.patient?.address ?? null,
+    babyName: value.baby?.name ?? null,
+    babyDob: value.baby?.dob ?? null
+  };
 }
 
 @Injectable()
@@ -242,6 +278,117 @@ export class SosService {
       amount: typeof payload.amount === 'number' ? payload.amount : input.amountCents,
       currency: payload.currency ?? currency,
       idempotencyKey: `sos-intake:${idempotencyKey}`
+    };
+  }
+
+  async listCases(input: { tenantId: string; status?: string; limit?: number }): Promise<{ items: SosCaseListItem[] }> {
+    const tenantId = input.tenantId?.trim();
+    if (!tenantId) {
+      throw new BadRequestException('tenantId is required');
+    }
+
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { id: true }
+    });
+    if (!tenant) {
+      throw new BadRequestException('Unknown sos_tenant_id');
+    }
+
+    const limit = Math.max(1, Math.min(input.limit ?? 25, 100));
+    const cases = await this.prisma.sosCase.findMany({
+      where: {
+        tenantId,
+        ...(input.status?.trim() ? { status: input.status.trim() } : {})
+      },
+      orderBy: { createdAt: 'desc' },
+      take: limit
+    });
+
+    const payloads = await Promise.all(
+      cases.map((sosCase) =>
+        this.prisma.sosCasePayload.findFirst({
+          where: { caseId: sosCase.id },
+          orderBy: { version: 'desc' }
+        })
+      )
+    );
+
+    const items = cases.map((sosCase, index) => {
+      const identity = extractCanonicalIdentity(payloads[index]?.canonicalJson);
+      return {
+        caseId: sosCase.id,
+        tenantId: sosCase.tenantId,
+        consultType: sosCase.consultType,
+        status: sosCase.status,
+        createdAt: sosCase.createdAt.toISOString(),
+        parentName: identity.parentName,
+        babyName: identity.babyName,
+        driveFolderUrl: sosCase.driveFolderUrl ?? null
+      };
+    });
+
+    return { items };
+  }
+
+  async getCaseDetail(input: { tenantId: string; caseId: string }): Promise<SosCaseDetail> {
+    const tenantId = input.tenantId?.trim();
+    if (!tenantId) {
+      throw new BadRequestException('tenantId is required');
+    }
+    if (!input.caseId?.trim()) {
+      throw new BadRequestException('caseId is required');
+    }
+
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { id: true }
+    });
+    if (!tenant) {
+      throw new BadRequestException('Unknown sos_tenant_id');
+    }
+
+    const sosCase = await this.prisma.sosCase.findFirst({
+      where: {
+        id: input.caseId,
+        tenantId
+      }
+    });
+    if (!sosCase) {
+      throw new BadRequestException('SOS case not found');
+    }
+
+    const latestPayload = await this.prisma.sosCasePayload.findFirst({
+      where: { caseId: sosCase.id },
+      orderBy: { version: 'desc' }
+    });
+    const identity = extractCanonicalIdentity(latestPayload?.canonicalJson);
+
+    return {
+      caseId: sosCase.id,
+      tenantId: sosCase.tenantId,
+      consultType: sosCase.consultType,
+      status: sosCase.status,
+      createdAt: sosCase.createdAt.toISOString(),
+      driveFolderId: sosCase.driveFolderId ?? null,
+      driveFolderUrl: sosCase.driveFolderUrl ?? null,
+      patient: {
+        parentName: identity.parentName,
+        email: identity.email,
+        phone: identity.phone,
+        address: identity.address
+      },
+      baby: {
+        name: identity.babyName,
+        dob: identity.babyDob
+      },
+      actions: {
+        openFolder: Boolean(sosCase.driveFolderUrl),
+        soapNotes: true,
+        generatePediIntake: true,
+        sendFollowUp: true,
+        sendProviderFax: true
+      }
     };
   }
 

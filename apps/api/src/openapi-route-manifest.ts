@@ -21,6 +21,8 @@ export const OPENAPI_OPERATION_IDS = [
   'receivePostmarkWebhook',
   'receiveStripeWebhook',
   'createSosPaymentIntent',
+  'listSosCases',
+  'getSosCaseDetail',
   'getPostmarkOperatorSummary',
   'resumePostmarkSends',
   'getOperatorCommandCenter',

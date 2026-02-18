@@ -58,3 +58,41 @@ export type SosCreatePaymentIntentResponse = {
   currency: string;
   idempotencyKey: string;
 };
+
+export type SosCaseListItem = {
+  caseId: string;
+  tenantId: string;
+  consultType: string;
+  status: string;
+  createdAt: string;
+  parentName: string | null;
+  babyName: string | null;
+  driveFolderUrl: string | null;
+};
+
+export type SosCaseDetail = {
+  caseId: string;
+  tenantId: string;
+  consultType: string;
+  status: string;
+  createdAt: string;
+  driveFolderId: string | null;
+  driveFolderUrl: string | null;
+  patient: {
+    parentName: string | null;
+    email: string | null;
+    phone: string | null;
+    address: string | null;
+  };
+  baby: {
+    name: string | null;
+    dob: string | null;
+  };
+  actions: {
+    openFolder: boolean;
+    soapNotes: boolean;
+    generatePediIntake: boolean;
+    sendFollowUp: boolean;
+    sendProviderFax: boolean;
+  };
+};

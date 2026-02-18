@@ -246,3 +246,8 @@
 - Decision: add unauthenticated `POST /v1/sos/intake/payment-intents` to create Stripe PaymentIntents with required SOS metadata keys (`sos_tenant_id`, consult type, parent/baby identity fields), validate tenant existence up front, and enforce server-side idempotency key generation when caller does not provide one.
 - Decision: call Stripe REST API directly from API service using `STRIPE_SECRET_KEY` and return only minimal client-safe payment intent details (`id`, `client_secret`, `status`, `amount`, `currency`, `idempotencyKey`).
 - Consequence: Phase 3 now has a runnable intake->payment trigger surface that feeds the existing Phase 2 webhook pipeline; live execution remains blocked only by missing runtime Stripe credentials.
+
+## 2026-02-18 — SOS Phase 4 operator case list/detail API slice
+- Context: Leah console requires a single SOS case list and case-detail surface before action buttons can be wired reliably.
+- Decision: add `GET /v1/sos/cases` and `GET /v1/sos/cases/{caseId}` with tenant-scoped lookup, canonical identity extraction from latest case payload version, and deterministic action availability flags.
+- Consequence: operator UI can render “New Paid Cases” and case detail from one API surface with no direct Drive browsing dependency.
