@@ -10,6 +10,7 @@
     "apps/api"
   ],
   "scripts": {
+    "start": "bash scripts/start-railway-service.sh",
     "contract:lint": "node scripts/validate-openapi.mjs",
     "contract:breaking": "node scripts/check-breaking-api.mjs",
     "contract:coverage": "node scripts/check-openapi-coverage.mjs",
@@ -25,12 +26,21 @@
     "operator:package": "bash scripts/operator/package-macos-app.sh",
     "operator:install": "bash scripts/operator/install-macos-app.sh --open",
     "repo:check-duplicates": "node scripts/check-no-suffixed-duplicates.mjs",
+    "sos:extract-fields": "node scripts/soslactation/extract-all.mjs",
+    "sos:check:registry": "node scripts/soslactation/check-registry.mjs",
+    "sos:check:mappings": "node scripts/soslactation/check-mappings.mjs",
+    "sos:check": "npm run sos:check:registry && npm run sos:check:mappings",
+    "sos:preflight": "bash scripts/sos/preflight-check.sh",
+    "sos:smoke:phase6-7": "bash scripts/sos/phase6-7-smoke.sh",
+    "sos:monitor:check": "bash scripts/sos/monitor-check.sh",
+    "sos:bundle:leah": "bash scripts/sos/build-standalone-bundle.sh",
     "api:test": "npm --workspace @blackbolt/api run test",
     "prisma:generate": "npm --workspace @blackbolt/api exec -- prisma generate --schema ../../prisma/schema.prisma && node scripts/prisma-schema-hash.mjs",
     "prisma:hash:check": "node scripts/prisma-schema-hash.mjs --check",
     "prisma:migrations:check": "node scripts/check-migration-immutability.mjs",
     "prisma:migrations:chain": "node scripts/check-migration-immutability.mjs --write-chain",
     "prisma:migrate:deploy": "npm --workspace @blackbolt/api exec -- prisma migrate deploy --schema ../../prisma/schema.prisma",
+    "tenant:seed": "npm --workspace @blackbolt/api exec -- ts-node ../../scripts/seed-tenant.ts",
     "swift:generate": "node scripts/generate-swift-client.mjs",
     "test:offline": "TEST_OFFLINE=1 npm run contract:ci && npm run api:test"
   }
