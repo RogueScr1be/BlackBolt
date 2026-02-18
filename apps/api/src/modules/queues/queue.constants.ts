@@ -4,7 +4,8 @@ export const QUEUES = {
   GBP_INGEST: 'gbp.ingest',
   POSTMARK_WEBHOOK_RECONCILE: 'postmark.webhook.reconcile',
   POSTMARK_SEND: 'postmark.send',
-  SOS_CASE_ORCHESTRATION: 'sos.case.orchestration'
+  SOS_CASE_ORCHESTRATION: 'sos.case.orchestration',
+  SOS_FOLLOWUP_SWEEP: 'sos.followup.sweep'
 } as const;
 
 export const DLQ_SUFFIX = ':dlq';

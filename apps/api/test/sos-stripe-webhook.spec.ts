@@ -25,7 +25,7 @@ describe('SosService stripe webhook', () => {
       }
     };
     const queue = { enqueueCaseCreate: jest.fn() };
-    const service = new SosService(prisma as never, queue as never);
+    const service = new SosService(prisma as never, queue as never, {} as never, {} as never);
 
     await expect(
       service.receiveStripeWebhook({
@@ -51,7 +51,7 @@ describe('SosService stripe webhook', () => {
       }
     };
     const queue = { enqueueCaseCreate: jest.fn() };
-    const service = new SosService(prisma as never, queue as never);
+    const service = new SosService(prisma as never, queue as never, {} as never, {} as never);
 
     const result = await service.receiveStripeWebhook({
       signatureHeader,
@@ -108,7 +108,7 @@ describe('SosService stripe webhook', () => {
       })
     };
 
-    const service = new SosService(prisma as never, queue as never);
+    const service = new SosService(prisma as never, queue as never, {} as never, {} as never);
     const result = await service.receiveStripeWebhook({ signatureHeader, rawBody: raw, payload });
 
     expect(upsert).toHaveBeenCalledTimes(1);
@@ -172,7 +172,7 @@ describe('SosService stripe webhook', () => {
       enqueueCaseCreate: jest.fn()
     };
 
-    const service = new SosService(prisma as never, queue as never);
+    const service = new SosService(prisma as never, queue as never, {} as never, {} as never);
     const result = await service.receiveStripeWebhook({ signatureHeader, rawBody: raw, payload });
 
     expect(result).toEqual(
@@ -221,7 +221,7 @@ describe('SosService stripe webhook', () => {
       enqueueCaseCreate: jest.fn()
     };
 
-    const service = new SosService(prisma as never, queue as never);
+    const service = new SosService(prisma as never, queue as never, {} as never, {} as never);
 
     await expect(
       service.receiveStripeWebhook({

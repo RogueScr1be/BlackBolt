@@ -261,3 +261,9 @@
 - Context: post-consult communication and 30-60 day follow-up loops required executable service actions before external email/fax providers and cron infra are finalized.
 - Decision: add case-level actions `POST /v1/sos/cases/{caseId}/follow-up/send` and `POST /v1/sos/cases/{caseId}/provider-fax/send` that upsert artifacts and audit rows in simulated mode; add `POST /v1/sos/scheduler/followups/run` to queue review/referral artifacts for due cases within configurable day windows.
 - Consequence: workflow actions are runnable and auditable now; provider transport integration and autonomous scheduling remain explicit follow-on hardening steps.
+
+## 2026-02-18 — SOS Phase 6/7 production transport + automatic sweep
+- Context: SOS follow-up and provider-fax actions needed to move from simulated metadata to real transport, and 30-60 day sweep needed autonomous daily execution.
+- Decision: wire SOS follow-up email to dedicated Postmark adapter (`SOS_POSTMARK_SERVER_TOKEN`, `SOS_POSTMARK_FROM_EMAIL`), wire provider fax to SRFax adapter (`SOS_FAX_PROVIDER=srfax` + SRFax credentials), and persist provider IDs/status into `sos_artifacts.metadata_json`.
+- Decision: add Bull queue `sos.followup.sweep` with repeat scheduler job and worker processor; processor invokes `runFollowupSweep`, writes job-run ledger state, and raises integration alerts on terminal failures.
+- Consequence: Phase 6 sends and Phase 7 sweep are now executable production paths with idempotent queue orchestration and explicit failure signaling.

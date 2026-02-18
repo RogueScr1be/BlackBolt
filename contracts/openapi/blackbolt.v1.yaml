@@ -1495,14 +1495,24 @@ components:
         generatedAt: { type: string, format: date-time }
     SosSendActionResponse:
       type: object
-      required: [caseId, artifactType, sentAt, simulated]
+      required: [caseId, artifactType, sentAt, provider, sendStatus, simulated]
       properties:
         caseId: { type: string }
         artifactType:
           type: string
           enum: [follow_up_letter_pdf, provider_fax_packet_pdf]
         sentAt: { type: string, format: date-time }
-        simulated: { type: boolean }
+        provider:
+          type: string
+          enum: [postmark, srfax]
+        sendStatus:
+          type: string
+          enum: [sent]
+        providerMessageId: { type: string, nullable: true }
+        providerTransmissionId: { type: string, nullable: true }
+        simulated:
+          type: boolean
+          enum: [false]
     SosFollowupSweepResponse:
       type: object
       required: [tenantId, windowStartDays, windowEndDays, dueCount, queuedCount, skippedCount, runAt]

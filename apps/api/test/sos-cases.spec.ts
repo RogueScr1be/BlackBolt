@@ -29,7 +29,7 @@ describe('SosService cases', () => {
       }
     };
 
-    const service = new SosService(prisma as never, {} as never);
+    const service = new SosService(prisma as never, {} as never, {} as never, {} as never);
     const result = await service.listCases({ tenantId: 'tenant-sos' });
 
     expect(result.items).toEqual([
@@ -75,7 +75,7 @@ describe('SosService cases', () => {
       }
     };
 
-    const service = new SosService(prisma as never, {} as never);
+    const service = new SosService(prisma as never, {} as never, {} as never, {} as never);
     const result = await service.getCaseDetail({ tenantId: 'tenant-sos', caseId: 'case_1' });
 
     expect(result).toEqual(
@@ -103,7 +103,7 @@ describe('SosService cases', () => {
         findUnique: jest.fn().mockResolvedValue(null)
       }
     };
-    const service = new SosService(prisma as never, {} as never);
+    const service = new SosService(prisma as never, {} as never, {} as never, {} as never);
 
     await expect(service.listCases({ tenantId: 'tenant-missing' })).rejects.toBeInstanceOf(BadRequestException);
   });
@@ -134,7 +134,7 @@ describe('SosService cases', () => {
       }
     };
 
-    const service = new SosService(prisma as never, {} as never);
+    const service = new SosService(prisma as never, {} as never, {} as never, {} as never);
     const result = await service.saveSoap({
       tenantId: 'tenant-sos',
       caseId: 'case_1',
@@ -175,7 +175,7 @@ describe('SosService cases', () => {
         upsert: jest.fn().mockResolvedValue({})
       }
     };
-    const service = new SosService(prisma as never, {} as never);
+    const service = new SosService(prisma as never, {} as never, {} as never, {} as never);
 
     const result = await service.generatePediIntake({
       tenantId: 'tenant-sos',
@@ -187,7 +187,14 @@ describe('SosService cases', () => {
     expect(prisma.sosArtifact.upsert).toHaveBeenCalled();
   });
 
-  it('sends follow-up as simulated artifact with audit log', async () => {
+  it('sends follow-up via provider and writes provider metadata', async () => {
+    const emailClient = {
+      sendFollowUp: jest.fn().mockResolvedValue({
+        provider: 'postmark',
+        providerMessageId: 'pm_123',
+        sentAt: '2026-02-18T12:00:00.000Z'
+      })
+    };
     const prisma = {
       tenant: {
         findUnique: jest.fn().mockResolvedValue({ id: 'tenant-sos' })
@@ -198,6 +205,16 @@ describe('SosService cases', () => {
           tenantId: 'tenant-sos'
         })
       },
+      sosCasePayload: {
+        findFirst: jest.fn().mockResolvedValue({
+          canonicalJson: {
+            patient: {
+              parentName: 'Leah Whitley',
+              email: 'leah@example.com'
+            }
+          }
+        })
+      },
       sosArtifact: {
         upsert: jest.fn().mockResolvedValue({})
       },
@@ -205,15 +222,22 @@ describe('SosService cases', () => {
         create: jest.fn().mockResolvedValue({})
       }
     };
-    const service = new SosService(prisma as never, {} as never);
+    const service = new SosService(prisma as never, {} as never, emailClient as never, {} as never);
 
     const result = await service.sendFollowUp({
       tenantId: 'tenant-sos',
       caseId: 'case_1'
     });
 
-    expect(result.artifactType).toBe('follow_up_letter_pdf');
-    expect(result.simulated).toBe(true);
+    expect(result).toEqual(
+      expect.objectContaining({
+        artifactType: 'follow_up_letter_pdf',
+        provider: 'postmark',
+        providerMessageId: 'pm_123',
+        simulated: false
+      })
+    );
+    expect(emailClient.sendFollowUp).toHaveBeenCalled();
     expect(prisma.auditLog.create).toHaveBeenCalled();
   });
 
@@ -233,7 +257,7 @@ describe('SosService cases', () => {
         create: jest.fn().mockResolvedValue({})
       }
     };
-    const service = new SosService(prisma as never, {} as never);
+    const service = new SosService(prisma as never, {} as never, {} as never, {} as never);
 
     const result = await service.runFollowupSweep({
       tenantId: 'tenant-sos',
@@ -245,5 +269,57 @@ describe('SosService cases', () => {
     expect(result.queuedCount).toBe(1);
     expect(result.skippedCount).toBe(1);
     expect(prisma.sosArtifact.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('sends provider fax and writes transmission metadata', async () => {
+    const faxClient = {
+      sendProviderFax: jest.fn().mockResolvedValue({
+        provider: 'srfax',
+        providerTransmissionId: 'tx_123',
+        status: 'queued',
+        sentAt: '2026-02-18T12:00:00.000Z'
+      })
+    };
+    const prisma = {
+      tenant: {
+        findUnique: jest.fn().mockResolvedValue({ id: 'tenant-sos' })
+      },
+      sosCase: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'case_1',
+          tenantId: 'tenant-sos'
+        })
+      },
+      sosCasePayload: {
+        findFirst: jest.fn().mockResolvedValue({
+          canonicalJson: {
+            provider: {
+              fax: '8321112222'
+            }
+          }
+        })
+      },
+      sosArtifact: {
+        upsert: jest.fn().mockResolvedValue({})
+      },
+      auditLog: {
+        create: jest.fn().mockResolvedValue({})
+      }
+    };
+    const service = new SosService(prisma as never, {} as never, {} as never, faxClient as never);
+
+    const result = await service.sendProviderFax({
+      tenantId: 'tenant-sos',
+      caseId: 'case_1'
+    });
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        provider: 'srfax',
+        providerTransmissionId: 'tx_123',
+        simulated: false
+      })
+    );
+    expect(faxClient.sendProviderFax).toHaveBeenCalled();
   });
 });

@@ -120,7 +120,11 @@ export type SosSendActionResponse = {
   caseId: string;
   artifactType: 'follow_up_letter_pdf' | 'provider_fax_packet_pdf';
   sentAt: string;
-  simulated: boolean;
+  provider: 'postmark' | 'srfax';
+  sendStatus: 'sent';
+  providerMessageId?: string | null;
+  providerTransmissionId?: string | null;
+  simulated: false;
 };
 
 export type SosFollowupSweepResponse = {
@@ -131,4 +135,25 @@ export type SosFollowupSweepResponse = {
   queuedCount: number;
   skippedCount: number;
   runAt: string;
+};
+
+export type SosEmailSendResult = {
+  provider: 'postmark';
+  providerMessageId: string;
+  sentAt: string;
+};
+
+export type SosFaxSendResult = {
+  provider: 'srfax';
+  providerTransmissionId: string;
+  status: string;
+  sentAt: string;
+};
+
+export type SosFollowupSweepJobPayload = {
+  tenantId: string;
+  windowStartDays: number;
+  windowEndDays: number;
+  triggeredBy: 'scheduler' | 'manual';
+  idempotencyKey: string;
 };

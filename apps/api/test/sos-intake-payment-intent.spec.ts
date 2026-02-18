@@ -16,7 +16,7 @@ describe('SosService createPaymentIntent', () => {
         findUnique: jest.fn().mockResolvedValue(null)
       }
     };
-    const service = new SosService(prisma as never, {} as never);
+    const service = new SosService(prisma as never, {} as never, {} as never, {} as never);
 
     await expect(
       service.createPaymentIntent({
@@ -39,7 +39,7 @@ describe('SosService createPaymentIntent', () => {
         findUnique: jest.fn()
       }
     };
-    const service = new SosService(prisma as never, {} as never);
+    const service = new SosService(prisma as never, {} as never, {} as never, {} as never);
 
     await expect(
       service.createPaymentIntent({
@@ -76,7 +76,7 @@ describe('SosService createPaymentIntent', () => {
         findUnique: jest.fn().mockResolvedValue({ id: 'tenant-sos' })
       }
     };
-    const service = new SosService(prisma as never, {} as never);
+    const service = new SosService(prisma as never, {} as never, {} as never, {} as never);
 
     const result = await service.createPaymentIntent({
       tenantId: 'tenant-sos',
@@ -130,7 +130,7 @@ describe('SosService createPaymentIntent', () => {
         findUnique: jest.fn().mockResolvedValue({ id: 'tenant-sos' })
       }
     };
-    const service = new SosService(prisma as never, {} as never);
+    const service = new SosService(prisma as never, {} as never, {} as never, {} as never);
 
     await expect(
       service.createPaymentIntent({

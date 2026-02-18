@@ -9,7 +9,9 @@ import type {
   SosCanonicalPayload,
   SosCreatePaymentIntentRequest,
   SosCreatePaymentIntentResponse,
+  SosEmailSendResult,
   SosFollowupSweepResponse,
+  SosFaxSendResult,
   SosGeneratePediIntakeResponse,
   SosSaveSoapResponse,
   SosSendActionResponse,
@@ -17,6 +19,8 @@ import type {
   StripeEventPayload,
   StripePaymentIntent
 } from './sos.types';
+import { SosPostmarkClient } from './email/sos-postmark.client';
+import { SosFaxTransientError, SosSrfaxClient } from './fax/sos-srfax.client';
 import { SosQueue } from './sos.queue';
 import { verifyStripeSignature } from './stripe.signature';
 
@@ -66,7 +70,9 @@ function extractCanonicalIdentity(canonicalJson: Prisma.JsonValue | null | undef
 export class SosService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly sosQueue: SosQueue
+    private readonly sosQueue: SosQueue,
+    private readonly sosPostmarkClient: SosPostmarkClient,
+    private readonly sosSrfaxClient: SosSrfaxClient
   ) {}
 
   async receiveStripeWebhook(input: {
@@ -568,23 +574,105 @@ export class SosService {
   }
 
   async sendFollowUp(input: { tenantId: string; caseId: string }): Promise<SosSendActionResponse> {
-    return this.sendCaseArtifactAction({
-      tenantId: input.tenantId,
-      caseId: input.caseId,
-      artifactType: 'follow_up_letter_pdf',
-      fileNamePrefix: 'follow_up_letter',
-      auditAction: 'sos.follow_up.send'
-    });
+    const resolved = await this.resolveCaseForSending(input);
+    if (!resolved.identity.email) {
+      throw new BadRequestException('Cannot send follow-up: patient email is missing');
+    }
+
+    try {
+      const sendResult = await this.sosPostmarkClient.sendFollowUp({
+        tenantId: resolved.tenantId,
+        toEmail: resolved.identity.email,
+        parentName: resolved.identity.parentName,
+        subject: `SOS Lactation Follow-Up - ${resolved.caseId}`,
+        bodyText:
+          'Thank you for your consultation with SOS Lactation. Please reply with any questions and your care updates.',
+        caseId: resolved.caseId
+      });
+
+      await this.persistSendSuccess({
+        tenantId: resolved.tenantId,
+        caseId: resolved.caseId,
+        artifactType: 'follow_up_letter_pdf',
+        fileName: `follow_up_letter_${resolved.caseId}.pdf`,
+        sendResult
+      });
+
+      return {
+        caseId: resolved.caseId,
+        artifactType: 'follow_up_letter_pdf',
+        sentAt: sendResult.sentAt,
+        provider: sendResult.provider,
+        sendStatus: 'sent',
+        providerMessageId: sendResult.providerMessageId,
+        providerTransmissionId: null,
+        simulated: false
+      };
+    } catch (error) {
+      await this.persistSendFailure({
+        tenantId: resolved.tenantId,
+        caseId: resolved.caseId,
+        artifactType: 'follow_up_letter_pdf',
+        code: 'SOS_FOLLOWUP_SEND_FAILED',
+        message: error instanceof Error ? error.message : 'Follow-up send failed'
+      });
+      throw error;
+    }
   }
 
   async sendProviderFax(input: { tenantId: string; caseId: string }): Promise<SosSendActionResponse> {
-    return this.sendCaseArtifactAction({
-      tenantId: input.tenantId,
-      caseId: input.caseId,
-      artifactType: 'provider_fax_packet_pdf',
-      fileNamePrefix: 'provider_fax_packet',
-      auditAction: 'sos.provider_fax.send'
-    });
+    const resolved = await this.resolveCaseForSending(input);
+    if (!resolved.providerFaxNumber) {
+      throw new BadRequestException('Cannot send provider fax: provider fax number is missing');
+    }
+
+    let attempts = 0;
+    while (attempts < 3) {
+      attempts += 1;
+      try {
+        const sendResult = await this.sosSrfaxClient.sendProviderFax({
+          tenantId: resolved.tenantId,
+          caseId: resolved.caseId,
+          toFaxNumber: resolved.providerFaxNumber,
+          subject: `SOS Lactation Provider Fax - ${resolved.caseId}`,
+          bodyText:
+            'SOS Lactation provider packet generated from structured SOAP and canonical case data for care coordination.'
+        });
+
+        await this.persistSendSuccess({
+          tenantId: resolved.tenantId,
+          caseId: resolved.caseId,
+          artifactType: 'provider_fax_packet_pdf',
+          fileName: `provider_fax_packet_${resolved.caseId}.pdf`,
+          sendResult
+        });
+
+        return {
+          caseId: resolved.caseId,
+          artifactType: 'provider_fax_packet_pdf',
+          sentAt: sendResult.sentAt,
+          provider: sendResult.provider,
+          sendStatus: 'sent',
+          providerMessageId: null,
+          providerTransmissionId: sendResult.providerTransmissionId,
+          simulated: false
+        };
+      } catch (error) {
+        if (error instanceof SosFaxTransientError && attempts < 3) {
+          continue;
+        }
+        await this.persistSendFailure({
+          tenantId: resolved.tenantId,
+          caseId: resolved.caseId,
+          artifactType: 'provider_fax_packet_pdf',
+          code: 'SOS_PROVIDER_FAX_FAILED',
+          message: error instanceof Error ? error.message : 'Provider fax send failed'
+        });
+        throw error;
+      }
+    }
+
+    throw new Error('SOS provider fax send exhausted retries');
   }
 
   async runFollowupSweep(input: {
@@ -682,13 +770,7 @@ export class SosService {
     };
   }
 
-  private async sendCaseArtifactAction(input: {
-    tenantId: string;
-    caseId: string;
-    artifactType: 'follow_up_letter_pdf' | 'provider_fax_packet_pdf';
-    fileNamePrefix: string;
-    auditAction: string;
-  }): Promise<SosSendActionResponse> {
+  private async resolveCaseForSending(input: { tenantId: string; caseId: string }) {
     const tenantId = input.tenantId?.trim();
     if (!tenantId) {
       throw new BadRequestException('tenantId is required');
@@ -715,53 +797,148 @@ export class SosService {
       throw new BadRequestException('SOS case not found');
     }
 
+    const latestPayload = await this.prisma.sosCasePayload.findFirst({
+      where: { caseId: sosCase.id },
+      orderBy: { version: 'desc' }
+    });
+    const identity = extractCanonicalIdentity(latestPayload?.canonicalJson);
+    const providerFaxNumber = this.extractProviderFaxNumber(latestPayload?.canonicalJson);
+
+    return { tenantId, caseId: sosCase.id, identity, providerFaxNumber };
+  }
+
+  private extractProviderFaxNumber(canonicalJson: Prisma.JsonValue | null | undefined): string | null {
+    if (!canonicalJson || typeof canonicalJson !== 'object' || Array.isArray(canonicalJson)) {
+      return null;
+    }
+    const value = canonicalJson as {
+      provider?: {
+        fax?: string;
+        faxNumber?: string;
+      };
+    };
+    return value.provider?.fax?.trim() || value.provider?.faxNumber?.trim() || null;
+  }
+
+  private async persistSendSuccess(input: {
+    tenantId: string;
+    caseId: string;
+    artifactType: 'follow_up_letter_pdf' | 'provider_fax_packet_pdf';
+    fileName: string;
+    sendResult: SosEmailSendResult | SosFaxSendResult;
+  }) {
     await this.prisma.sosArtifact.upsert({
       where: {
         caseId_artifactType: {
-          caseId: sosCase.id,
+          caseId: input.caseId,
           artifactType: input.artifactType
         }
       },
       update: {
-        fileName: `${input.fileNamePrefix}_${sosCase.id}.pdf`,
+        fileName: input.fileName,
         metadataJson: {
-          sendStatus: 'simulated_sent',
-          sentAt: new Date().toISOString(),
-          integration: 'phase6_placeholder'
+          provider: input.sendResult.provider,
+          providerMessageId: 'providerMessageId' in input.sendResult ? input.sendResult.providerMessageId : null,
+          providerTransmissionId:
+            'providerTransmissionId' in input.sendResult ? input.sendResult.providerTransmissionId : null,
+          sendStatus: 'sent',
+          sentAt: input.sendResult.sentAt
         } as Prisma.InputJsonValue
       },
       create: {
-        tenantId,
-        caseId: sosCase.id,
+        tenantId: input.tenantId,
+        caseId: input.caseId,
         artifactType: input.artifactType,
-        fileName: `${input.fileNamePrefix}_${sosCase.id}.pdf`,
+        fileName: input.fileName,
         metadataJson: {
-          sendStatus: 'simulated_sent',
-          sentAt: new Date().toISOString(),
-          integration: 'phase6_placeholder'
+          provider: input.sendResult.provider,
+          providerMessageId: 'providerMessageId' in input.sendResult ? input.sendResult.providerMessageId : null,
+          providerTransmissionId:
+            'providerTransmissionId' in input.sendResult ? input.sendResult.providerTransmissionId : null,
+          sendStatus: 'sent',
+          sentAt: input.sendResult.sentAt
         } as Prisma.InputJsonValue
       }
     });
 
     await this.prisma.auditLog.create({
       data: {
-        tenantId,
-        action: input.auditAction,
+        tenantId: input.tenantId,
+        action: input.artifactType === 'follow_up_letter_pdf' ? 'sos.follow_up.send' : 'sos.provider_fax.send',
         entityType: 'sos_case',
-        entityId: sosCase.id,
+        entityId: input.caseId,
         metadataJson: {
           artifactType: input.artifactType,
-          simulated: true
+          provider: input.sendResult.provider,
+          providerMessageId: 'providerMessageId' in input.sendResult ? input.sendResult.providerMessageId : null,
+          providerTransmissionId:
+            'providerTransmissionId' in input.sendResult ? input.sendResult.providerTransmissionId : null
+        } as Prisma.InputJsonValue
+      }
+    });
+  }
+
+  private async persistSendFailure(input: {
+    tenantId: string;
+    caseId: string;
+    artifactType: 'follow_up_letter_pdf' | 'provider_fax_packet_pdf';
+    code: 'SOS_FOLLOWUP_SEND_FAILED' | 'SOS_PROVIDER_FAX_FAILED';
+    message: string;
+  }) {
+    await this.prisma.sosArtifact.upsert({
+      where: {
+        caseId_artifactType: {
+          caseId: input.caseId,
+          artifactType: input.artifactType
+        }
+      },
+      update: {
+        metadataJson: {
+          sendStatus: 'failed',
+          errorCode: input.code,
+          errorMessage: input.message.slice(0, 240)
+        } as Prisma.InputJsonValue
+      },
+      create: {
+        tenantId: input.tenantId,
+        caseId: input.caseId,
+        artifactType: input.artifactType,
+        fileName: `${input.artifactType}_${input.caseId}.pdf`,
+        metadataJson: {
+          sendStatus: 'failed',
+          errorCode: input.code,
+          errorMessage: input.message.slice(0, 240)
         } as Prisma.InputJsonValue
       }
     });
 
-    return {
-      caseId: sosCase.id,
-      artifactType: input.artifactType,
-      sentAt: new Date().toISOString(),
-      simulated: true
-    };
+    await this.prisma.integrationAlert.create({
+      data: {
+        tenantId: input.tenantId,
+        integration: 'sos',
+        code: input.code,
+        severity: 'HIGH',
+        message: input.message.slice(0, 240),
+        metadataJson: {
+          caseId: input.caseId,
+          artifactType: input.artifactType
+        } as Prisma.InputJsonValue
+      }
+    });
+
+    await this.prisma.auditLog.create({
+      data: {
+        tenantId: input.tenantId,
+        action: `${input.code}.audit`,
+        entityType: 'sos_case',
+        entityId: input.caseId,
+        metadataJson: {
+          artifactType: input.artifactType,
+          errorCode: input.code,
+          errorMessage: input.message.slice(0, 240)
+        } as Prisma.InputJsonValue
+      }
+    });
   }
 
   private parsePaymentIntent(event: StripeEventPayload): StripePaymentIntent {

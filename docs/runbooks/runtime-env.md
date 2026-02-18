@@ -4,7 +4,7 @@
 
 ### `blackbolt-api`
 - `DATABASE_URL`
-- `REDIS_URL` optional
+- `REDIS_URL`
 
 ### `blackbolt-worker`
 - `DATABASE_URL`
@@ -26,6 +26,13 @@ Startup fails fast for required variables per role.
 - `STRIPE_SECRET_KEY` (required for SOS intake payment-intent creation endpoint)
 - `STRIPE_WEBHOOK_SECRET` (required for `/v1/webhooks/stripe` signature verification)
 - `REDIS_URL` is required when SOS Stripe webhook orchestration is enabled (queue-backed flow).
+- `SOS_POSTMARK_SERVER_TOKEN` (required for SOS follow-up email sends)
+- `SOS_POSTMARK_FROM_EMAIL` (required sender for SOS follow-up emails)
+- `SOS_FAX_PROVIDER=srfax`
+- `SOS_SRFAX_BASE_URL`
+- `SOS_SRFAX_ACCOUNT_ID`
+- `SOS_SRFAX_PASSWORD`
+- `SOS_SRFAX_SENDER_NUMBER`
 - Postmark webhook auth/security envs used by webhook endpoint:
 - `POSTMARK_WEBHOOK_BASIC_AUTH`
 - `POSTMARK_WEBHOOK_BASIC_AUTH_PREVIOUS` (optional, during credential rotation)
@@ -34,6 +41,8 @@ Startup fails fast for required variables per role.
 ### `blackbolt-worker`
 - `GOOGLE_SERVICE_ACCOUNT_JSON` (raw service-account JSON string for Drive API auth)
 - `SOS_DRIVE_ROOT_FOLDER_ID` (Drive parent folder id for SOS case folders)
+- `SOS_FOLLOWUP_SWEEP_DISABLED` (`1` disables automatic daily sweep)
+- `SOS_FOLLOWUP_SWEEP_INTERVAL_MS` (default `86400000`)
 - Queue/sweeper tuning envs (optional):
 - `POSTMARK_SEND_SWEEPER_DISABLED`
 - `POSTMARK_SEND_SWEEPER_EVERY_MS`
@@ -52,6 +61,7 @@ Startup fails fast for required variables per role.
 6. Deploy both services on the same commit SHA.
 7. Confirm startup banners show expected role and the same `build_sha` value for API + Worker.
 8. Confirm logs show successful startup without missing-env errors.
+9. Run `scripts/sos/preflight-check.sh` with exported SOS envs before enabling Phase 6/7 live actions.
 
 ## Local Operator Defaults
 - Default operator API base URL: `https://blackbolt-api-production.up.railway.app`
