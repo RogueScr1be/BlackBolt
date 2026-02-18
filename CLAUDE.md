@@ -1,5 +1,71 @@
 # CLAUDE Guardrails
 
+## New Project Profiles
+- For SOS Lactation optimization work (including any request scoped to `soslactation.com` or SOS consultation workflow automation), use `/Users/thewhitley/Documents/New project/docs/soslactation-ops.md` as the governing profile before implementation.
+- Keep BlackBolt guardrails active for all non-SOS workflows in this repository.
+
+## SOS Automation Delivery Contract
+- Activation:
+  - Apply this contract when task scope includes SOS Lactation, Leah workflow, patient forms, SOAP, Drive, Stripe, consult automation, or `soslactation.com` clinical operations.
+- Executable spec:
+  - Use `/Users/thewhitley/Documents/New project/docs/runbooks/soslactation-implementation.md` as the implementation and acceptance-test source of truth.
+- Completion gate (`runnable-or-blocked`):
+  - An SOS implementation task is not complete unless at least one runnable workflow slice is shipped with verification evidence.
+  - If blocked by external dependency (credentials, external API, template limitation), completion output must include:
+    - exact blocker
+    - evidence commands and outcome summary
+    - minimal unblocked work completed
+    - next executable step
+- No docs-only closure:
+  - Docs/schemas/mappings are milestone artifacts and are not final completion for implementation requests.
+- Required phase order for SOS implementation:
+  - Foundation -> Mapping integrity -> Case store/orchestrator -> Intake+payment trigger -> Console -> SOAP/Pedi -> Post-consult outputs -> Scheduler.
+  - Status updates must include `current phase` and whether phase definition-of-done is met.
+- Evidence required before claiming completion:
+  - commands run
+  - artifacts created
+  - test/check results
+  - known gaps
+  - never claim “works in theory” without execution evidence
+- Identity parity invariant:
+  - Shared keys must map consistently across consult workflows:
+    - `patient.parentName`
+    - `patient.email`
+    - `patient.phone`
+    - `patient.address`
+    - `baby.name`
+    - `baby.dob`
+- Template reality rule:
+  - If source PDFs are non-fillable, classify them as static templates and include explicit rendering strategy/version notes. Do not represent static PDFs as field-fillable forms.
+- BlackBolt isolation:
+  - SOS contract applies only to SOS-activated tasks and does not override BlackBolt release/safety contracts.
+
+## SOS Lactation SEO Playbook
+- Objective: maximize speed, technical SEO integrity, and local rankings for Houston intent on `soslactation.com`.
+- Canonical execution spec: `/Users/thewhitley/Documents/New project/docs/runbooks/soslactation-wordpress-seo.md`.
+- Required execution order: Baseline -> Leakage Stop -> CWV Hardening -> Local SEO -> Content Refresh -> Monitoring.
+- Decision defaults:
+  - SEO plugin: `Rank Math` (single source of truth for indexation/canonicals/schema controls).
+  - Performance plugin: `LiteSpeed Cache` when host stack supports it; otherwise `WP Rocket`.
+- Safeguards (non-negotiable):
+  - Stage-first with full backup and rollback snapshot before any plugin/config/template changes.
+  - Never run overlapping SEO plugins or overlapping optimization/performance stacks.
+  - No new SEO/performance/utility plugin may be added without documented reason, owner, and removal plan in `docs/decision-log.md`.
+  - Apply noindex controls to test/thin/system surfaces before publishing new SEO content.
+- Phase gates (definition of done):
+  - Phase 0 Baseline + Safety:
+    - Pass only when PSI mobile/desktop baseline is captured for homepage + top 3 service pages, GSC coverage and query/page exports are recorded, plugin inventory is recorded, and rollback artifacts exist.
+  - Phase 1 Leakage Stop:
+    - Pass only when known test/thin/system URLs are set `noindex`, sitemap includes only canonical indexable URLs, canonicals are normalized, and unnecessary internal links to noindex URLs are removed.
+  - Phase 2 CWV Hardening:
+    - Pass only when cache/compression/lazy-load/image/font settings are configured on one performance stack, plugin conflicts are removed, and no major template regressions are observed on mobile.
+  - Phase 3 Local SEO:
+    - Pass only when LocalBusiness or MedicalOrganization (as appropriate), Service, and FAQ schema are validated, NAP/service-area details are consistent, and location pages are unique and internally linked to booking routes.
+  - Phase 4 Content Refresh:
+    - Pass only when priority legacy posts are updated with current guidance, FAQs, authority signals (IBCLC credentials), and internal booking links.
+  - Phase 5 Monitoring:
+    - Pass only when monthly CWV/plugin audit cadence and quarterly schema/content refresh cadence are documented and active with tracked query clusters.
+
 ## Execution Environment
 - Before any work, run `pwd && ls -la` and locate uploaded artifacts via `find . -maxdepth 4 -name '*.zip'`.
 - In sandbox environments, never reference `/Users/*` blindly or search home directories first; verify mounted writable paths before acting.
@@ -8,9 +74,9 @@
 - Work in explicit phases with entry/exit criteria; do not start the next phase until current phase gates pass.
 - For every phase, report: files changed, commands run with outcomes, blast radius, and rollback steps.
 - Keep changes minimal and reversible; prefer scaffolding and placeholders over speculative feature work.
-- Record all non-obvious architectural/tooling choices in `/Users/thewhitley/Documents/New project/docs/decision-log.md` before expanding scope.
+- Record all non-obvious architectural/tooling choices in `/Users/thewhitley/.codex/worktrees/749b/New project/docs/decision-log.md` before expanding scope.
 - If a requested governance skill is unavailable, mirror its enforcement rules here and continue with deterministic execution.
-- Node version must match `/Users/thewhitley/Documents/New project/.nvmrc` exactly for local and CI runs.
+- Node version must match `/Users/thewhitley/.codex/worktrees/749b/New project/.nvmrc` exactly for local and CI runs.
 - Support `TEST_OFFLINE=1` mode: skip external contract lint tooling, but still run local contract coverage and unit tests.
 - Define setup truthfully:
   - First-time setup (networked): `nvm install && nvm use && npm ci` (or `npm install` if lockfile is absent).
@@ -88,3 +154,14 @@
 - Keep same-SHA release discipline and smoke-script gate as mandatory before live declaration.
 - Before reporting verification status, always check local SHA and sync state (`git rev-parse --short HEAD`, `git pull`) to avoid reporting from stale commits.
 - Daily Operator dashboard launch path is the installed app (`~/Applications/BlackBolt Operator.app`); `bash scripts/operator/open-latest.sh` is developer fallback for source freshness checks. Do not use browser links as authoritative launch.
+
+## Feature Reality Check
+- Before claiming any feature is shipped, verify all of the following:
+- Endpoint exists in controller and is present in `contracts/openapi/blackbolt.v1.yaml`.
+- Service logic is implemented beyond static placeholder copy.
+- UI action is wired to a real network call and handles error states.
+
+## Operator Onboarding Truth
+- Tenant onboarding is complete only after running `npm run tenant:seed -- --name=\"...\" --slug=...`.
+- The seed output is source-of-truth for `tenantId` (`x-tenant-id`) and `operatorKey` (`x-operator-key`).
+- Do not mark operator workflows usable until per-tenant operator credential is present in DB.

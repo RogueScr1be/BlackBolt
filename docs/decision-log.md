@@ -224,3 +224,13 @@
 - Context: previously, newly ingested reviews were persisted but did not execute full reactivation workflow states.
 - Decision: extend GBP ingest worker to run deterministic workflow gating for newly inserted reviews (classification, confidence policy, segment selection, constrained draft creation, approval/manual lane split, and send scheduling queue).
 - Consequence: 5-star genuine positives now move through automated path by default with risk/manual overrides, aligned to 1.0 policy constraints.
+
+## 2026-02-18 — SOS Lactation WordPress SEO operating system baseline
+- Context: SOS Lactation SEO execution needed repeatable guardrails and a canonical runbook to prevent plugin overlap, index leakage, and undocumented operational drift.
+- Decision: add `SOS Lactation SEO Playbook` section to `/Users/thewhitley/Documents/New project/CLAUDE.md` and adopt `/Users/thewhitley/Documents/New project/docs/runbooks/soslactation-wordpress-seo.md` as canonical execution spec; standardize on Rank Math for SEO control and single performance stack policy (LiteSpeed Cache preferred, WP Rocket fallback).
+- Consequence: future SEO runs have deterministic phase gates, rollback discipline, and consistent reporting across staging and production.
+
+## 2026-02-18 — SOS Lactation baseline and monthly reporting artifacts
+- Context: Phase-gated SEO execution required standardized baseline capture and monthly reporting outputs inside the repository.
+- Decision: add `/Users/thewhitley/Documents/New project/docs/soslactation-seo-baseline.md`, `/Users/thewhitley/Documents/New project/docs/reports/soslactation-seo-report-template.md`, and initial monthly report file `/Users/thewhitley/Documents/New project/docs/reports/soslactation-seo-monthly-2026-02.md`.
+- Consequence: every SEO cycle now has a fixed artifact contract for measurement, regression tracking, and operational handoff.
