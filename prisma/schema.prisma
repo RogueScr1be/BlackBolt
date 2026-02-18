@@ -97,6 +97,7 @@ model Tenant {
   draftMessages         DraftMessage[]
   approvalItems         ApprovalItem[]
   campaigns             Campaign[]
+  campaignRuns          CampaignRun[]
   campaignMessages      CampaignMessage[]
   sendEvents            SendEvent[]
   linkCodes             LinkCode[]
@@ -112,6 +113,10 @@ model Tenant {
   gbpSyncStates         GbpSyncState[]
   postmarkWebhookEvents PostmarkWebhookEvent[]
   postmarkSendControl   PostmarkSendControl?
+  operatorCredential    OperatorCredential?
+  sosCases              SosCase[]
+  sosArtifacts          SosArtifact[]
+  sosStripeWebhookEvents SosStripeWebhookEvent[]
   revenueEvents         RevenueEvent[]
   revenueAttributions   RevenueAttribution[]
 
@@ -310,6 +315,7 @@ model Review {
   customer         Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
   classifications  ReviewClassification[]
   draftMessages    DraftMessage[]
+  campaignRuns     CampaignRun[]
 
   @@unique([tenantId, source, sourceReviewId])
   @@index([tenantId])
@@ -385,6 +391,7 @@ model Campaign {
 
   tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   messages        CampaignMessage[]
+  campaignRuns    CampaignRun[]
 
   @@unique([tenantId, campaignKey])
   @@index([tenantId])
@@ -395,6 +402,7 @@ model CampaignMessage {
   id               String   @id @default(cuid())
   tenantId         String   @map("tenant_id")
   campaignId       String   @map("campaign_id")
+  campaignRunId    String?  @map("campaign_run_id")
   customerId       String   @map("customer_id")
   draftMessageId   String?  @map("draft_message_id")
   /// Deterministic: sha256(tenant_id + campaign_id + customer_id + template_version + send_window)
@@ -410,6 +418,7 @@ model CampaignMessage {
 
   tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   campaign         Campaign @relation(fields: [campaignId], references: [id], onDelete: Restrict)
+  campaignRun      CampaignRun? @relation(fields: [campaignRunId], references: [id], onDelete: SetNull)
   customer         Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
   draftMessage     DraftMessage? @relation(fields: [draftMessageId], references: [id], onDelete: SetNull)
   sendEvents       SendEvent[]
@@ -419,7 +428,37 @@ model CampaignMessage {
   @@unique([tenantId, sendDedupeKey])
   @@unique([tenantId, providerMessageId])
   @@index([tenantId])
+  @@index([tenantId, campaignRunId])
   @@map("campaign_messages")
+}
+
+model CampaignRun {
+  id               String   @id @default(cuid())
+  tenantId         String   @map("tenant_id")
+  triggerReviewId  String   @map("trigger_review_id")
+  campaignId       String   @map("campaign_id")
+  status           String
+  segmentMode      String   @map("segment_mode")
+  sendWindowAt     DateTime @map("send_window_at")
+  recipientsTotal  Int      @default(0) @map("recipients_total")
+  messagesQueued   Int      @default(0) @map("messages_queued")
+  messagesSent     Int      @default(0) @map("messages_sent")
+  messagesFailed   Int      @default(0) @map("messages_failed")
+  lastErrorCode    String?  @map("last_error_code")
+  lastErrorMessage String?  @map("last_error_message")
+  startedAt        DateTime? @map("started_at")
+  finishedAt       DateTime? @map("finished_at")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  triggerReview    Review   @relation(fields: [triggerReviewId], references: [id], onDelete: Restrict)
+  campaign         Campaign @relation(fields: [campaignId], references: [id], onDelete: Restrict)
+  messages         CampaignMessage[]
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, status])
+  @@map("campaign_runs")
 }
 
 model RevenueEvent {
@@ -651,4 +690,93 @@ model PostmarkSendControl {
   tenant                    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
 
   @@map("postmark_send_controls")
+}
+
+model OperatorCredential {
+  tenantId    String   @id @map("tenant_id")
+  keyHash     String   @map("key_hash")
+  keyHint     String   @map("key_hint")
+  rotatedAt   DateTime? @map("rotated_at")
+  rotatedBy   String?  @map("rotated_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@map("operator_credentials")
+}
+
+model SosCase {
+  id                    String   @id @default(cuid())
+  tenantId              String   @map("tenant_id")
+  consultType           String   @map("consult_type")
+  status                String
+  stripePaymentIntentId String   @map("stripe_payment_intent_id")
+  driveFolderId         String?  @map("drive_folder_id")
+  driveFolderUrl        String?  @map("drive_folder_url")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  tenant                Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  payloads              SosCasePayload[]
+  artifacts             SosArtifact[]
+
+  @@unique([tenantId, stripePaymentIntentId])
+  @@index([tenantId, createdAt])
+  @@map("sos_cases")
+}
+
+model SosCasePayload {
+  id            String   @id @default(cuid())
+  caseId        String   @map("case_id")
+  version       Int
+  canonicalJson Json     @map("canonical_json")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  case          SosCase  @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@unique([caseId, version])
+  @@index([caseId, createdAt])
+  @@map("sos_case_payloads")
+}
+
+model SosArtifact {
+  id           String   @id @default(cuid())
+  tenantId     String   @map("tenant_id")
+  caseId       String   @map("case_id")
+  artifactType String   @map("artifact_type")
+  templateId   String?  @map("template_id")
+  fileName     String   @map("file_name")
+  driveFileId  String?  @map("drive_file_id")
+  url          String?  @map("url")
+  metadataJson Json?    @map("metadata_json")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  case         SosCase  @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@unique([caseId, artifactType])
+  @@index([tenantId, createdAt])
+  @@map("sos_artifacts")
+}
+
+model SosStripeWebhookEvent {
+  id                  String   @id @default(cuid())
+  tenantId            String   @map("tenant_id")
+  providerEventId     String   @map("provider_event_id")
+  paymentIntentId     String?  @map("payment_intent_id")
+  eventType           String   @map("event_type")
+  payloadHash         String   @map("payload_hash")
+  payloadRedactedJson Json     @map("payload_redacted_json")
+  receivedAt          DateTime @map("received_at")
+  processStatus       String   @default("PENDING") @map("process_status")
+  lastError           String?  @map("last_error")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  tenant              Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@unique([providerEventId])
+  @@index([tenantId, processStatus, createdAt])
+  @@map("sos_stripe_webhook_events")
 }

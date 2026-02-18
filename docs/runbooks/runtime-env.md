@@ -23,12 +23,16 @@ Startup fails fast for required variables per role.
 
 ### `blackbolt-api`
 - `PORT` (Railway usually injects this)
+- `STRIPE_WEBHOOK_SECRET` (required for `/v1/webhooks/stripe` signature verification)
+- `REDIS_URL` is required when SOS Stripe webhook orchestration is enabled (queue-backed flow).
 - Postmark webhook auth/security envs used by webhook endpoint:
 - `POSTMARK_WEBHOOK_BASIC_AUTH`
 - `POSTMARK_WEBHOOK_BASIC_AUTH_PREVIOUS` (optional, during credential rotation)
 - `POSTMARK_WEBHOOK_IP_ALLOWLIST` (optional, comma-separated)
 
 ### `blackbolt-worker`
+- `GOOGLE_SERVICE_ACCOUNT_JSON` (raw service-account JSON string for Drive API auth)
+- `SOS_DRIVE_ROOT_FOLDER_ID` (Drive parent folder id for SOS case folders)
 - Queue/sweeper tuning envs (optional):
 - `POSTMARK_SEND_SWEEPER_DISABLED`
 - `POSTMARK_SEND_SWEEPER_EVERY_MS`
@@ -51,6 +55,11 @@ Startup fails fast for required variables per role.
 ## Local Operator Defaults
 - Default operator API base URL: `https://blackbolt-api-production.up.railway.app`
 - Operator tenant ID is persisted locally in app settings.
+- Operator auth is tenant-scoped (`x-tenant-id` + `x-operator-key`) backed by `operator_credentials`.
+- Do not configure or depend on a global `OPERATOR_KEY` env var.
+- Bootstrap/rotate operator keys via API/seed flow:
+  - `npm run tenant:seed -- --name="Your Tenant" --slug=your-tenant`
+  - `POST /v1/tenants/{tenantId}/operator/keys/rotate`
 - Optional auth header can be stored as:
 - full header value (`Basic ...` or `Bearer ...`)
 - or raw `user:pass` (app encodes this into `Basic ...`).

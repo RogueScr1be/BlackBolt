@@ -3,7 +3,8 @@ export const QUEUES = {
   SUPPRESSIONS_IMPORT: 'suppressions.import',
   GBP_INGEST: 'gbp.ingest',
   POSTMARK_WEBHOOK_RECONCILE: 'postmark.webhook.reconcile',
-  POSTMARK_SEND: 'postmark.send'
+  POSTMARK_SEND: 'postmark.send',
+  SOS_CASE_ORCHESTRATION: 'sos.case.orchestration'
 } as const;
 
 export const DLQ_SUFFIX = ':dlq';

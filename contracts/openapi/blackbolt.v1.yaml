@@ -184,6 +184,7 @@ paths:
       summary: Upload customer CSV import
       parameters:
         - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/OperatorKeyHeader'
         - $ref: '#/components/parameters/TenantIdPath'
       requestBody:
         required: true
@@ -227,6 +228,7 @@ paths:
       summary: List tenant customers with optional segment filter
       parameters:
         - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/OperatorKeyHeader'
         - $ref: '#/components/parameters/TenantIdPath'
         - name: limit
           in: query
@@ -252,6 +254,7 @@ paths:
       summary: Upload suppression CSV import
       parameters:
         - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/OperatorKeyHeader'
         - $ref: '#/components/parameters/TenantIdPath'
       requestBody:
         required: true
@@ -295,6 +298,7 @@ paths:
       summary: Set GBP tenant integration references
       parameters:
         - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/OperatorKeyHeader'
         - $ref: '#/components/parameters/TenantIdPath'
       requestBody:
         required: true
@@ -317,6 +321,7 @@ paths:
       summary: Get GBP integration and ingest operator summary
       parameters:
         - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/OperatorKeyHeader'
         - $ref: '#/components/parameters/TenantIdPath'
       responses:
         '200':
@@ -333,6 +338,7 @@ paths:
       summary: Enqueue GBP review polling job
       parameters:
         - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/OperatorKeyHeader'
         - $ref: '#/components/parameters/TenantIdPath'
       responses:
         '202':
@@ -439,6 +445,100 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
+  /v1/tenants/{tenantId}/campaign-runs:
+    get:
+      operationId: listCampaignRuns
+      tags: [campaigns, operator]
+      summary: List campaign runs for tenant
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/TenantIdPath'
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 100, default: 25 }
+      responses:
+        '200':
+          description: Campaign run list
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/CampaignRunSummary' }
+
+  /v1/tenants/{tenantId}/campaign-runs/{runId}:
+    get:
+      operationId: getCampaignRun
+      tags: [campaigns, operator]
+      summary: Get campaign run detail
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/OperatorKeyHeader'
+        - $ref: '#/components/parameters/TenantIdPath'
+        - $ref: '#/components/parameters/RunIdPath'
+      responses:
+        '200':
+          description: Campaign run detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CampaignRunDetail'
+
+  /v1/tenants/{tenantId}/campaign-runs/{runId}/pause:
+    post:
+      operationId: pauseCampaignRun
+      tags: [campaigns, operator]
+      summary: Pause a campaign run
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/OperatorKeyHeader'
+        - $ref: '#/components/parameters/TenantIdPath'
+        - $ref: '#/components/parameters/RunIdPath'
+      responses:
+        '200':
+          description: Campaign run paused
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperatorInterventionResponse'
+
+  /v1/tenants/{tenantId}/campaign-runs/{runId}/resume:
+    post:
+      operationId: resumeCampaignRun
+      tags: [campaigns, operator]
+      summary: Resume a paused campaign run
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/OperatorKeyHeader'
+        - $ref: '#/components/parameters/TenantIdPath'
+        - $ref: '#/components/parameters/RunIdPath'
+      responses:
+        '200':
+          description: Campaign run resumed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperatorInterventionResponse'
+
+  /v1/links/{code}:
+    get:
+      operationId: redirectTrackedLink
+      tags: [links, tracking]
+      summary: Redirect tracked short link and record click telemetry
+      security: []
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '302':
+          description: Redirect to destination URL
+
   /v1/webhooks/postmark:
     post:
       operationId: receivePostmarkWebhook
@@ -475,6 +575,43 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '500':
           description: Transient webhook processing failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/webhooks/stripe:
+    post:
+      operationId: receiveStripeWebhook
+      tags: [webhooks, stripe]
+      summary: Receive Stripe payment webhook events for SOS case orchestration
+      security: []
+      parameters:
+        - name: stripe-signature
+          in: header
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StripeWebhookPayload'
+      responses:
+        '200':
+          description: Webhook accepted or ignored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StripeWebhookAccepted'
+        '400':
+          description: Invalid webhook payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Invalid webhook signature
           content:
             application/json:
               schema:
@@ -615,6 +752,62 @@ paths:
               schema:
                 $ref: '#/components/schemas/MonthlyReportPayload'
 
+  /v1/tenants/{tenantId}/reports/monthly/pdf:
+    get:
+      operationId: getMonthlyReportPdf
+      tags: [reports, operator]
+      summary: Monthly report PDF export
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/OperatorKeyHeader'
+        - $ref: '#/components/parameters/TenantIdPath'
+        - name: month
+          in: query
+          required: false
+          schema: { type: string, pattern: '^\\d{4}-\\d{2}$' }
+      responses:
+        '200':
+          description: PDF bytes
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+
+  /v1/tenants/{tenantId}/operator/smoke:
+    post:
+      operationId: runOperatorSmoke
+      tags: [operator]
+      summary: Run operator smoke checks
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/OperatorKeyHeader'
+        - $ref: '#/components/parameters/TenantIdPath'
+      responses:
+        '200':
+          description: Smoke check results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperatorSmokeResponse'
+
+  /v1/tenants/{tenantId}/operator/keys/rotate:
+    post:
+      operationId: rotateOperatorKey
+      tags: [operator]
+      summary: Rotate tenant operator key
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/OperatorKeyHeader'
+        - $ref: '#/components/parameters/TenantIdPath'
+      responses:
+        '200':
+          description: Rotated key response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RotateOperatorKeyResponse'
+
 components:
   securitySchemes:
     bearerAuth:
@@ -634,6 +827,11 @@ components:
       schema: { type: string }
     TenantIdPath:
       name: tenantId
+      in: path
+      required: true
+      schema: { type: string }
+    RunIdPath:
+      name: runId
       in: path
       required: true
       schema: { type: string }
@@ -896,6 +1094,34 @@ components:
         duplicate: { type: boolean }
         eventId: { type: string }
         resolved: { type: boolean, nullable: true }
+    StripeWebhookPayload:
+      type: object
+      required: [id, type]
+      properties:
+        id: { type: string }
+        type: { type: string }
+        data:
+          type: object
+          required: [object]
+          properties:
+            object:
+              type: object
+              additionalProperties: true
+      additionalProperties: true
+    StripeWebhookAccepted:
+      type: object
+      required: [accepted]
+      properties:
+        accepted: { type: boolean }
+        queued: { type: boolean, nullable: true }
+        duplicate: { type: boolean, nullable: true }
+        eventId: { type: string, nullable: true }
+        jobId: { type: string, nullable: true }
+        idempotencyKey: { type: string, nullable: true }
+        reason:
+          type: string
+          nullable: true
+          enum: [event_type_ignored]
     PostmarkSendSummaryItem:
       type: object
       required: [campaignMessageId, status, attempt, lastEventAt]
@@ -1285,6 +1511,82 @@ components:
           additionalProperties: true
         alert_id: { type: string, nullable: true }
         resolved_at: { type: string, format: date-time, nullable: true }
+    CampaignRunStatus:
+      type: string
+      enum: [QUEUED, RUNNING, PAUSED, COMPLETED, FAILED]
+    CampaignRunSummary:
+      type: object
+      required:
+        [id, status, segment_mode, send_window_at, recipients_total, messages_queued, messages_sent, messages_failed, created_at, updated_at]
+      properties:
+        id: { type: string }
+        status: { $ref: '#/components/schemas/CampaignRunStatus' }
+        segment_mode: { type: string, enum: [default, volume, gentle] }
+        send_window_at: { type: string, format: date-time }
+        recipients_total: { type: integer }
+        messages_queued: { type: integer }
+        messages_sent: { type: integer }
+        messages_failed: { type: integer }
+        last_error_code: { type: string, nullable: true }
+        last_error_message: { type: string, nullable: true }
+        started_at: { type: string, format: date-time, nullable: true }
+        finished_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        campaign:
+          type: object
+          required: [id, campaignKey, name]
+          properties:
+            id: { type: string }
+            campaignKey: { type: string }
+            name: { type: string }
+        trigger_review:
+          type: object
+          required: [id, rating, created_at]
+          properties:
+            id: { type: string }
+            rating: { type: integer, nullable: true }
+            reviewed_at: { type: string, format: date-time, nullable: true }
+            created_at: { type: string, format: date-time }
+    CampaignRunDetail:
+      allOf:
+        - $ref: '#/components/schemas/CampaignRunSummary'
+        - type: object
+          required: [breakdown]
+          properties:
+            breakdown:
+              type: object
+              required: [queued, paused, sent, failed]
+              properties:
+                queued: { type: integer }
+                paused: { type: integer }
+                sent: { type: integer }
+                failed: { type: integer }
+    OperatorSmokeCheck:
+      type: object
+      required: [name, path, passed, status]
+      properties:
+        name: { type: string }
+        path: { type: string }
+        passed: { type: boolean }
+        status: { type: integer }
+        reason: { type: string, nullable: true }
+        failing_header: { type: string, nullable: true }
+    OperatorSmokeResponse:
+      type: object
+      required: [tenant_id, overall_passed, checks]
+      properties:
+        tenant_id: { type: string }
+        overall_passed: { type: boolean }
+        checks:
+          type: array
+          items: { $ref: '#/components/schemas/OperatorSmokeCheck' }
+    RotateOperatorKeyResponse:
+      type: object
+      required: [tenant_id, operator_key]
+      properties:
+        tenant_id: { type: string }
+        operator_key: { type: string }
     OperatorKPI:
       type: object
       required: [revenue_month, attributed_bookings_month, new_5star_reviews_month, email_conversion_rate, portfolio_health_score, action_required_count]
@@ -1348,13 +1650,18 @@ components:
         aggressive_bookings: { type: integer }
     MonthlyReportTotals:
       type: object
-      required: [revenue_cents, attributed_cents, bookings_count, sent_count, click_count]
+      required:
+        [revenue_cents, attributed_cents, bookings_count, sent_count, click_count, run_count, run_messages_sent, run_messages_failed, run_messages_queued]
       properties:
         revenue_cents: { type: integer }
         attributed_cents: { type: integer }
         bookings_count: { type: integer }
         sent_count: { type: integer }
         click_count: { type: integer }
+        run_count: { type: integer }
+        run_messages_sent: { type: integer }
+        run_messages_failed: { type: integer }
+        run_messages_queued: { type: integer }
     MonthlyReportBenefit:
       type: object
       required: [benefit, mentions]

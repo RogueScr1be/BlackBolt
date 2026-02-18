@@ -234,3 +234,9 @@
 - Context: Phase-gated SEO execution required standardized baseline capture and monthly reporting outputs inside the repository.
 - Decision: add `/Users/thewhitley/Documents/New project/docs/soslactation-seo-baseline.md`, `/Users/thewhitley/Documents/New project/docs/reports/soslactation-seo-report-template.md`, and initial monthly report file `/Users/thewhitley/Documents/New project/docs/reports/soslactation-seo-monthly-2026-02.md`.
 - Consequence: every SEO cycle now has a fixed artifact contract for measurement, regression tracking, and operational handoff.
+
+## 2026-02-18 — SOS Phase 2 Stripe->Drive orchestration slice
+- Context: SOS automation required a runnable product slice beyond documentation, with deterministic case creation and artifact persistence after payment success.
+- Decision: implement tenant-scoped SOS case storage (`sos_cases`, `sos_case_payloads`, `sos_artifacts`, `sos_stripe_webhook_events`), add `POST /v1/webhooks/stripe` for `payment_intent.succeeded`, and enqueue worker processing on `sos.case.orchestration` with idempotency key `sos-case:create:{tenantId}:{paymentIntentId}`.
+- Decision: process Drive folder creation in worker via Google service account credentials (`GOOGLE_SERVICE_ACCOUNT_JSON`) under configured root (`SOS_DRIVE_ROOT_FOLDER_ID`), and persist folder artifact metadata as canonical output.
+- Consequence: first SOS runnable slice is now deterministic and auditable (`stripe webhook` -> `case row` -> `drive folder artifact`) with dedupe semantics across webhook, queue job id, and job-run ledger.
