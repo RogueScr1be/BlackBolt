@@ -13,11 +13,12 @@ import {
 } from '@nestjs/common';
 import { RevenueEventKind, RevenueEventSource } from '@prisma/client';
 import type { RequestWithContext } from '../../common/request-context';
+import { OperatorKeyGuard } from '../../common/guards/operator-key.guard';
 import { TenantGuard } from '../../common/guards/tenant.guard';
 import { RevenueService } from './revenue.service';
 
 @Controller('v1/tenants/:tenantId/revenue')
-@UseGuards(TenantGuard)
+@UseGuards(OperatorKeyGuard, TenantGuard)
 export class RevenueController {
   constructor(private readonly revenueService: RevenueService) {}
 

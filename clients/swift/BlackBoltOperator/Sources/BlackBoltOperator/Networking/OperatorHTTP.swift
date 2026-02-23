@@ -2,28 +2,19 @@ import Foundation
 
 enum OperatorHTTP {
     static func fetchJSON<T: Decodable>(_ request: URLRequest, as type: T.Type) async throws -> T {
-        let (data, response) = try await performRaw(request)
-        try ensureSuccess(request: request, response: response, data: data)
+        let (data, _) = try await performWithStatus(request)
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
         return try decoder.decode(T.self, from: data)
     }
 
     static func perform(_ request: URLRequest) async throws -> Data {
-        let (data, response) = try await performRaw(request)
-        try ensureSuccess(request: request, response: response, data: data)
+        let (data, _) = try await performWithStatus(request)
         return data
     }
 
-    private static func performRaw(_ request: URLRequest) async throws -> (Data, URLResponse) {
-        do {
-            return try await URLSession.shared.data(for: request)
-        } catch {
-            throw mapTransportError(error, request: request)
-        }
-    }
-
-    private static func ensureSuccess(request: URLRequest, response: URLResponse, data: Data) throws {
+    static func performWithStatus(_ request: URLRequest) async throws -> (Data, Int) {
+        let (data, response) = try await performRaw(request)
         guard let http = response as? HTTPURLResponse else {
             throw OperatorAppError(
                 code: "bad_server_response",
@@ -35,6 +26,15 @@ enum OperatorHTTP {
         guard (200 ... 299).contains(http.statusCode) else {
             let body = String(data: data, encoding: .utf8) ?? ""
             throw mapHTTPError(status: http.statusCode, body: body, request: request)
+        }
+        return (data, http.statusCode)
+    }
+
+    private static func performRaw(_ request: URLRequest) async throws -> (Data, URLResponse) {
+        do {
+            return try await URLSession.shared.data(for: request)
+        } catch {
+            throw mapTransportError(error, request: request)
         }
     }
 
@@ -85,8 +85,8 @@ enum OperatorHTTP {
             )
         case 503:
             return OperatorAppError(
-                code: "operator_key_not_configured",
-                message: "Operator key not configured on API (OPERATOR_KEY missing server-side).",
+                code: "operator_auth_unavailable",
+                message: "Operator authentication is unavailable on API. Verify tenant credentials and server auth config.",
                 httpStatus: status,
                 path: path
             )

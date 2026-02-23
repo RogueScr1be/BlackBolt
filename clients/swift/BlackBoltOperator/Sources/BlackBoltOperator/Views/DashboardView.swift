@@ -13,9 +13,9 @@ struct DashboardView: View {
                         .foregroundColor(.secondary)
                     Spacer()
                     Button("Refresh") {
-                        Task { await store.refresh(runtime: runtime) }
+                        Task { await store.reloadDashboard(runtime: runtime) }
                     }
-                    .disabled(store.isLoading || store.connectionState == .invalidConfig)
+                    .disabled(store.isLoading || !store.hasRequiredSettings(runtime: runtime))
                 }
 
                 if store.connectionState == .invalidConfig {
@@ -23,6 +23,19 @@ struct DashboardView: View {
                         Text("Set API Base URL, Tenant ID, and Operator Key in Settings before refresh.")
                             .font(.caption)
                             .foregroundColor(.secondary)
+                    }
+                }
+
+                if case .failed(let sectionError) = store.dashboardState {
+                    HStack {
+                        Text(sectionError.message)
+                            .font(.caption)
+                            .foregroundColor(.red)
+                        Spacer()
+                        Button("Retry Dashboard") {
+                            Task { await store.reloadDashboard(runtime: runtime) }
+                        }
+                        .disabled(store.isLoading || !store.hasRequiredSettings(runtime: runtime))
                     }
                 }
 
@@ -34,6 +47,45 @@ struct DashboardView: View {
                         KPIBox(title: "Email conversion", value: String(format: "%.2f%%", dashboard.kpis.emailConversionRate * 100))
                         KPIBox(title: "Portfolio health", value: "\(dashboard.kpis.portfolioHealthScore)")
                         KPIBox(title: "Action required", value: "\(dashboard.kpis.actionRequiredCount)")
+                    }
+
+                    if let segments = store.customerSegments {
+                        GroupBox("Customers + Segments") {
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("Total customers: \(segments.total)")
+                                    .font(.caption)
+                                HStack {
+                                    ForEach(segments.items) { item in
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(item.segment)
+                                                .font(.caption2)
+                                                .foregroundColor(.secondary)
+                                            Text("\(item.count)")
+                                                .font(.caption.monospacedDigit())
+                                        }
+                                        if item.id != segments.items.last?.id {
+                                            Spacer()
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    GroupBox("Import Health") {
+                        if let latestImport = store.revenueImports.first {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Latest status: \(latestImport.status.uppercased())")
+                                    .font(.caption)
+                                Text("Rows \(latestImport.processedRows)/\(latestImport.totalRows) • ok \(latestImport.succeededRows) • fail \(latestImport.failedRows) • dup \(latestImport.duplicateRows)")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                            }
+                        } else {
+                            Text("No revenue imports found yet.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
                     }
 
                     GroupBox("Dashboard Widgets") {

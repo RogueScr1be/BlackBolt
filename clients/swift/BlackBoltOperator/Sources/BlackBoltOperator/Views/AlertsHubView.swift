@@ -19,9 +19,22 @@ struct AlertsHubView: View {
                         .foregroundColor(.red)
                     Spacer()
                     Button("Retry") {
-                        Task { await store.refresh(runtime: runtime) }
+                        Task { await store.reloadAlerts(runtime: runtime) }
                     }
-                    .disabled(store.connectionState == .invalidConfig || store.isLoading)
+                    .disabled(!store.hasRequiredSettings(runtime: runtime) || store.isLoading)
+                }
+            }
+
+            if case .failed(let sectionError) = store.alertsState {
+                HStack {
+                    Text(sectionError.message)
+                        .font(.caption)
+                        .foregroundColor(.red)
+                    Spacer()
+                    Button("Retry Alerts") {
+                        Task { await store.reloadAlerts(runtime: runtime) }
+                    }
+                    .disabled(!store.hasRequiredSettings(runtime: runtime) || store.isLoading)
                 }
             }
 
@@ -58,7 +71,7 @@ struct AlertsHubView: View {
                                             )
                                         }
                                     }
-                                    .disabled(store.connectionState == .invalidConfig || store.isLoading)
+                                    .disabled(!store.hasRequiredSettings(runtime: runtime) || store.isLoading)
                                 }
                                 if alert.executeCapability != "ack-alert" {
                                     Button("Acknowledge") {
@@ -70,10 +83,10 @@ struct AlertsHubView: View {
                                             )
                                         }
                                     }
-                                    .disabled(store.connectionState == .invalidConfig || store.isLoading)
+                                    .disabled(!store.hasRequiredSettings(runtime: runtime) || store.isLoading)
                                 }
                             }
-                            if store.connectionState == .invalidConfig {
+                            if !store.hasRequiredSettings(runtime: runtime) {
                                 Text("Configure API Base URL, Tenant ID, and Operator Key in Settings.")
                                     .font(.caption2)
                                     .foregroundColor(.secondary)

@@ -14,7 +14,16 @@ export class IntegrationsService {
     gbpAccessTokenRef: string;
     reason?: string;
   }) {
-    const tenant = await this.prisma.tenant.findUnique({ where: { id: input.tenantId } });
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: input.tenantId },
+      select: {
+        id: true,
+        gbpAccountId: true,
+        gbpLocationId: true,
+        gbpAccessTokenRef: true,
+        gbpIntegrationStatus: true
+      }
+    });
     if (!tenant) {
       throw new NotFoundException('Tenant not found');
     }
@@ -26,6 +35,13 @@ export class IntegrationsService {
         gbpLocationId: input.gbpLocationId,
         gbpAccessTokenRef: input.gbpAccessTokenRef,
         gbpIntegrationStatus: 'CONNECTED'
+      },
+      select: {
+        id: true,
+        gbpAccountId: true,
+        gbpLocationId: true,
+        gbpAccessTokenRef: true,
+        gbpIntegrationStatus: true
       }
     });
 

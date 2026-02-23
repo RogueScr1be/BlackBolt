@@ -47,12 +47,26 @@ export type MonthlyReportPayload = {
   tenant_id: string;
   month: string;
   generated_at: string;
+  metrics: {
+    new_5star_reviews: number;
+    reactivation_emails_sent: number;
+    open_count: number;
+    click_count: number;
+    open_rate: number;
+    click_rate: number;
+    estimated_bookings_driven: number;
+    estimated_revenue_impact_cents: number;
+  };
   totals: {
     revenue_cents: number;
     attributed_cents: number;
     bookings_count: number;
     sent_count: number;
     click_count: number;
+    run_count: number;
+    run_messages_sent: number;
+    run_messages_failed: number;
+    run_messages_queued: number;
   };
   estimates: {
     conservative_bookings: number;

@@ -6,6 +6,7 @@ import { CustomersWorkerModule } from './modules/customers/customers-worker.modu
 import { SuppressionsWorkerModule } from './modules/suppressions/suppressions-worker.module';
 import { ReviewsWorkerModule } from './modules/reviews/reviews-worker.module';
 import { PostmarkWorkerModule } from './modules/postmark/postmark-worker.module';
+import { RevenueWorkerModule } from './modules/revenue/revenue-worker.module';
 
 @Module({
   imports: [
@@ -14,7 +15,8 @@ import { PostmarkWorkerModule } from './modules/postmark/postmark-worker.module'
     CustomersWorkerModule,
     SuppressionsWorkerModule,
     ReviewsWorkerModule,
-    PostmarkWorkerModule
+    PostmarkWorkerModule,
+    RevenueWorkerModule
   ]
 })
 export class WorkerModule {}

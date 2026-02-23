@@ -1,7 +1,7 @@
 import { Logger } from '@nestjs/common';
-import { InjectQueue, Processor, WorkerHost } from '@nestjs/bullmq';
+import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Prisma } from '@prisma/client';
-import { Job, Queue } from 'bullmq';
+import { Job } from 'bullmq';
 import { createHash } from 'node:crypto';
 
 import { PrismaService } from '../prisma/prisma.service';
@@ -13,11 +13,19 @@ import {
   GBP_INGEST_IDEMPOTENCY_PREFIX,
   GBP_INGEST_IDEMPOTENCY_VERSION,
   GBP_PAGE_FETCH_JOB_NAME,
+  GBP_POLL_SCHEDULER_JOB_NAME,
   GBP_POLL_TRIGGER_JOB_NAME
 } from './reviews.constants';
 import type { GbpPageFetchJobPayload, GbpPollTriggerJobPayload } from './reviews.queue';
 import { ReviewsQueue } from './reviews.queue';
-import { POSTMARK_SEND_JOB_NAME } from '../postmark/postmark-send.queue';
+import {
+  classifyReview,
+  composeConstrainedDraft,
+  nextBusinessDayAt10Local,
+  renderDraftBody,
+  segmentModeToLabel,
+  segmentsForMode
+} from './reactivation.workflow';
 
 type GbpJobPayload = GbpPollTriggerJobPayload | GbpPageFetchJobPayload;
 type Telemetry = {
@@ -34,34 +42,22 @@ export class ReviewsProcessor extends WorkerHost {
   private readonly logger = new Logger(ReviewsProcessor.name);
   private readonly maxPagesPerRun = 5;
   private readonly maxRunMs = 45_000;
-  private readonly approvedSubjectVariants = [
-    'A quick thank-you from our team',
-    'We appreciated your 5-star review',
-    'Thanks for sharing your experience'
-  ];
-  private readonly approvedOpeningVariants = [
-    'Your recent feedback highlighted the care experience our team aims for.',
-    'Thank you for calling out the quality of your visit in your review.',
-    'Your review reinforced what matters most to our patients and team.'
-  ];
-  private readonly approvedCtaVariants = [
-    'Book your next visit',
-    'Schedule your follow-up',
-    'Plan your next appointment'
-  ];
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly ledger: JobRunLedgerService,
     private readonly gbpClient: GbpClient,
-    private readonly reviewsQueue: ReviewsQueue,
-    @InjectQueue(QUEUES.POSTMARK_SEND)
-    private readonly postmarkSendQueue: Queue<{ tenantId: string; campaignMessageId: string }>
+    private readonly reviewsQueue: ReviewsQueue
   ) {
     super();
   }
 
   async process(job: Job<GbpJobPayload>): Promise<void> {
+    if (job.name === GBP_POLL_SCHEDULER_JOB_NAME) {
+      await this.processSchedulerTick();
+      return;
+    }
+
     if (job.name === GBP_POLL_TRIGGER_JOB_NAME) {
       await this.processPollTrigger(job as Job<GbpPollTriggerJobPayload>);
       return;
@@ -73,6 +69,39 @@ export class ReviewsProcessor extends WorkerHost {
     }
 
     this.logger.warn(`Unknown GBP job name ${job.name}`);
+  }
+
+  private async processSchedulerTick() {
+    if (process.env.GBP_POLL_SCHEDULER_DISABLED === '1') {
+      return;
+    }
+
+    const tenants = await this.prisma.tenant.findMany({
+      where: {
+        gbpLocationId: { not: null },
+        gbpAccessTokenRef: { not: null },
+        gbpIntegrationStatus: 'CONNECTED'
+      },
+      select: {
+        id: true,
+        gbpLocationId: true
+      },
+      take: 1000
+    });
+
+    const timeBucket = new Date().toISOString().slice(0, 16);
+    for (const tenant of tenants) {
+      if (!tenant.gbpLocationId) {
+        continue;
+      }
+
+      await this.reviewsQueue.enqueuePollTrigger({
+        tenantId: tenant.id,
+        locationId: tenant.gbpLocationId,
+        timeBucket,
+        delayMs: Math.floor(Math.random() * 5000)
+      });
+    }
   }
 
   private async processPollTrigger(job: Job<GbpPollTriggerJobPayload>) {
@@ -161,16 +190,7 @@ export class ReviewsProcessor extends WorkerHost {
       return;
     }
 
-    const tenant = await this.prisma.tenant.findUnique({
-      where: { id: tenantId },
-      select: {
-        id: true,
-        gbpAccountId: true,
-        gbpLocationId: true,
-        gbpAccessTokenRef: true,
-        gbpIntegrationStatus: true
-      }
-    });
+    const tenant = await this.resolveTenantForPageFetch(tenantId);
 
     if (!tenant?.gbpAccountId || !tenant.gbpLocationId || !tenant.gbpAccessTokenRef) {
       telemetry.error_class = 'CONFIG_MISSING';
@@ -235,11 +255,37 @@ export class ReviewsProcessor extends WorkerHost {
         telemetry.upserted += 1;
 
         if (!existing) {
+          await this.prisma.reviewQueueItem.upsert({
+            where: {
+              tenantId_reviewId: {
+                tenantId,
+                reviewId: persisted.id
+              }
+            },
+            update: {
+              state: 'new',
+              rating: review.rating ?? null,
+              triggerReviewId: persisted.id,
+              updatedAt: new Date()
+            },
+            create: {
+              tenantId,
+              reviewId: persisted.id,
+              triggerReviewId: persisted.id,
+              state: 'new',
+              rating: review.rating ?? null,
+              serviceMentioned: null,
+              keyBenefit: null,
+              confidence: new Prisma.Decimal(0)
+            }
+          });
+
           await this.runReactivationWorkflow({
             tenantId,
             reviewId: persisted.id,
             rating: review.rating ?? null,
-            reviewBody: review.body ?? null
+            reviewBody: review.body ?? null,
+            tenantTimeZone: tenant.timeZone
           });
         }
 
@@ -281,7 +327,8 @@ export class ReviewsProcessor extends WorkerHost {
       if (tenant.gbpIntegrationStatus !== 'CONNECTED') {
         await this.prisma.tenant.update({
           where: { id: tenantId },
-          data: { gbpIntegrationStatus: 'CONNECTED' }
+          data: { gbpIntegrationStatus: 'CONNECTED' },
+          select: { id: true }
         });
       }
 
@@ -312,7 +359,8 @@ export class ReviewsProcessor extends WorkerHost {
 
         await this.prisma.tenant.update({
           where: { id: tenantId },
-          data: { gbpIntegrationStatus: 'NEEDS_REAUTH' }
+          data: { gbpIntegrationStatus: 'NEEDS_REAUTH' },
+          select: { id: true }
         });
 
         await this.ledger.markState(run.run.id, 'dead_lettered', 'GBP_AUTH_REVOKED', error.message, telemetry);
@@ -363,18 +411,13 @@ export class ReviewsProcessor extends WorkerHost {
     reviewId: string;
     rating: number | null;
     reviewBody: string | null;
+    tenantTimeZone: string;
   }) {
-    const words = (input.reviewBody ?? '').trim().split(/\s+/).filter(Boolean);
-    const riskFlags = this.detectRiskFlags(input.reviewBody ?? '');
-    const serviceMentioned = this.extractServiceMention(input.reviewBody ?? '');
-    const keyBenefit = this.extractKeyBenefit(input.reviewBody ?? '');
-    const confidence = this.calculateConfidence({
+    const classification = classifyReview({
       rating: input.rating,
-      wordCount: words.length,
-      hasRiskFlags: riskFlags.length > 0,
-      serviceMentioned
+      reviewBody: input.reviewBody
     });
-    const isGenuinePositive = (input.rating ?? 0) === 5 && riskFlags.length === 0;
+    const { confidence, isGenuinePositive, keyBenefit, serviceMentioned, riskFlags } = classification;
 
     await this.prisma.reviewClassification.upsert({
       where: {
@@ -397,22 +440,44 @@ export class ReviewsProcessor extends WorkerHost {
       }
     });
 
+    await this.prisma.reviewQueueItem.upsert({
+      where: {
+        tenantId_reviewId: {
+          tenantId: input.tenantId,
+          reviewId: input.reviewId
+        }
+      },
+      update: {
+        state: 'classified',
+        rating: input.rating ?? null,
+        serviceMentioned,
+        keyBenefit,
+        confidence: new Prisma.Decimal(confidence),
+        classifiedAt: new Date(),
+        updatedAt: new Date()
+      },
+      create: {
+        tenantId: input.tenantId,
+        reviewId: input.reviewId,
+        triggerReviewId: input.reviewId,
+        state: 'classified',
+        rating: input.rating ?? null,
+        serviceMentioned,
+        keyBenefit,
+        confidence: new Prisma.Decimal(confidence),
+        classifiedAt: new Date()
+      }
+    });
+
     if (!isGenuinePositive) {
       return;
     }
 
     const policy = await this.resolveReactivationPolicy(input.tenantId);
-    const eligibleSegments =
-      policy.segmentMode === 'gentle'
-        ? ['SEGMENT_0_90']
-        : policy.segmentMode === 'volume'
-          ? ['SEGMENT_90_365', 'SEGMENT_365_PLUS']
-          : ['SEGMENT_90_365'];
-
     const recipients = await this.prisma.customer.findMany({
       where: {
         tenantId: input.tenantId,
-        segment: { in: eligibleSegments as Array<'SEGMENT_0_90' | 'SEGMENT_90_365' | 'SEGMENT_365_PLUS'> }
+        segment: { in: segmentsForMode(policy.segmentMode) }
       },
       orderBy: { updatedAt: 'desc' },
       take: policy.maxRecipients
@@ -422,19 +487,32 @@ export class ReviewsProcessor extends WorkerHost {
       return;
     }
 
-    const workflowState = riskFlags.length > 0 || confidence < policy.autoSendThreshold ? 'queued_for_approval' : 'approved';
-    const hash = this.hashToInt(input.reviewId);
-    const subject = this.approvedSubjectVariants[hash % this.approvedSubjectVariants.length];
-    const opening = this.approvedOpeningVariants[hash % this.approvedOpeningVariants.length];
-    const cta = this.approvedCtaVariants[hash % this.approvedCtaVariants.length];
-    const sendWindow = this.nextBusinessDayAt10Utc();
+    const composed = composeConstrainedDraft({
+      reviewId: input.reviewId,
+      serviceMentioned,
+      keyBenefit
+    });
+    const sendWindow = nextBusinessDayAt10Local({ timeZone: input.tenantTimeZone ?? 'UTC' });
 
     const campaign = await this.prisma.campaign.create({
       data: {
         tenantId: input.tenantId,
-        campaignKey: `review-reactivation:${input.reviewId}`,
+        campaignKey: `review-reactivation:${input.reviewId}:${Date.now()}`,
         name: `Review reactivation ${new Date().toISOString().slice(0, 10)}`,
         status: 'ingested'
+      }
+    });
+
+    const campaignRun = await this.prisma.campaignRun.create({
+      data: {
+        tenantId: input.tenantId,
+        triggerReviewId: input.reviewId,
+        campaignId: campaign.id,
+        status: 'PAUSED',
+        segmentMode: policy.segmentMode,
+        sendWindowAt: sendWindow,
+        recipientsTotal: recipients.length,
+        startedAt: null
       }
     });
 
@@ -446,31 +524,35 @@ export class ReviewsProcessor extends WorkerHost {
         entityType: 'campaign',
         entityId: campaign.id,
         metadataJson: {
-          workflowStatus: 'classified',
+          workflowStatus: 'awaiting_approval',
           triggerReviewId: input.reviewId,
           confidence,
-          segmentMode: policy.segmentMode,
+          segmentMode: segmentModeToLabel(policy.segmentMode),
           serviceMentioned,
           keyBenefit,
-          subjectVariant: subject,
-          openingVariant: opening,
-          ctaVariant: cta,
+          slotSource: composed.slotSource,
+          blockedPatterns: composed.blocked,
           sendWindow: sendWindow.toISOString()
         }
       }
     });
 
+    const destination = process.env.REACTIVATION_LINK_DESTINATION ?? 'https://example.com/book';
+    let queuedCount = 0;
+    let approvalDraftMessageId: string | null = null;
+
     for (const recipient of recipients) {
-      const draftBody = [
-        `Subject: ${subject}`,
-        '',
-        opening,
-        '',
-        `Service highlighted: ${serviceMentioned ?? 'general care'}.`,
-        `Key benefit noted: ${keyBenefit}.`,
-        '',
-        `${cta} using your normal patient portal.`
-      ].join('\n');
+      const linkCode = this.shortLinkCode({
+        tenantId: input.tenantId,
+        reviewId: input.reviewId,
+        recipientId: recipient.id
+      });
+      const trackedDestination = `${destination}${destination.includes('?') ? '&' : '?'}bb_ref=${linkCode}`;
+      const draftBody = renderDraftBody({
+        subject: composed.subject,
+        body: composed.body,
+        linkCode
+      });
 
       const draft = await this.prisma.draftMessage.create({
         data: {
@@ -478,27 +560,13 @@ export class ReviewsProcessor extends WorkerHost {
           reviewId: input.reviewId,
           customerId: recipient.id,
           templateVersion: 'reactivation-v1',
-          status: workflowState === 'queued_for_approval' ? 'queued_for_approval' : 'draft_composed',
+          status: 'queued_for_approval',
           bodyText: draftBody
         }
       });
 
-      if (workflowState === 'queued_for_approval') {
-        await this.prisma.approvalItem.upsert({
-          where: {
-            tenantId_draftMessageId: {
-              tenantId: input.tenantId,
-              draftMessageId: draft.id
-            }
-          },
-          update: { status: 'queued' },
-          create: {
-            tenantId: input.tenantId,
-            draftMessageId: draft.id,
-            requiredRole: 'OPERATOR',
-            status: 'queued'
-          }
-        });
+      if (!approvalDraftMessageId) {
+        approvalDraftMessageId = draft.id;
       }
 
       const sendDedupeKey = createHash('sha256')
@@ -509,27 +577,35 @@ export class ReviewsProcessor extends WorkerHost {
         data: {
           tenantId: input.tenantId,
           campaignId: campaign.id,
+          campaignRunId: campaignRun.id,
           customerId: recipient.id,
           draftMessageId: draft.id,
           sendDedupeKey,
-          status: workflowState === 'queued_for_approval' ? 'PAUSED' : 'QUEUED',
+          status: 'PAUSED',
           deliveryState: 'QUEUED'
         }
       });
 
-      if (workflowState !== 'queued_for_approval') {
-        await this.postmarkSendQueue.add(
-          POSTMARK_SEND_JOB_NAME,
-          { tenantId: input.tenantId, campaignMessageId: campaignMessage.id },
-          {
-            jobId: `postmark-send:${input.tenantId}:${campaignMessage.id}`,
-            attempts: 5,
-            backoff: { type: 'exponential', delay: 3000 },
-            removeOnComplete: false,
-            removeOnFail: false
+      await this.prisma.linkCode.upsert({
+        where: {
+          tenantId_code: {
+            tenantId: input.tenantId,
+            code: linkCode
           }
-        );
-      }
+        },
+        update: {
+          campaignMessageId: campaignMessage.id,
+          destinationUrl: trackedDestination
+        },
+        create: {
+          tenantId: input.tenantId,
+          campaignMessageId: campaignMessage.id,
+          code: linkCode,
+          destinationUrl: trackedDestination
+        }
+      });
+
+      queuedCount += 1;
 
       await this.prisma.auditLog.create({
         data: {
@@ -539,7 +615,7 @@ export class ReviewsProcessor extends WorkerHost {
           entityType: 'campaign_message',
           entityId: campaignMessage.id,
           metadataJson: {
-            workflowStatus: workflowState === 'queued_for_approval' ? 'queued_for_approval' : 'scheduled',
+            workflowStatus: 'queued_for_approval',
             confidence,
             riskFlags,
             reviewId: input.reviewId,
@@ -548,10 +624,66 @@ export class ReviewsProcessor extends WorkerHost {
         }
       });
     }
+
+    if (approvalDraftMessageId) {
+      await this.prisma.approvalItem.create({
+        data: {
+          tenantId: input.tenantId,
+          draftMessageId: approvalDraftMessageId,
+          campaignRunId: campaignRun.id,
+          requiredRole: 'OPERATOR',
+          status: 'queued',
+          subjectLine: composed.subject,
+          bodyText: composed.body,
+          segmentMode: segmentModeToLabel(policy.segmentMode),
+          sendWindowAt: sendWindow
+        }
+      });
+    }
+
+    await this.prisma.reviewQueueItem.upsert({
+      where: {
+        tenantId_reviewId: {
+          tenantId: input.tenantId,
+          reviewId: input.reviewId
+        }
+      },
+      update: {
+        state: 'awaiting_approval',
+        campaignRunId: campaignRun.id,
+        triggerReviewId: input.reviewId,
+        rating: input.rating ?? null,
+        serviceMentioned,
+        keyBenefit,
+        confidence: new Prisma.Decimal(confidence),
+        awaitingApprovalAt: new Date(),
+        updatedAt: new Date()
+      },
+      create: {
+        tenantId: input.tenantId,
+        reviewId: input.reviewId,
+        campaignRunId: campaignRun.id,
+        triggerReviewId: input.reviewId,
+        state: 'awaiting_approval',
+        rating: input.rating ?? null,
+        serviceMentioned,
+        keyBenefit,
+        confidence: new Prisma.Decimal(confidence),
+        classifiedAt: new Date(),
+        awaitingApprovalAt: new Date()
+      }
+    });
+
+    await this.prisma.campaignRun.update({
+      where: { id: campaignRun.id },
+      data: {
+        messagesQueued: queuedCount,
+        status: 'PAUSED'
+      }
+    });
   }
 
   private async resolveReactivationPolicy(tenantId: string): Promise<{
-    autoSendThreshold: number;
     segmentMode: 'default' | 'volume' | 'gentle';
     maxRecipients: number;
   }> {
@@ -565,7 +697,6 @@ export class ReviewsProcessor extends WorkerHost {
       select: { policyJson: true }
     });
     const json = (row?.policyJson as Record<string, unknown> | null) ?? {};
-    const strictVertical = json['strictVertical'] === true;
     const segmentModeRaw = typeof json['segmentMode'] === 'string' ? json['segmentMode'] : 'default';
     const segmentMode = (['default', 'volume', 'gentle'].includes(segmentModeRaw) ? segmentModeRaw : 'default') as
       | 'default'
@@ -573,79 +704,75 @@ export class ReviewsProcessor extends WorkerHost {
       | 'gentle';
 
     return {
-      autoSendThreshold: strictVertical ? 0.9 : 0.8,
       segmentMode,
       maxRecipients: typeof json['maxRecipients'] === 'number' ? Math.max(1, Math.min(200, Math.floor(json['maxRecipients']))) : 50
     };
   }
 
-  private calculateConfidence(input: {
-    rating: number | null;
-    wordCount: number;
-    hasRiskFlags: boolean;
-    serviceMentioned: string | null;
-  }): number {
-    let confidence = 0;
-    if (input.rating === 5) {
-      confidence += 0.4;
-    }
-    if (input.wordCount > 20) {
-      confidence += 0.2;
-    }
-    if (!input.hasRiskFlags) {
-      confidence += 0.2;
-    }
-    if (input.serviceMentioned) {
-      confidence += 0.2;
-    }
-    return Number(confidence.toFixed(4));
+  private shortLinkCode(input: { tenantId: string; reviewId: string; recipientId: string }): string {
+    return createHash('sha256')
+      .update(`${input.tenantId}:${input.reviewId}:${input.recipientId}:reactivation-v1`)
+      .digest('base64url')
+      .slice(0, 10)
+      .toLowerCase();
   }
 
-  private detectRiskFlags(body: string): string[] {
-    const text = body.toLowerCase();
-    const rules: Array<[string, RegExp]> = [
-      ['medical_claim', /\b(cure|guarantee|always works)\b/],
-      ['phi_hint', /\b(ssn|social security|dob|date of birth|mrn)\b/],
-      ['legal_risk', /\b(lawsuit|malpractice)\b/]
-    ];
-    return rules.filter(([, regex]) => regex.test(text)).map(([code]) => code);
-  }
-
-  private extractServiceMention(body: string): string | null {
-    const text = body.toLowerCase();
-    const candidates = ['cleaning', 'whitening', 'implant', 'checkup', 'consultation', 'follow-up'];
-    for (const candidate of candidates) {
-      if (text.includes(candidate)) {
-        return candidate;
+  private async resolveTenantForPageFetch(tenantId: string): Promise<{
+    id: string;
+    gbpAccountId: string | null;
+    gbpLocationId: string | null;
+    gbpAccessTokenRef: string | null;
+    gbpIntegrationStatus: string;
+    timeZone: string;
+  } | null> {
+    try {
+      return await this.prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: {
+          id: true,
+          gbpAccountId: true,
+          gbpLocationId: true,
+          gbpAccessTokenRef: true,
+          gbpIntegrationStatus: true,
+          timeZone: true
+        }
+      });
+    } catch (error) {
+      if (!this.isMissingTenantTimeZoneColumnError(error)) {
+        throw error;
       }
+
+      const tenant = await this.prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: {
+          id: true,
+          gbpAccountId: true,
+          gbpLocationId: true,
+          gbpAccessTokenRef: true,
+          gbpIntegrationStatus: true
+        }
+      });
+
+      if (!tenant) {
+        return null;
+      }
+
+      return {
+        ...tenant,
+        timeZone: 'UTC'
+      };
     }
-    return null;
   }
 
-  private extractKeyBenefit(body: string): string {
-    const text = body.trim();
-    if (!text) {
-      return 'positive patient feedback';
+  private isMissingTenantTimeZoneColumnError(error: unknown): boolean {
+    if (!(error instanceof Prisma.PrismaClientKnownRequestError)) {
+      return false;
     }
-    const sentence = text.split(/[.!?]/).map((item) => item.trim()).find((item) => item.length > 0);
-    if (!sentence) {
-      return 'positive patient feedback';
+    if (error.code !== 'P2022') {
+      return false;
     }
-    return sentence.length > 120 ? `${sentence.slice(0, 117)}...` : sentence;
-  }
-
-  private hashToInt(value: string): number {
-    return Number.parseInt(createHash('sha256').update(value).digest('hex').slice(0, 8), 16);
-  }
-
-  private nextBusinessDayAt10Utc(): Date {
-    const next = new Date();
-    next.setUTCDate(next.getUTCDate() + 1);
-    while (next.getUTCDay() === 0 || next.getUTCDay() === 6) {
-      next.setUTCDate(next.getUTCDate() + 1);
-    }
-    next.setUTCHours(10, 0, 0, 0);
-    return next;
+    const column = String((error.meta as { column?: unknown } | undefined)?.column ?? '');
+    return column.includes('tenants.time_zone');
   }
 
   private cooldownMsFromError(message: string): number {

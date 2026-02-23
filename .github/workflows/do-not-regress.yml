@@ -1,0 +1,61 @@
+name: do-not-regress
+
+on:
+  pull_request:
+    paths:
+      - 'apps/api/**'
+      - 'clients/swift/BlackBoltOperator/**'
+      - 'contracts/openapi/**'
+      - 'scripts/**'
+      - 'prisma/**'
+      - 'package.json'
+      - '.github/workflows/do-not-regress.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'apps/api/**'
+      - 'clients/swift/BlackBoltOperator/**'
+      - 'contracts/openapi/**'
+      - 'scripts/**'
+      - 'prisma/**'
+      - 'package.json'
+
+jobs:
+  api-and-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.13.1'
+          cache: 'npm'
+      - name: Verify Node version pin
+        run: |
+          test "$(node -v)" = "v24.13.1"
+          echo "Node version OK: $(node -v)"
+      - name: Install dependencies
+        run: npm ci
+      - name: Generate Prisma client
+        run: npm run prisma:generate
+      - name: Build API
+        run: npm run api:build
+      - name: API tests
+        run: npm run api:test
+      - name: Contract lint
+        run: npm run contract:lint
+      - name: Contract coverage
+        run: npm run contract:coverage
+
+  operator-swift:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: '6.2.3'
+      - name: Verify Swift version
+        run: swift --version
+      - name: Build Operator package
+        run: swift build --package-path clients/swift/BlackBoltOperator
+      - name: Test Operator package
+        run: swift test --package-path clients/swift/BlackBoltOperator

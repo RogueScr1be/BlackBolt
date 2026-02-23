@@ -1,13 +1,12 @@
 import { Controller, Get } from '@nestjs/common';
+import { HealthService } from './health.service';
 
 @Controller('health')
 export class HealthController {
+  constructor(private readonly healthService: HealthService) {}
+
   @Get()
-  getHealth() {
-    return {
-      ok: true,
-      service: 'blackbolt-api',
-      version: '1.0.0-phase1'
-    };
+  async getHealth() {
+    return this.healthService.getHealth();
   }
 }

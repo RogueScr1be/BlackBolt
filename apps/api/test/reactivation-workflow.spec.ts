@@ -10,7 +10,8 @@ describe('Reactivation workflow', () => {
           gbpAccountId: 'acct-1',
           gbpLocationId: 'loc-1',
           gbpAccessTokenRef: 'tok-ref-1',
-          gbpIntegrationStatus: 'CONNECTED'
+          gbpIntegrationStatus: 'CONNECTED',
+          timeZone: 'UTC'
         }),
         update: jest.fn().mockResolvedValue({})
       },
@@ -22,12 +23,17 @@ describe('Reactivation workflow', () => {
         upsert: jest.fn().mockResolvedValue({ id: 'review-1' })
       },
       reviewClassification: { upsert: jest.fn().mockResolvedValue({}) },
+      reviewQueueItem: { upsert: jest.fn().mockResolvedValue({}) },
       tenantPolicy: { findUnique: jest.fn().mockResolvedValue(null) },
       customer: {
         findMany: jest.fn().mockResolvedValue([{ id: 'cust-1', segment: 'SEGMENT_90_365' }])
       },
       campaign: {
         create: jest.fn().mockResolvedValue({ id: 'camp-1' })
+      },
+      campaignRun: {
+        create: jest.fn().mockResolvedValue({ id: 'run-1' }),
+        update: jest.fn().mockResolvedValue({})
       },
       auditLog: {
         create: jest.fn().mockResolvedValue({})
@@ -36,16 +42,19 @@ describe('Reactivation workflow', () => {
         create: jest.fn().mockResolvedValue({ id: 'draft-1' })
       },
       approvalItem: {
-        upsert: jest.fn().mockResolvedValue({})
+        create: jest.fn().mockResolvedValue({})
       },
       campaignMessage: {
         create: jest.fn().mockResolvedValue({ id: 'cm-1' })
+      },
+      linkCode: {
+        upsert: jest.fn().mockResolvedValue({})
       },
       integrationAlert: { create: jest.fn().mockResolvedValue({}) }
     };
   }
 
-  it('auto-path queues postmark send when confidence is high and no risk flags', async () => {
+  it('always pauses for mandatory approval even with high-confidence review', async () => {
     const prisma = basePrisma();
     const ledger = {
       createRun: jest.fn().mockResolvedValue({ run: { id: 'run-1' }, created: true }),
@@ -68,14 +77,12 @@ describe('Reactivation workflow', () => {
       })
     };
     const reviewsQueue = { enqueuePageFetch: jest.fn() };
-    const postmarkSendQueue = { add: jest.fn().mockResolvedValue({ id: 'job-1' }) };
 
     const processor = new ReviewsProcessor(
       prisma as never,
       ledger as never,
       gbpClient as never,
-      reviewsQueue as never,
-      postmarkSendQueue as never
+      reviewsQueue as never
     );
 
     await processor.process({
@@ -89,11 +96,11 @@ describe('Reactivation workflow', () => {
     expect(prisma.campaignMessage.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
-          status: 'QUEUED'
+          status: 'PAUSED'
         })
       })
     );
-    expect(postmarkSendQueue.add).toHaveBeenCalledTimes(1);
+    expect(prisma.approvalItem.create).toHaveBeenCalledTimes(1);
   });
 
   it('manual lane when risk flags are detected', async () => {
@@ -119,14 +126,12 @@ describe('Reactivation workflow', () => {
       })
     };
     const reviewsQueue = { enqueuePageFetch: jest.fn() };
-    const postmarkSendQueue = { add: jest.fn().mockResolvedValue({ id: 'job-1' }) };
 
     const processor = new ReviewsProcessor(
       prisma as never,
       ledger as never,
       gbpClient as never,
-      reviewsQueue as never,
-      postmarkSendQueue as never
+      reviewsQueue as never
     );
 
     await processor.process({
@@ -137,6 +142,5 @@ describe('Reactivation workflow', () => {
 
     expect(prisma.reviewClassification.upsert).toHaveBeenCalledTimes(1);
     expect(prisma.campaign.create).not.toHaveBeenCalled();
-    expect(postmarkSendQueue.add).not.toHaveBeenCalled();
   });
 });

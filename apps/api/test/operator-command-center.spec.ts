@@ -68,7 +68,12 @@ describe('Operator command center', () => {
       ackAndResume: jest.fn()
     };
 
-    const service = new OperatorService(prisma as never, reviewsService as never, postmarkOpsService as never);
+    const service = new OperatorService(
+      prisma as never,
+      reviewsService as never,
+      postmarkOpsService as never,
+      { verifyKey: jest.fn(), generateOperatorKey: jest.fn(), upsertKey: jest.fn() } as never
+    );
     const result = await service.getCommandCenter('tenant-1');
 
     expect(result.tenant_id).toBe('tenant-1');
@@ -100,7 +105,8 @@ describe('Operator command center', () => {
     const service = new OperatorService(
       prisma as never,
       { enqueuePoll: jest.fn() } as never,
-      { getOperatorSummary: jest.fn(), ackAndResume: jest.fn() } as never
+      { getOperatorSummary: jest.fn(), ackAndResume: jest.fn() } as never,
+      { verifyKey: jest.fn(), generateOperatorKey: jest.fn(), upsertKey: jest.fn() } as never
     );
 
     const response = await service.ackAlert({ tenantId: 'tenant-1', alertId: 'a1', actorUserId: 'operator' });

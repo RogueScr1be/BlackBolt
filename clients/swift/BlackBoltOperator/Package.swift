@@ -16,6 +16,10 @@ let package = Package(
         .executableTarget(
             name: "BlackBoltOperator",
             dependencies: ["BlackBoltAPI"]
+        ),
+        .testTarget(
+            name: "BlackBoltOperatorTests",
+            dependencies: ["BlackBoltOperator"]
         )
     ]
 )

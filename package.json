@@ -24,6 +24,14 @@
     "operator:start": "bash scripts/start-operator.sh",
     "operator:package": "bash scripts/operator/package-macos-app.sh",
     "operator:install": "bash scripts/operator/install-macos-app.sh --open",
+    "objective:verify:shadow": "bash scripts/smoke/objective-shadow-verify.sh",
+    "objective:verify:live": "bash scripts/smoke/objective-live-verify.sh",
+    "objective:rollout:preflight": "bash scripts/smoke/objective-rollout-preflight.sh",
+    "objective:rollout:shadow": "bash scripts/smoke/objective-rollout-shadow.sh",
+    "objective:rollout:live": "bash scripts/smoke/objective-rollout-live.sh",
+    "objective:rollout:stabilize": "bash scripts/smoke/objective-rollout-stabilize.sh",
+    "ci:revenue-imports": "npm --workspace @blackbolt/api run test -- revenue-import-parsing.spec.ts reports-export.spec.ts",
+    "ci:do-not-regress": "npm run prisma:generate && npm run api:build && npm run api:test && npm run contract:lint && npm run contract:coverage",
     "repo:check-duplicates": "node scripts/check-no-suffixed-duplicates.mjs",
     "api:test": "npm --workspace @blackbolt/api run test",
     "prisma:generate": "npm --workspace @blackbolt/api exec -- prisma generate --schema ../../prisma/schema.prisma && node scripts/prisma-schema-hash.mjs",
@@ -31,6 +39,7 @@
     "prisma:migrations:check": "node scripts/check-migration-immutability.mjs",
     "prisma:migrations:chain": "node scripts/check-migration-immutability.mjs --write-chain",
     "prisma:migrate:deploy": "npm --workspace @blackbolt/api exec -- prisma migrate deploy --schema ../../prisma/schema.prisma",
+    "tenant:seed": "npm --workspace @blackbolt/api exec -- ts-node ../../scripts/seed-tenant.ts",
     "swift:generate": "node scripts/generate-swift-client.mjs",
     "test:offline": "TEST_OFFLINE=1 npm run contract:ci && npm run api:test"
   }

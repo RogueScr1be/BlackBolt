@@ -19,11 +19,25 @@ export type PostmarkSendResult = {
 
 @Injectable()
 export class PostmarkClient {
-  async sendCampaignMessage(input: { tenantId: string; campaignMessageId: string }): Promise<PostmarkSendResult> {
+  async sendCampaignMessage(input: {
+    tenantId: string;
+    campaignMessageId: string;
+    toEmail: string;
+    customerDisplayName: string | null;
+    bodyText: string | null;
+  }): Promise<PostmarkSendResult> {
     const token = process.env.POSTMARK_SERVER_TOKEN;
     if (!token) {
       throw new Error('POSTMARK_SERVER_TOKEN is required for non-shadow sends');
     }
+
+    const bodyText = input.bodyText?.trim().length ? input.bodyText : 'Thanks for your recent review.';
+    const firstLine = bodyText.split('\n').find((line) => line.trim().length > 0) ?? '';
+    const subjectFromDraft = firstLine.startsWith('Subject:') ? firstLine.replace(/^Subject:\s*/i, '') : null;
+    const subject = subjectFromDraft?.trim().length
+      ? subjectFromDraft.trim()
+      : `BlackBolt Campaign ${input.campaignMessageId}`;
+    const greeting = input.customerDisplayName ? `Hi ${input.customerDisplayName},\n\n` : '';
 
     const response = await fetch('https://api.postmarkapp.com/email', {
       method: 'POST',
@@ -34,9 +48,9 @@ export class PostmarkClient {
       },
       body: JSON.stringify({
         From: process.env.POSTMARK_FROM ?? 'noreply@example.com',
-        To: process.env.POSTMARK_TO_FALLBACK ?? 'operator@example.com',
-        Subject: `BlackBolt Campaign ${input.campaignMessageId}`,
-        TextBody: 'Phase 5.1 send pipeline scaffold',
+        To: input.toEmail,
+        Subject: subject,
+        TextBody: `${greeting}${bodyText}`,
         Metadata: {
           tenantId: input.tenantId,
           campaignMessageId: input.campaignMessageId

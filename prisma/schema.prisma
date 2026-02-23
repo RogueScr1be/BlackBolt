@@ -81,6 +81,7 @@ model Tenant {
   id          String   @id @default(cuid())
   slug        String   @unique
   name        String
+  timeZone    String   @default("UTC") @map("time_zone")
   gbpAccountId String? @map("gbp_account_id")
   gbpLocationId String? @map("gbp_location_id")
   gbpAccessTokenRef String? @map("gbp_access_token_ref")
@@ -97,6 +98,7 @@ model Tenant {
   draftMessages         DraftMessage[]
   approvalItems         ApprovalItem[]
   campaigns             Campaign[]
+  campaignRuns          CampaignRun[]
   campaignMessages      CampaignMessage[]
   sendEvents            SendEvent[]
   linkCodes             LinkCode[]
@@ -105,6 +107,8 @@ model Tenant {
   jobRuns               JobRun[]
   customerImports       CustomerImport[]
   customerImportRows    CustomerImportRow[]
+  revenueImports        RevenueImport[]
+  revenueImportRows     RevenueImportRow[]
   suppressionImports    SuppressionImport[]
   suppressionImportRows SuppressionImportRow[]
   suppressionEntries    SuppressionEntry[]
@@ -112,6 +116,9 @@ model Tenant {
   gbpSyncStates         GbpSyncState[]
   postmarkWebhookEvents PostmarkWebhookEvent[]
   postmarkSendControl   PostmarkSendControl?
+  operatorCredential    OperatorCredential?
+  operatorPortfolioMemberships OperatorPortfolioTenantMembership[]
+  reviewQueueItems      ReviewQueueItem[]
   revenueEvents         RevenueEvent[]
   revenueAttributions   RevenueAttribution[]
 
@@ -217,6 +224,48 @@ model CustomerImportRow {
   @@map("customer_import_rows")
 }
 
+model RevenueImport {
+  id            String       @id @default(cuid())
+  tenantId      String       @map("tenant_id")
+  status        ImportStatus @default(QUEUED)
+  totalRows     Int          @default(0) @map("total_rows")
+  processedRows Int          @default(0) @map("processed_rows")
+  succeededRows Int          @default(0) @map("succeeded_rows")
+  failedRows    Int          @default(0) @map("failed_rows")
+  duplicateRows Int          @default(0) @map("duplicate_rows")
+  idempotencyKey String      @map("idempotency_key")
+  errorJson     Json?        @map("error_json")
+  createdAt     DateTime     @default(now()) @map("created_at")
+  finishedAt    DateTime?    @map("finished_at")
+
+  tenant        Tenant       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  rows          RevenueImportRow[]
+
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId, status])
+  @@map("revenue_imports")
+}
+
+model RevenueImportRow {
+  id             String          @id @default(cuid())
+  tenantId       String          @map("tenant_id")
+  importId       String          @map("import_id")
+  rowNum         Int             @map("row_num")
+  rawJson        Json            @map("raw_json")
+  normalizedJson Json?           @map("normalized_json")
+  status         ImportStatus    @default(QUEUED)
+  errorCode      String?         @map("error_code")
+  errorMessage   String?         @map("error_message")
+  createdAt      DateTime        @default(now()) @map("created_at")
+
+  tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  import         RevenueImport   @relation(fields: [importId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, importId, rowNum])
+  @@index([tenantId, importId, status])
+  @@map("revenue_import_rows")
+}
+
 model SuppressionImport {
   id            String       @id @default(cuid())
   tenantId      String       @map("tenant_id")
@@ -310,6 +359,8 @@ model Review {
   customer         Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
   classifications  ReviewClassification[]
   draftMessages    DraftMessage[]
+  campaignRuns     CampaignRun[]
+  queueItems       ReviewQueueItem[]
 
   @@unique([tenantId, source, sourceReviewId])
   @@index([tenantId])
@@ -359,17 +410,29 @@ model ApprovalItem {
   id               String   @id @default(cuid())
   tenantId         String   @map("tenant_id")
   draftMessageId   String   @map("draft_message_id")
+  campaignRunId    String?  @map("campaign_run_id")
   requiredRole     UserRole @map("required_role")
   status           String
+  subjectLine      String?  @map("subject_line")
+  bodyText         String?  @map("body_text")
+  segmentMode      String?  @map("segment_mode")
+  sendWindowAt     DateTime? @map("send_window_at")
   approvedByUserId String?  @map("approved_by_user_id")
   approvedAt       DateTime? @map("approved_at")
+  rejectedAt       DateTime? @map("rejected_at")
+  rejectedByUserId String?  @map("rejected_by_user_id")
+  rejectionReason  String?  @map("rejection_reason")
   createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
 
   tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   draftMessage     DraftMessage @relation(fields: [draftMessageId], references: [id], onDelete: Restrict)
+  campaignRun      CampaignRun? @relation(fields: [campaignRunId], references: [id], onDelete: SetNull)
   approvedByUser   User? @relation("ApprovalActor", fields: [approvedByUserId], references: [id], onDelete: SetNull)
 
   @@unique([tenantId, draftMessageId])
+  @@unique([tenantId, campaignRunId])
+  @@index([tenantId, status, createdAt])
   @@index([tenantId])
   @@map("approval_items")
 }
@@ -385,6 +448,7 @@ model Campaign {
 
   tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   messages        CampaignMessage[]
+  campaignRuns    CampaignRun[]
 
   @@unique([tenantId, campaignKey])
   @@index([tenantId])
@@ -395,6 +459,7 @@ model CampaignMessage {
   id               String   @id @default(cuid())
   tenantId         String   @map("tenant_id")
   campaignId       String   @map("campaign_id")
+  campaignRunId    String?  @map("campaign_run_id")
   customerId       String   @map("customer_id")
   draftMessageId   String?  @map("draft_message_id")
   /// Deterministic: sha256(tenant_id + campaign_id + customer_id + template_version + send_window)
@@ -410,6 +475,7 @@ model CampaignMessage {
 
   tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   campaign         Campaign @relation(fields: [campaignId], references: [id], onDelete: Restrict)
+  campaignRun      CampaignRun? @relation(fields: [campaignRunId], references: [id], onDelete: SetNull)
   customer         Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
   draftMessage     DraftMessage? @relation(fields: [draftMessageId], references: [id], onDelete: SetNull)
   sendEvents       SendEvent[]
@@ -419,7 +485,67 @@ model CampaignMessage {
   @@unique([tenantId, sendDedupeKey])
   @@unique([tenantId, providerMessageId])
   @@index([tenantId])
+  @@index([tenantId, campaignRunId])
   @@map("campaign_messages")
+}
+
+model CampaignRun {
+  id               String   @id @default(cuid())
+  tenantId         String   @map("tenant_id")
+  triggerReviewId  String   @map("trigger_review_id")
+  campaignId       String   @map("campaign_id")
+  status           String
+  segmentMode      String   @map("segment_mode")
+  sendWindowAt     DateTime @map("send_window_at")
+  recipientsTotal  Int      @default(0) @map("recipients_total")
+  messagesQueued   Int      @default(0) @map("messages_queued")
+  messagesSent     Int      @default(0) @map("messages_sent")
+  messagesFailed   Int      @default(0) @map("messages_failed")
+  lastErrorCode    String?  @map("last_error_code")
+  lastErrorMessage String?  @map("last_error_message")
+  startedAt        DateTime? @map("started_at")
+  finishedAt       DateTime? @map("finished_at")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  triggerReview    Review   @relation(fields: [triggerReviewId], references: [id], onDelete: Restrict)
+  campaign         Campaign @relation(fields: [campaignId], references: [id], onDelete: Restrict)
+  messages         CampaignMessage[]
+  approvalItems    ApprovalItem[]
+  reviewQueueItems ReviewQueueItem[]
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, status])
+  @@map("campaign_runs")
+}
+
+model ReviewQueueItem {
+  id                String   @id @default(cuid())
+  tenantId          String   @map("tenant_id")
+  reviewId          String   @map("review_id")
+  campaignRunId     String?  @map("campaign_run_id")
+  triggerReviewId   String?  @map("trigger_review_id")
+  state             String
+  rating            Int?
+  serviceMentioned  String?  @map("service_mentioned")
+  keyBenefit        String?  @map("key_benefit")
+  confidence        Decimal  @db.Decimal(5, 4)
+  classifiedAt      DateTime? @map("classified_at")
+  awaitingApprovalAt DateTime? @map("awaiting_approval_at")
+  scheduledAt       DateTime? @map("scheduled_at")
+  sentAt            DateTime? @map("sent_at")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  tenant            Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  review            Review   @relation(fields: [reviewId], references: [id], onDelete: Restrict)
+  campaignRun       CampaignRun? @relation(fields: [campaignRunId], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, reviewId])
+  @@index([tenantId, state, updatedAt])
+  @@index([tenantId, campaignRunId])
+  @@map("review_queue_items")
 }
 
 model RevenueEvent {
@@ -651,4 +777,49 @@ model PostmarkSendControl {
   tenant                    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
 
   @@map("postmark_send_controls")
+}
+
+model OperatorCredential {
+  tenantId    String   @id @map("tenant_id")
+  keyHash     String   @map("key_hash")
+  keyHint     String   @map("key_hint")
+  rotatedAt   DateTime? @map("rotated_at")
+  rotatedBy   String?  @map("rotated_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@map("operator_credentials")
+}
+
+model OperatorPortfolioCredential {
+  id          String   @id @default(cuid())
+  label       String?
+  keyHash     String   @map("key_hash")
+  keyHint     String   @map("key_hint")
+  active      Boolean  @default(true)
+  rotatedAt   DateTime? @map("rotated_at")
+  rotatedBy   String?  @map("rotated_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  memberships OperatorPortfolioTenantMembership[]
+
+  @@index([active])
+  @@map("operator_portfolio_credentials")
+}
+
+model OperatorPortfolioTenantMembership {
+  id            String   @id @default(cuid())
+  credentialId  String   @map("credential_id")
+  tenantId      String   @map("tenant_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  credential    OperatorPortfolioCredential @relation(fields: [credentialId], references: [id], onDelete: Cascade)
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@unique([credentialId, tenantId])
+  @@index([tenantId])
+  @@map("operator_portfolio_tenant_memberships")
 }

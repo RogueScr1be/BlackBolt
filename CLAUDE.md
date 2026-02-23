@@ -8,9 +8,9 @@
 - Work in explicit phases with entry/exit criteria; do not start the next phase until current phase gates pass.
 - For every phase, report: files changed, commands run with outcomes, blast radius, and rollback steps.
 - Keep changes minimal and reversible; prefer scaffolding and placeholders over speculative feature work.
-- Record all non-obvious architectural/tooling choices in `/Users/thewhitley/Documents/New project/docs/decision-log.md` before expanding scope.
+- Record all non-obvious architectural/tooling choices in `/Users/thewhitley/.codex/worktrees/749b/New project/docs/decision-log.md` before expanding scope.
 - If a requested governance skill is unavailable, mirror its enforcement rules here and continue with deterministic execution.
-- Node version must match `/Users/thewhitley/Documents/New project/.nvmrc` exactly for local and CI runs.
+- Node version must match `/Users/thewhitley/.codex/worktrees/749b/New project/.nvmrc` exactly for local and CI runs.
 - Support `TEST_OFFLINE=1` mode: skip external contract lint tooling, but still run local contract coverage and unit tests.
 - Define setup truthfully:
   - First-time setup (networked): `nvm install && nvm use && npm ci` (or `npm install` if lockfile is absent).
@@ -81,10 +81,86 @@
 - Stale `SENDING` claims must be recovered by sweeper policy (re-queue or fail) with explicit integration alerts.
 
 ## BlackBolt 1.0 Recovery Tracking
-- Locked IA is now sidebar-first with sections: Dashboard, Tenants, Campaign Engine, Alerts, Analytics, Reports, Settings.
+- Locked IA is now sidebar-first with sections: Dashboard, Imports, Tenants, Campaign Engine, Alerts, Analytics, Reports, Settings.
 - Command-center aggregate endpoint is canonical for operator landing data.
 - Interventions are constrained to retry GBP ingestion, resume Postmark, and ack alert with audit logs.
 - Reactivation policy must remain deterministic with confidence gate `0.8` default / `0.9` strict.
 - Keep same-SHA release discipline and smoke-script gate as mandatory before live declaration.
 - Before reporting verification status, always check local SHA and sync state (`git rev-parse --short HEAD`, `git pull`) to avoid reporting from stale commits.
 - Daily Operator dashboard launch path is the installed app (`~/Applications/BlackBolt Operator.app`); `bash scripts/operator/open-latest.sh` is developer fallback for source freshness checks. Do not use browser links as authoritative launch.
+- Known pitfall: SwiftUI sidebar can appear inert when selection/tag wiring is incomplete even while network/auth is healthy.
+
+## Operator Sidebar Reliability Guardrail
+- Required pre-ship verification for Operator app builds:
+- Navigation wiring checks:
+- Sidebar `List(selection:)` must use optional selection where needed (`Section?`).
+- Every selectable row must include explicit `.tag(section)`.
+- Content/title must resolve via safe fallback (for example `selection ?? .dashboard`).
+- Post-smoke interaction checks (mandatory):
+- After `Smoke Test` passes, verify sidebar highlight changes per click, main title changes per click, and content pane switches per click.
+- No-op detection policy:
+- If smoke passes but tabs/buttons do not react, classify as UI state/routing regression first, not backend outage, until disproven.
+- Settings gate policy:
+- Required-field validation must not rely on stale global `invalidConfig` state.
+- Any disabled action state must be derived from current form values.
+- Release checklist addition:
+- Ship is blocked unless manual QA checklist in `docs/runbooks/operator-app.md` is passed on the installed app (`~/Applications/BlackBolt Operator.app`), not only source-run.
+
+## Objective Complete Gates
+- Gate A: Operator usability complete
+- Smoke passes.
+- Sidebar and tab actions react correctly.
+- Section-level retry is functional.
+- No stale config lock requiring app restart.
+- Gate B: Flywheel functional in shadow mode
+- Scheduler running (`GBP_POLL_SCHEDULER_DISABLED=0`).
+- New eligible review creates campaign run.
+- Messages enqueue correctly with `POSTMARK_SEND_DISABLED=1`.
+- Reports monthly JSON/PDF generate and include run fields.
+- Gate C: Controlled go-live
+- Enable live sends tenant-by-tenant.
+- Validate `QUEUED -> SENT` transitions, click capture, and revenue attribution linking.
+- No unresolved critical alerts during stabilization window.
+
+## Revenue Import Guardrail
+- Canonical revenue import schema is strict and additive-only:
+- required headers: `occurred_at`, `amount_cents`, `currency`.
+- optional headers: `external_id`, `customer_email`, `customer_phone`, `description`, `campaign_message_id`, `link_code`, `provider_message_id`.
+- Reject unsupported headers and PHI-like columns at parse boundary before persistence.
+- Row-level errors are allowed; import remains partially successful when valid rows exist.
+- Report consistency gate is mandatory for release checks:
+- monthly JSON totals must align with CSV export values and PDF rendered totals for the same tenant/month.
+
+## Rollout Script Path
+- Canonical cutover commands:
+- `scripts/smoke/objective-rollout-shadow.sh`
+- `scripts/smoke/objective-rollout-live.sh`
+- `scripts/smoke/objective-rollout-stabilize.sh`
+- Rollback standard:
+- set `POSTMARK_SEND_DISABLED=1` on API + worker, redeploy same known-good SHA, re-run shadow gate before attempting live again.
+
+## Immediate Next Moves
+1. Sync latest Operator fixes into canonical operating repo if split-repo workflow is active.
+2. Rebuild/install app from canonical repo and run full manual checklist.
+3. Run a 24-hour shadow validation window on one tenant.
+4. Review alert feed, run counters, and monthly report totals.
+5. Flip live-send flag for one tenant only.
+6. Re-validate attribution/report coherence, then expand rollout.
+
+## Baseline Lock Evidence
+- Current working release SHA baseline: `08117220909eab602f95b0e27ebc9c823812522b`.
+- Current production validation tenant: `cmlqpv2il000022nkqb7llq4z`.
+- Gate scripts are canonical and release-blocking:
+- `scripts/smoke/objective-shadow-verify.sh` must finish with `Gate B: PASS`.
+- `scripts/smoke/objective-live-verify.sh` must finish with `Gate C: PASS`.
+
+## Feature Reality Check
+- Before claiming any feature is shipped, verify all of the following:
+- Endpoint exists in controller and is present in `contracts/openapi/blackbolt.v1.yaml`.
+- Service logic is implemented beyond static placeholder copy.
+- UI action is wired to a real network call and handles error states.
+
+## Operator Onboarding Truth
+- Tenant onboarding is complete only after running `npm run tenant:seed -- --name=\"...\" --slug=...`.
+- The seed output is source-of-truth for `tenantId` (`x-tenant-id`) and `operatorKey` (`x-operator-key`).
+- Do not mark operator workflows usable until per-tenant operator credential is present in DB.

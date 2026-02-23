@@ -53,11 +53,14 @@ export class ReviewsService {
     tenantId: string;
     limit: number;
     cursor?: string;
+    since?: string;
   }) {
+    const sinceDate = input.since ? new Date(input.since) : null;
     const rows = await this.prisma.review.findMany({
       where: {
         tenantId: input.tenantId,
-        source: GBP_SOURCE
+        source: GBP_SOURCE,
+        ...(sinceDate ? { createdAt: { gte: sinceDate } } : {})
       },
       take: input.limit + 1,
       ...(input.cursor

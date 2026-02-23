@@ -8,6 +8,13 @@ enum OperatorConnectionState: Equatable {
     case serverError
 }
 
+enum SectionLoadState: Equatable {
+    case idle
+    case loading
+    case ready
+    case failed(OperatorAppError)
+}
+
 struct OperatorAppError: Error, Equatable, Identifiable {
     let code: String
     let message: String
@@ -27,6 +34,65 @@ struct ImportStatusRow: Decodable, Identifiable {
     let duplicateRows: Int
 
     var id: String { importId }
+}
+
+struct CustomerSegmentItem: Decodable, Identifiable {
+    let segment: String
+    let count: Int
+
+    var id: String { segment }
+}
+
+struct CustomerSegmentSummaryResponse: Decodable {
+    let tenantId: String
+    let total: Int
+    let items: [CustomerSegmentItem]
+}
+
+struct RevenueImportError: Decodable, Identifiable {
+    let rowNum: Int
+    let code: String
+    let message: String
+
+    var id: String { "\(rowNum)-\(code)" }
+}
+
+struct CreateRevenueImportResponse: Decodable {
+    let revenueImportId: String
+    let status: String
+}
+
+struct RevenueImportListItem: Decodable, Identifiable {
+    let revenueImportId: String
+    let tenantId: String
+    let status: String
+    let totalRows: Int
+    let processedRows: Int
+    let succeededRows: Int
+    let failedRows: Int
+    let duplicateRows: Int
+    let createdAt: String
+    let finishedAt: String?
+
+    var id: String { revenueImportId }
+}
+
+struct RevenueImportListResponse: Decodable {
+    let items: [RevenueImportListItem]
+}
+
+struct RevenueImportStatusResponse: Decodable {
+    let revenueImportId: String
+    let tenantId: String
+    let status: String
+    let totalRows: Int
+    let processedRows: Int
+    let succeededRows: Int
+    let failedRows: Int
+    let duplicateRows: Int
+    let errors: [RevenueImportError]
+    let createdAt: String
+    let finishedAt: String?
 }
 
 struct CustomerRow: Decodable, Identifiable {
@@ -302,18 +368,55 @@ struct OperatorTenantMetricsResponse: Decodable {
     let reviewSeries: [CountMetricPoint]
 }
 
+struct BootstrapStatusCheck: Decodable {
+    let required: Bool
+    let ready: Bool
+    let mode: String?
+    let message: String
+}
+
+struct BootstrapStatusChecks: Decodable {
+    let operatorAuth: BootstrapStatusCheck
+    let gbpIntegration: BootstrapStatusCheck
+    let postmarkWebhook: BootstrapStatusCheck
+    let reviewScheduler: BootstrapStatusCheck
+    let sendMode: BootstrapStatusCheck
+}
+
+struct BootstrapStatusResponse: Decodable {
+    let tenantId: String
+    let overallReady: Bool
+    let checks: BootstrapStatusChecks
+    let missing: [String]
+}
+
 struct MonthlyReportTotals: Decodable {
     let revenueCents: Int
     let attributedCents: Int
     let bookingsCount: Int
     let sentCount: Int
     let clickCount: Int
+    let runCount: Int
+    let runMessagesSent: Int
+    let runMessagesFailed: Int
+    let runMessagesQueued: Int
 }
 
 struct MonthlyReportEstimates: Decodable {
     let conservativeBookings: Int
     let baseBookings: Int
     let aggressiveBookings: Int
+}
+
+struct MonthlyReportMetrics: Decodable {
+    let new5starReviews: Int
+    let reactivationEmailsSent: Int
+    let openCount: Int
+    let clickCount: Int
+    let openRate: Double
+    let clickRate: Double
+    let estimatedBookingsDriven: Int
+    let estimatedRevenueImpactCents: Int
 }
 
 struct MonthlyReportBenefit: Decodable, Identifiable {
@@ -327,10 +430,132 @@ struct MonthlyReportPayload: Decodable {
     let tenantId: String
     let month: String
     let generatedAt: String
+    let metrics: MonthlyReportMetrics
     let totals: MonthlyReportTotals
     let estimates: MonthlyReportEstimates
     let praisedBenefits: [MonthlyReportBenefit]
     let narrative: String
+}
+
+struct CampaignRunSummary: Decodable, Identifiable {
+    let id: String
+    let status: String
+    let segmentMode: String
+    let sendWindowAt: String
+    let recipientsTotal: Int
+    let messagesQueued: Int
+    let messagesSent: Int
+    let messagesFailed: Int
+    let lastErrorCode: String?
+    let lastErrorMessage: String?
+    let createdAt: String
+    let updatedAt: String
+}
+
+struct CampaignRunsResponse: Decodable {
+    let items: [CampaignRunSummary]
+}
+
+struct OperatorReviewQueueItem: Decodable, Identifiable {
+    let id: String
+    let tenantId: String
+    let reviewId: String
+    let triggerReviewId: String
+    let campaignRunId: String?
+    let approvalId: String?
+    let state: String
+    let rating: Int?
+    let serviceMentioned: String?
+    let keyBenefit: String?
+    let confidence: Double
+    let createdAt: String
+    let updatedAt: String
+}
+
+struct OperatorReviewQueueResponse: Decodable {
+    let items: [OperatorReviewQueueItem]
+}
+
+struct OperatorApprovalSummary: Decodable, Identifiable {
+    let id: String
+    let tenantId: String
+    let campaignRunId: String?
+    let triggerReviewId: String?
+    let state: String
+    let subject: String
+    let body: String
+    let segment: String
+    let sendWindowAt: String?
+    let createdAt: String
+    let updatedAt: String
+}
+
+struct OperatorApprovalListResponse: Decodable {
+    let items: [OperatorApprovalSummary]
+}
+
+struct OperatorApprovalDraft: Decodable {
+    let subject: String
+    let body: String
+    let segment: String
+    let sendWindowAt: String?
+}
+
+struct OperatorApprovalCounts: Decodable {
+    let queued: Int
+    let paused: Int
+    let sent: Int
+    let failed: Int
+    let total: Int
+}
+
+struct OperatorApprovalDetail: Decodable {
+    let id: String
+    let tenantId: String
+    let campaignRunId: String?
+    let triggerReviewId: String?
+    let state: String
+    let requiredRole: String
+    let draft: OperatorApprovalDraft
+    let counts: OperatorApprovalCounts
+    let createdAt: String
+    let updatedAt: String
+    let approvedAt: String?
+    let rejectedAt: String?
+}
+
+struct OperatorApprovalMutationResponse: Decodable {
+    let ok: Bool
+    let approvalId: String?
+    let campaignRunId: String?
+    let queuedCount: Int?
+    let rejectedAt: String?
+}
+
+struct OperatorSmokeCheck: Decodable, Identifiable {
+    let name: String
+    let path: String
+    let passed: Bool
+    let status: Int
+    let reason: String?
+    let failingHeader: String?
+
+    var id: String { "\(name)-\(path)" }
+}
+
+struct OperatorSmokeResponse: Decodable {
+    let tenantId: String
+    let overallPassed: Bool
+    let checks: [OperatorSmokeCheck]
+}
+
+struct EndpointDiagnostic: Identifiable, Equatable {
+    let path: String
+    let statusCode: Int?
+    let success: Bool
+    let timestamp: Date
+
+    var id: String { "\(path)-\(timestamp.timeIntervalSince1970)" }
 }
 
 struct OperatorAlert: Identifiable, Hashable {

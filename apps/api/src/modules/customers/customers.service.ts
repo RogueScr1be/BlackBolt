@@ -70,4 +70,33 @@ export class CustomersService {
       finishedAt: item.finishedAt
     };
   }
+
+  async getSegmentSummary(tenantId: string) {
+    const rows = await this.prisma.customer.groupBy({
+      by: ['segment'],
+      where: { tenantId },
+      _count: { _all: true }
+    });
+
+    const counts = {
+      '0_90': 0,
+      '90_365': 0,
+      '365_plus': 0
+    };
+
+    for (const row of rows) {
+      const key = toApiSegment(row.segment);
+      counts[key] = row._count._all;
+    }
+
+    return {
+      tenantId,
+      total: counts['0_90'] + counts['90_365'] + counts['365_plus'],
+      items: [
+        { segment: '0_90', count: counts['0_90'] },
+        { segment: '90_365', count: counts['90_365'] },
+        { segment: '365_plus', count: counts['365_plus'] }
+      ]
+    };
+  }
 }

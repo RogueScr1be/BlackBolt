@@ -10,7 +10,12 @@ export class OperatorTenantsService {
   async listTenants(scopeTenantId: string) {
     const rows = await this.prisma.tenant.findMany({
       where: { id: scopeTenantId },
-      orderBy: { createdAt: 'asc' }
+      orderBy: { createdAt: 'asc' },
+      select: {
+        id: true,
+        slug: true,
+        name: true
+      }
     });
 
     return {

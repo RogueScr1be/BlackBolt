@@ -11,6 +11,7 @@ private enum EvidencePanel: String, CaseIterable, Identifiable {
 
 struct EvidenceView: View {
     @State private var selected: EvidencePanel = .revenue
+    @StateObject private var store = OperatorShellStore()
 
     var body: some View {
         NavigationSplitView {
@@ -28,7 +29,7 @@ struct EvidenceView: View {
                 case .customers:
                     CustomersListView()
                 case .imports:
-                    ImportsListView()
+                    ImportsListView(store: store)
                 }
             }
             .navigationTitle(selected.rawValue)

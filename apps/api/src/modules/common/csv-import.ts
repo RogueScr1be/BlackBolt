@@ -30,6 +30,25 @@ export type SuppressionImportRowDraft = {
   errorMessage: string | null;
 };
 
+export type RevenueImportRowDraft = {
+  rowNum: number;
+  rawJson: Record<string, string>;
+  normalizedJson: {
+    occurredAt: string;
+    amountCents: number;
+    currency: string;
+    externalId: string | null;
+    customerEmail: string | null;
+    customerPhone: string | null;
+    description: string | null;
+    campaignMessageId: string | null;
+    linkCode: string | null;
+    providerMessageId: string | null;
+  } | null;
+  errorCode: string | null;
+  errorMessage: string | null;
+};
+
 function normalizeHeader(value: string): string {
   return value.trim().toLowerCase();
 }
@@ -172,6 +191,105 @@ export function prepareSuppressionImportRowsFromCsv(csvText: string): Suppressio
         email,
         channel,
         reason
+      },
+      errorCode: null,
+      errorMessage: null
+    };
+  });
+}
+
+export function prepareRevenueImportRowsFromCsv(csvText: string): RevenueImportRowDraft[] {
+  const { headers, rows } = parseCsvRows(csvText);
+  assertNoForbiddenColumns(headers);
+
+  const requiredHeaders = ['occurred_at', 'amount_cents', 'currency'];
+  const allowedHeaders = new Set([
+    ...requiredHeaders,
+    'external_id',
+    'customer_email',
+    'customer_phone',
+    'description',
+    'campaign_message_id',
+    'link_code',
+    'provider_message_id'
+  ]);
+  const missing = requiredHeaders.filter((header) => !headers.includes(header));
+  if (missing.length > 0) {
+    throw new BadRequestException(`CSV missing required column(s): ${missing.join(', ')}`);
+  }
+  const unknownHeaders = headers.filter((header) => !allowedHeaders.has(header));
+  if (unknownHeaders.length > 0) {
+    throw new BadRequestException(`CSV contains unsupported column(s): ${unknownHeaders.join(', ')}`);
+  }
+
+  return rows.map((row, index) => {
+    const rowNum = index + 2;
+    const occurredAt = parseDateToIso(cleanValue(row.occurred_at));
+    const amountRaw = cleanValue(row.amount_cents);
+    const amountCents = Number.parseInt(amountRaw, 10);
+    const currency = cleanValue(row.currency).toUpperCase();
+    const externalId = cleanValue(row.external_id) || null;
+    const customerEmail = cleanValue(row.customer_email).toLowerCase() || null;
+    const customerPhone = cleanValue(row.customer_phone) || null;
+    const description = cleanValue(row.description) || null;
+    const campaignMessageId = cleanValue(row.campaign_message_id) || null;
+    const linkCode = cleanValue(row.link_code) || null;
+    const providerMessageId = cleanValue(row.provider_message_id) || null;
+
+    if (!occurredAt) {
+      return {
+        rowNum,
+        rawJson: row,
+        normalizedJson: null,
+        errorCode: 'INVALID_OCCURRED_AT',
+        errorMessage: 'occurred_at must be a valid date-time'
+      };
+    }
+
+    if (!Number.isInteger(amountCents) || amountCents <= 0) {
+      return {
+        rowNum,
+        rawJson: row,
+        normalizedJson: null,
+        errorCode: 'INVALID_AMOUNT_CENTS',
+        errorMessage: 'amount_cents must be a positive integer'
+      };
+    }
+
+    if (!/^[A-Z]{3}$/.test(currency)) {
+      return {
+        rowNum,
+        rawJson: row,
+        normalizedJson: null,
+        errorCode: 'INVALID_CURRENCY',
+        errorMessage: 'currency must be a 3-letter ISO code'
+      };
+    }
+
+    if (customerEmail && !customerEmail.includes('@')) {
+      return {
+        rowNum,
+        rawJson: row,
+        normalizedJson: null,
+        errorCode: 'INVALID_CUSTOMER_EMAIL',
+        errorMessage: 'customer_email must be a valid email'
+      };
+    }
+
+    return {
+      rowNum,
+      rawJson: row,
+      normalizedJson: {
+        occurredAt,
+        amountCents,
+        currency,
+        externalId,
+        customerEmail,
+        customerPhone,
+        description,
+        campaignMessageId,
+        linkCode,
+        providerMessageId
       },
       errorCode: null,
       errorMessage: null

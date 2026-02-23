@@ -1,5 +1,6 @@
 export const QUEUES = {
   CUSTOMERS_IMPORT: 'customers.import',
+  REVENUE_IMPORT: 'revenue.import',
   SUPPRESSIONS_IMPORT: 'suppressions.import',
   GBP_INGEST: 'gbp.ingest',
   POSTMARK_WEBHOOK_RECONCILE: 'postmark.webhook.reconcile',

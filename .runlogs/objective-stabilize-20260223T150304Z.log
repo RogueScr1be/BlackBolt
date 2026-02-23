@@ -1,0 +1,7 @@
+
+> blackbolt-tier1@0.1.0 objective:rollout:stabilize
+> bash scripts/smoke/objective-rollout-stabilize.sh https://blackbolt-api-production.up.railway.app cmlqpv2il000022nkqb7llq4z JU9LLfQaMD-Rz3SovDG41RctF0EZhDcn 1440 60 - 2026-02
+
+[preflight:stabilize] OK repo + scripts + railway context verified
+[stabilize] starting window duration=1440m interval=60m checkpoints=24
+[stabilize] checkpoint=1 FAIL health.ok is false; worker heartbeat is not healthy

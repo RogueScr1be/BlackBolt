@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { TenantGuard } from '../../common/guards/tenant.guard';
+import { OperatorKeyGuard } from '../../common/guards/operator-key.guard';
 import { CustomersImportService } from './customers-import.service';
 import { CustomersService } from './customers.service';
 import type { CustomerSegmentApi } from '../common/segment';
@@ -20,7 +21,7 @@ import type { CustomerSegmentApi } from '../common/segment';
 type UploadedBufferFile = { buffer: Buffer };
 
 @Controller('v1/tenants/:tenantId/customers')
-@UseGuards(TenantGuard)
+@UseGuards(OperatorKeyGuard, TenantGuard)
 export class CustomersController {
   constructor(
     private readonly importService: CustomersImportService,
@@ -57,5 +58,10 @@ export class CustomersController {
       cursor,
       segment
     });
+  }
+
+  @Get('/segments')
+  async getSegments(@Param('tenantId') tenantId: string) {
+    return this.customersService.getSegmentSummary(tenantId);
   }
 }
