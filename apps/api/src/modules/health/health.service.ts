@@ -1,16 +1,19 @@
 import { Injectable } from '@nestjs/common';
 import Redis from 'ioredis';
 import { PrismaService } from '../prisma/prisma.service';
-import { QUEUES } from '../queues/queue.constants';
+import { WorkerHeartbeatService } from './worker-heartbeat.service';
 
 @Injectable()
 export class HealthService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly workerHeartbeat: WorkerHeartbeatService
+  ) {}
 
   async getHealth() {
     const dbOk = await this.checkDatabase();
     const redisOk = await this.checkRedis();
-    const workerHeartbeat = await this.checkWorkerHeartbeat();
+    const workerHeartbeat = await this.workerHeartbeat.readHeartbeatStatus();
 
     return {
       ok: dbOk && redisOk && workerHeartbeat.ok,
@@ -57,28 +60,4 @@ export class HealthService {
     }
   }
 
-  private async checkWorkerHeartbeat(): Promise<{ ok: boolean; lastActivityAt: string | null }> {
-    try {
-      const cutoff = new Date(Date.now() - 15 * 60 * 1000);
-      const latest = await this.prisma.jobRun.findFirst({
-        where: {
-          queueName: { in: [QUEUES.GBP_INGEST, QUEUES.POSTMARK_SEND] }
-        },
-        orderBy: { createdAt: 'desc' },
-        select: { createdAt: true }
-      });
-
-      if (!latest) {
-        return { ok: false, lastActivityAt: null };
-      }
-
-      const lastActivityAt = latest.createdAt.toISOString();
-      return {
-        ok: latest.createdAt >= cutoff,
-        lastActivityAt
-      };
-    } catch {
-      return { ok: false, lastActivityAt: null };
-    }
-  }
 }

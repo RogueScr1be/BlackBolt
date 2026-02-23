@@ -7,6 +7,7 @@ import { SuppressionsWorkerModule } from './modules/suppressions/suppressions-wo
 import { ReviewsWorkerModule } from './modules/reviews/reviews-worker.module';
 import { PostmarkWorkerModule } from './modules/postmark/postmark-worker.module';
 import { RevenueWorkerModule } from './modules/revenue/revenue-worker.module';
+import { WorkerHeartbeatModule } from './modules/health/worker-heartbeat.module';
 
 @Module({
   imports: [
@@ -16,7 +17,8 @@ import { RevenueWorkerModule } from './modules/revenue/revenue-worker.module';
     SuppressionsWorkerModule,
     ReviewsWorkerModule,
     PostmarkWorkerModule,
-    RevenueWorkerModule
+    RevenueWorkerModule,
+    WorkerHeartbeatModule
   ]
 })
 export class WorkerModule {}

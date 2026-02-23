@@ -34,11 +34,17 @@ Startup fails fast for required variables per role.
 - `POSTMARK_SEND_SWEEPER_DISABLED`
 - `POSTMARK_SEND_SWEEPER_EVERY_MS`
 - `POSTMARK_SEND_MAX_ATTEMPTS`
+- Worker heartbeat envs (optional, defaults shown):
+- `WORKER_HEARTBEAT_KEY=blackbolt:worker:heartbeat`
+- `WORKER_HEARTBEAT_INTERVAL_MS=30000`
+- `WORKER_HEARTBEAT_TTL_SECONDS=300`
+- `HEALTH_WORKER_HEARTBEAT_MAX_AGE_MS=900000`
 
 ## Safe Initial Defaults
 - Keep `POSTMARK_SEND_DISABLED=1` until shadow checks are complete.
 - Do not unset this flag until explicit go-live approval.
 - Keep `GBP_POLL_SCHEDULER_DISABLED` unset or `0` on worker during shadow/live validation windows.
+- Keep worker heartbeat defaults unless rollout diagnostics require temporary tuning.
 
 ## Revenue Import Runtime Contract
 - Canonical tenant-scoped endpoints:
