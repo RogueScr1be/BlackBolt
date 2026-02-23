@@ -285,3 +285,57 @@ DbError { severity: "ERROR", parsed_severity: Some(Error), code: SqlState(E42704
 [shadow] OK   events status=200
 [shadow] FAIL tenants expected one of [200] got=500
 {"statusCode":500,"message":"Internal server error"}
+
+## 2026-02-23 Recovery Continuation (Heartbeat SHA)
+- Timestamp (UTC): 2026-02-23T17:04:20Z
+- Branch: codex/objective-closure-0811722
+- Release SHA: b03988acb3733bee03245c13f79606cd4b3e4d4a
+
+### Production state snapshot
+- `railway status --json` resolved and confirmed project `BlackBolt` / env `production`.
+- API + worker `BUILD_SHA` values are both `b03988acb3733bee03245c13f79606cd4b3e4d4a`.
+- API + worker `POSTMARK_SEND_DISABLED` values are currently `0`.
+- `/health` snapshot: `{ ok: true, checks.worker_heartbeat: true }`.
+
+### Gate C retry evidence (blocked by Railway DNS)
+- Ran `objective:rollout:live` in a 20-attempt retry loop.
+- All 20 attempts failed in preflight with:
+  - `[preflight:live] FAIL railway status unavailable (network/auth/project link issue)`
+- Direct connectivity probe during loop:
+  - `railway status` intermittently failed with DNS lookup error for `https://backboard.railway.com/graphql/v2`.
+- Subsequent API verification attempt was also blocked by DNS resolver failure:
+  - `curl: (6) Could not resolve host: blackbolt-api-production.up.railway.app`
+
+### Stabilization status
+- New stabilization run cannot be trusted as complete while DNS is unstable.
+- Prior heartbeat-fix run showed checkpoint 1 passing (`health+alerts+report coherent`) before session interruption.
+
+### Synthetic evidence note (retained by decision)
+- Synthetic shadow/live evidence rows remain intentionally retained for deterministic gate verification.
+- IDs retained in production:
+  - `shadow_review_20260223`
+  - `shadow_campaign_20260223`
+  - `shadow_run_20260223`
+  - `shadow_customer_20260223`
+  - `shadow_message_20260223`
+
+### Local operator app refresh
+- Executed `npm run operator:install`.
+- Installed bundle: `/Users/thewhitley/Applications/BlackBolt Operator.app`.
+
+### Resume command once DNS is healthy
+```bash
+cd "/Users/thewhitley/.codex/worktrees/749b/New project"
+npm run objective:rollout:live -- \
+  "https://blackbolt-api-production.up.railway.app" \
+  "cmlqpv2il000022nkqb7llq4z" \
+  "JU9LLfQaMD-Rz3SovDG41RctF0EZhDcn" \
+  "b03988acb3733bee03245c13f79606cd4b3e4d4a" \
+  "-" "2026-02"
+
+npm run objective:rollout:stabilize -- \
+  "https://blackbolt-api-production.up.railway.app" \
+  "cmlqpv2il000022nkqb7llq4z" \
+  "JU9LLfQaMD-Rz3SovDG41RctF0EZhDcn" \
+  1440 60 "-" "2026-02"
+```
