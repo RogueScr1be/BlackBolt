@@ -37,6 +37,7 @@ export const OPENAPI_OPERATION_IDS = [
   'runOperatorSmoke',
   'rotateOperatorKey',
   'getMonthlyReport',
+  'getMonthlyReportCsv',
   'getMonthlyReportPdf',
   'getDashboardSummary',
   'listOperatorEvents',

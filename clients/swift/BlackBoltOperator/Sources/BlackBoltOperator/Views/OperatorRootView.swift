@@ -82,7 +82,7 @@ struct OperatorRootView: View {
                     case .reports:
                         ReportsView(store: store)
                     case .settings:
-                        OperatorSettingsView()
+                        OperatorSettingsView(store: store)
                             .environmentObject(runtime)
                     }
                 }

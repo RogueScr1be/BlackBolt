@@ -9,6 +9,8 @@ final class OperatorShellStore: ObservableObject {
     @Published var tenantDetail: OperatorTenantDetail?
     @Published var tenantMetrics: OperatorTenantMetricsResponse?
     @Published var report: MonthlyReportPayload?
+    @Published var campaignRuns: [CampaignRunSummary] = []
+    @Published var smoke: OperatorSmokeResponse?
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var connectionState: OperatorConnectionState = .ready
@@ -28,6 +30,7 @@ final class OperatorShellStore: ObservableObject {
             let tenantsReq = try runtime.request(path: "/tenants")
             let tenantReq = try runtime.request(path: "/tenants/\(runtime.tenantId)")
             let metricsReq = try runtime.request(path: "/tenants/\(runtime.tenantId)/metrics?range=30d")
+            let campaignRunsReq = try runtime.request(path: "/v1/tenants/\(runtime.tenantId)/campaign-runs?limit=25")
 
             async let dashboardTask = OperatorHTTP.fetchJSON(dashboardReq, as: DashboardSummaryResponse.self)
             async let alertsTask = OperatorHTTP.fetchJSON(alertsReq, as: OperatorAlertsResponse.self)
@@ -35,14 +38,16 @@ final class OperatorShellStore: ObservableObject {
             async let tenantsTask = OperatorHTTP.fetchJSON(tenantsReq, as: OperatorTenantListResponse.self)
             async let tenantTask = OperatorHTTP.fetchJSON(tenantReq, as: OperatorTenantDetail.self)
             async let metricsTask = OperatorHTTP.fetchJSON(metricsReq, as: OperatorTenantMetricsResponse.self)
+            async let campaignRunsTask = OperatorHTTP.fetchJSON(campaignRunsReq, as: CampaignRunsResponse.self)
 
-            let (dashboardResp, alertsResp, eventsResp, tenantsResp, tenantResp, metricsResp) = try await (
+            let (dashboardResp, alertsResp, eventsResp, tenantsResp, tenantResp, metricsResp, campaignRunsResp) = try await (
                 dashboardTask,
                 alertsTask,
                 eventsTask,
                 tenantsTask,
                 tenantTask,
-                metricsTask
+                metricsTask,
+                campaignRunsTask
             )
 
             dashboard = dashboardResp
@@ -51,6 +56,7 @@ final class OperatorShellStore: ObservableObject {
             tenants = tenantsResp.items
             tenantDetail = tenantResp
             tenantMetrics = metricsResp
+            campaignRuns = campaignRunsResp.items
             connectionState = .ready
             lastError = nil
             errorMessage = nil
@@ -90,6 +96,32 @@ final class OperatorShellStore: ObservableObject {
             connectionState = .ready
             lastError = nil
             errorMessage = nil
+        } catch {
+            apply(error: error)
+        }
+    }
+
+    func runSmokeTest(runtime: OperatorRuntimeConfig) async {
+        guard preflight(runtime: runtime) else { return }
+        do {
+            var request = try runtime.request(path: "/v1/tenants/\(runtime.tenantId)/operator/smoke", method: "POST")
+            request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = Data("{}".utf8)
+            smoke = try await OperatorHTTP.fetchJSON(request, as: OperatorSmokeResponse.self)
+            connectionState = .ready
+            lastError = nil
+            errorMessage = nil
+        } catch {
+            apply(error: error)
+        }
+    }
+
+    func setCampaignRunPaused(runtime: OperatorRuntimeConfig, runId: String, paused: Bool) async {
+        guard preflight(runtime: runtime) else { return }
+        let action = paused ? "pause" : "resume"
+        do {
+            _ = try await post(runtime: runtime, path: "/v1/tenants/\(runtime.tenantId)/campaign-runs/\(runId)/\(action)", body: nil)
+            await refresh(runtime: runtime)
         } catch {
             apply(error: error)
         }

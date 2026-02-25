@@ -22,3 +22,4 @@ Output is generated under `dist/sos-standalone/`.
 - `scripts/` preflight, smoke, monitoring checks
 - `env/` API/worker env templates
 - `checklists/` first-run and go-live validation
+- `reports/` latest gate evidence report (when available)

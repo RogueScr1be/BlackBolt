@@ -3,6 +3,9 @@
 ## Environment
 - [ ] API/worker env files populated with real values
 - [ ] `GOOGLE_SERVICE_ACCOUNT_JSON` parses as valid JSON
+- [ ] `SOS_GOOGLE_SERVICE_ACCOUNT_JSON` parses as valid JSON
+- [ ] `SOS_GMAIL_DELEGATED_USER=leah@soslactation.com`
+- [ ] `SOS_GMAIL_FROM_EMAIL=leah@soslactation.com`
 - [ ] `SOS_FAX_PROVIDER` set to `srfax`
 
 ## Deploy + Data
@@ -18,6 +21,7 @@
 ## Monitoring
 - [ ] `bash scripts/sos/monitor-check.sh` returns OK
 - [ ] alert webhook tested and receiving failures
+- [ ] `npm run sos:report:daily` returns queued/sent/failed/skipped counts
 
 ## Go-Live
 - [ ] Daily sweep enabled (`SOS_FOLLOWUP_SWEEP_DISABLED=0`)

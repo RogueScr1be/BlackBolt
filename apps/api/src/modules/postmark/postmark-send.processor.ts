@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
-import { Logger, OnModuleInit } from '@nestjs/common';
-import { Processor, WorkerHost } from '@nestjs/bullmq';
-import { Job } from 'bullmq';
+import { Logger, OnModuleInit, Optional } from '@nestjs/common';
+import { InjectQueue, Processor, WorkerHost } from '@nestjs/bullmq';
+import { Job, Queue } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
 import { QUEUES } from '../queues/queue.constants';
 import { POSTMARK_PROVIDER, POSTMARK_STALE_SEND_CLAIM_MINUTES } from './postmark.constants';
@@ -20,7 +20,10 @@ export class PostmarkSendProcessor extends WorkerHost implements OnModuleInit {
     private readonly prisma: PrismaService,
     private readonly postmarkClient: PostmarkClient,
     private readonly policyService: PostmarkPolicyService,
-    private readonly metrics: PostmarkMetricsService
+    private readonly metrics: PostmarkMetricsService,
+    @Optional()
+    @InjectQueue(QUEUES.POSTMARK_SEND)
+    private readonly postmarkSendQueue?: Queue<PostmarkSendJobPayload>
   ) {
     super();
   }
@@ -42,7 +45,20 @@ export class PostmarkSendProcessor extends WorkerHost implements OnModuleInit {
 
     const { tenantId, campaignMessageId } = job.data;
     const campaignMessage = await this.prisma.campaignMessage.findFirst({
-      where: { id: campaignMessageId, tenantId }
+      where: { id: campaignMessageId, tenantId },
+      include: {
+        customer: {
+          select: {
+            email: true,
+            displayName: true
+          }
+        },
+        draftMessage: {
+          select: {
+            bodyText: true
+          }
+        }
+      }
     });
 
     if (!campaignMessage) {
@@ -51,6 +67,7 @@ export class PostmarkSendProcessor extends WorkerHost implements OnModuleInit {
 
     if (campaignMessage.providerMessageId) {
       this.metrics.increment('send_guard_provider_message_id_block_total');
+      await this.refreshCampaignRun(campaignMessage.campaignRunId);
       return;
     }
     if (campaignMessage.deliveryState === 'SENT') {
@@ -69,6 +86,7 @@ export class PostmarkSendProcessor extends WorkerHost implements OnModuleInit {
         where: { id: campaignMessage.id },
         data: { status: 'PAUSED' }
       });
+      await this.refreshCampaignRun(campaignMessage.campaignRunId);
       return;
     }
 
@@ -106,6 +124,7 @@ export class PostmarkSendProcessor extends WorkerHost implements OnModuleInit {
         where: { id: campaignMessage.id },
         data: { status: 'PAUSED' }
       });
+      await this.refreshCampaignRun(campaignMessage.campaignRunId);
       return;
     }
 
@@ -148,13 +167,17 @@ export class PostmarkSendProcessor extends WorkerHost implements OnModuleInit {
         }
       });
 
+      await this.refreshCampaignRun(campaignMessage.campaignRunId);
       return;
     }
 
     try {
       const sent = await this.postmarkClient.sendCampaignMessage({
         tenantId,
-        campaignMessageId: campaignMessage.id
+        campaignMessageId: campaignMessage.id,
+        toEmail: campaignMessage.customer?.email ?? process.env.POSTMARK_TO_FALLBACK ?? 'operator@example.com',
+        customerDisplayName: campaignMessage.customer?.displayName ?? null,
+        bodyText: campaignMessage.draftMessage?.bodyText ?? null
       });
 
       await this.prisma.campaignMessage.update({
@@ -186,10 +209,15 @@ export class PostmarkSendProcessor extends WorkerHost implements OnModuleInit {
           occurredAt: new Date()
         }
       });
+      await this.refreshCampaignRun(campaignMessage.campaignRunId);
     } catch (error) {
       await this.prisma.campaignMessage.update({
         where: { id: campaignMessage.id },
         data: { status: 'FAILED', claimedAt: null }
+      });
+      await this.refreshCampaignRun(campaignMessage.campaignRunId, {
+        errorCode: 'POSTMARK_SEND_FAILED',
+        errorMessage: error instanceof Error ? error.message : 'Unknown postmark send failure'
       });
 
       if (error instanceof PostmarkProviderTransientError) {
@@ -379,6 +407,7 @@ export class PostmarkSendProcessor extends WorkerHost implements OnModuleInit {
       select: {
         id: true,
         tenantId: true,
+        campaignRunId: true,
         claimedAt: true,
         sendAttempt: true
       }
@@ -426,6 +455,111 @@ export class PostmarkSendProcessor extends WorkerHost implements OnModuleInit {
           }
         }
       });
+
+      await this.refreshCampaignRun(item.campaignRunId);
+    }
+
+    await this.enqueueQueuedBacklog();
+  }
+
+  private async refreshCampaignRun(
+    campaignRunId: string | null,
+    error?: { errorCode: string; errorMessage: string }
+  ) {
+    if (!campaignRunId) {
+      return;
+    }
+
+    const campaignRunModel = (this.prisma as { campaignRun?: unknown }).campaignRun as
+      | {
+          findUnique: (args: unknown) => Promise<{ id: string; tenantId: string; recipientsTotal: number } | null>;
+          update: (args: unknown) => Promise<unknown>;
+        }
+      | undefined;
+
+    if (!campaignRunModel) {
+      return;
+    }
+
+    const run = await campaignRunModel.findUnique({
+      where: { id: campaignRunId },
+      select: { id: true, tenantId: true, recipientsTotal: true }
+    });
+    if (!run) {
+      return;
+    }
+
+    const [queued, sent, failed, paused] = await Promise.all([
+      this.prisma.campaignMessage.count({
+        where: { campaignRunId, tenantId: run.tenantId, status: { in: ['QUEUED', 'SENDING'] }, providerMessageId: null }
+      }),
+      this.prisma.campaignMessage.count({
+        where: { campaignRunId, tenantId: run.tenantId, status: { in: ['SENT', 'SENT_SIMULATED'] } }
+      }),
+      this.prisma.campaignMessage.count({
+        where: { campaignRunId, tenantId: run.tenantId, status: 'FAILED' }
+      }),
+      this.prisma.campaignMessage.count({
+        where: { campaignRunId, tenantId: run.tenantId, status: 'PAUSED', providerMessageId: null }
+      })
+    ]);
+
+    let status = 'RUNNING';
+    let finishedAt: Date | null = null;
+    if (paused > 0 && queued === 0) {
+      status = 'PAUSED';
+    } else if (queued === 0 && sent + failed >= run.recipientsTotal) {
+      status = failed > 0 ? 'FAILED' : 'COMPLETED';
+      finishedAt = new Date();
+    }
+
+    await campaignRunModel.update({
+      where: { id: campaignRunId },
+      data: {
+        status,
+        messagesQueued: queued,
+        messagesSent: sent,
+        messagesFailed: failed,
+        finishedAt,
+        lastErrorCode: error?.errorCode ?? null,
+        lastErrorMessage: error?.errorMessage ?? null
+      }
+    });
+  }
+
+  private async enqueueQueuedBacklog() {
+    if (!this.postmarkSendQueue) {
+      return;
+    }
+    const batchSize = Number.parseInt(process.env.POSTMARK_SEND_SWEEPER_BATCH ?? '50', 10);
+    const pending = await this.prisma.campaignMessage.findMany({
+      where: {
+        status: 'QUEUED',
+        providerMessageId: null
+      },
+      orderBy: { createdAt: 'asc' },
+      take: batchSize,
+      select: {
+        id: true,
+        tenantId: true
+      }
+    });
+
+    for (const item of pending) {
+      await this.postmarkSendQueue.add(
+        POSTMARK_SEND_JOB_NAME,
+        {
+          tenantId: item.tenantId,
+          campaignMessageId: item.id
+        },
+        {
+          jobId: `postmark-send:${item.tenantId}:${item.id}`,
+          attempts: 5,
+          backoff: { type: 'exponential', delay: 3000 },
+          removeOnComplete: false,
+          removeOnFail: false
+        }
+      );
     }
   }
 }

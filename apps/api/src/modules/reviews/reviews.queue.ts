@@ -1,4 +1,4 @@
-import { Injectable, Optional, ServiceUnavailableException } from '@nestjs/common';
+import { Injectable, OnModuleInit, Optional, ServiceUnavailableException } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { createHash } from 'node:crypto';
@@ -7,6 +7,9 @@ import {
   GBP_INGEST_IDEMPOTENCY_PREFIX,
   GBP_INGEST_IDEMPOTENCY_VERSION,
   GBP_PAGE_FETCH_JOB_NAME,
+  GBP_POLL_INTERVAL_DEFAULT_MS,
+  GBP_POLL_SCHEDULER_JOB_ID,
+  GBP_POLL_SCHEDULER_JOB_NAME,
   GBP_POLL_TRIGGER_JOB_NAME
 } from './reviews.constants';
 
@@ -25,19 +28,26 @@ export type GbpPageFetchJobPayload = {
 };
 
 @Injectable()
-export class ReviewsQueue {
+export class ReviewsQueue implements OnModuleInit {
   constructor(
     @Optional()
     @InjectQueue(QUEUES.GBP_INGEST)
     private readonly queue?: Queue<GbpPollTriggerJobPayload | GbpPageFetchJobPayload>
   ) {}
 
-  async enqueuePollTrigger(input: { tenantId: string; locationId: string }) {
+  async onModuleInit() {
+    if (!this.queue) {
+      return;
+    }
+    await this.schedulePoller();
+  }
+
+  async enqueuePollTrigger(input: { tenantId: string; locationId: string; timeBucket?: string; delayMs?: number }) {
     if (!this.queue) {
       throw new ServiceUnavailableException('GBP ingest queue is unavailable');
     }
 
-    const timeBucket = new Date().toISOString().slice(0, 13);
+    const timeBucket = input.timeBucket ?? new Date().toISOString().slice(0, 13);
     const idempotencyKey = `${GBP_INGEST_IDEMPOTENCY_PREFIX}:${input.tenantId}:${input.locationId}:${timeBucket}`;
 
     const job = await this.queue.add(
@@ -49,7 +59,7 @@ export class ReviewsQueue {
       },
       {
         jobId: idempotencyKey,
-        delay: Math.floor(Math.random() * 1000),
+        delay: input.delayMs ?? Math.floor(Math.random() * 1000),
         attempts: 5,
         backoff: {
           type: 'exponential',
@@ -61,6 +71,55 @@ export class ReviewsQueue {
     );
 
     return { idempotencyKey, jobId: String(job.id) };
+  }
+
+  async enqueueSchedulerTick() {
+    if (!this.queue) {
+      throw new ServiceUnavailableException('GBP ingest queue is unavailable');
+    }
+
+    const tickAt = new Date().toISOString();
+    const job = await this.queue.add(
+      GBP_POLL_SCHEDULER_JOB_NAME,
+      {
+        tenantId: 'scheduler',
+        locationId: 'scheduler',
+        timeBucket: tickAt
+      },
+      {
+        jobId: `${GBP_POLL_SCHEDULER_JOB_NAME}:${tickAt}`,
+        removeOnComplete: true,
+        removeOnFail: false
+      }
+    );
+
+    return { jobId: String(job.id) };
+  }
+
+  private async schedulePoller() {
+    if (!this.queue || process.env.GBP_POLL_SCHEDULER_DISABLED === '1') {
+      return;
+    }
+
+    const intervalMs = Number.parseInt(process.env.GBP_POLL_INTERVAL_MS ?? `${GBP_POLL_INTERVAL_DEFAULT_MS}`, 10);
+    if (!Number.isFinite(intervalMs) || intervalMs < 60_000) {
+      throw new Error('GBP_POLL_INTERVAL_MS must be >= 60000');
+    }
+
+    await this.queue.add(
+      GBP_POLL_SCHEDULER_JOB_NAME,
+      {
+        tenantId: 'scheduler',
+        locationId: 'scheduler',
+        timeBucket: new Date().toISOString()
+      },
+      {
+        jobId: GBP_POLL_SCHEDULER_JOB_ID,
+        repeat: { every: intervalMs },
+        removeOnComplete: true,
+        removeOnFail: false
+      }
+    );
   }
 
   async enqueuePageFetch(input: {

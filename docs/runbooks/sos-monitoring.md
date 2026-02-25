@@ -24,10 +24,17 @@ On failures, `monitor-check.sh` posts concise failure messages.
 - non-zero SOS integration alerts in last 24h
 
 ## Daily Report
-Capture and review:
-- follow-up sends attempted/succeeded/failed
-- fax sends attempted/succeeded/failed
-- sweep queued/skipped counts
+Generate:
+```bash
+TENANT_ID=... DATABASE_URL=... npm run sos:report:daily
+```
+
+Report includes:
+- `queued`
+- `sent`
+- `failed`
+- `skipped`
+- sweep run summaries (`runs`, `due`, `queued`, `skipped`)
 
 ## Incident Response
 1. Confirm provider credentials and network reachability.

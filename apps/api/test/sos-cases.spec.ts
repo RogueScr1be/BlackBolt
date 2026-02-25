@@ -142,7 +142,8 @@ describe('SosService cases', () => {
         subjective: 's',
         objective: 'o',
         assessment: 'a',
-        plan: 'p'
+        plan: 'p',
+        providerFaxNumber: '8321112222'
       }
     });
 
@@ -152,6 +153,17 @@ describe('SosService cases', () => {
       soapSaved: true
     });
     expect(prisma.sosArtifact.upsert).toHaveBeenCalled();
+    expect(prisma.sosCasePayload.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          canonicalJson: expect.objectContaining({
+            provider: expect.objectContaining({
+              faxNumber: '8321112222'
+            })
+          })
+        })
+      })
+    );
   });
 
   it('generates pedi artifact record from latest payload', async () => {
@@ -190,8 +202,8 @@ describe('SosService cases', () => {
   it('sends follow-up via provider and writes provider metadata', async () => {
     const emailClient = {
       sendFollowUp: jest.fn().mockResolvedValue({
-        provider: 'postmark',
-        providerMessageId: 'pm_123',
+        provider: 'gmail',
+        providerMessageId: 'gmail_123',
         sentAt: '2026-02-18T12:00:00.000Z'
       })
     };
@@ -232,8 +244,8 @@ describe('SosService cases', () => {
     expect(result).toEqual(
       expect.objectContaining({
         artifactType: 'follow_up_letter_pdf',
-        provider: 'postmark',
-        providerMessageId: 'pm_123',
+        provider: 'gmail',
+        providerMessageId: 'gmail_123',
         simulated: false
       })
     );
@@ -321,5 +333,78 @@ describe('SosService cases', () => {
       })
     );
     expect(faxClient.sendProviderFax).toHaveBeenCalled();
+  });
+
+  it('supports ictfax provider metadata without endpoint changes', async () => {
+    const faxClient = {
+      sendProviderFax: jest.fn().mockResolvedValue({
+        provider: 'ictfax',
+        providerTransmissionId: '88',
+        status: 'processing',
+        sentAt: '2026-02-18T12:00:00.000Z'
+      })
+    };
+    const prisma = {
+      tenant: {
+        findUnique: jest.fn().mockResolvedValue({ id: 'tenant-sos' })
+      },
+      sosCase: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'case_1',
+          tenantId: 'tenant-sos',
+          consultType: 'remote_video'
+        })
+      },
+      sosCasePayload: {
+        findFirst: jest.fn().mockResolvedValue({
+          canonicalJson: {
+            patient: {
+              parentName: 'Leah Whitley',
+              email: 'leah@example.com',
+              phone: '8321112222',
+              address: 'Houston'
+            },
+            baby: {
+              name: 'Baby W',
+              dob: '2026-01-01'
+            },
+            soap: {
+              subjective: 'subjective note',
+              objective: 'objective note',
+              assessment: 'assessment note',
+              plan: 'plan note'
+            },
+            provider: {
+              faxNumber: '8321112222'
+            }
+          }
+        })
+      },
+      sosArtifact: {
+        upsert: jest.fn().mockResolvedValue({})
+      },
+      auditLog: {
+        create: jest.fn().mockResolvedValue({})
+      }
+    };
+    const service = new SosService(prisma as never, {} as never, {} as never, faxClient as never);
+
+    const result = await service.sendProviderFax({
+      tenantId: 'tenant-sos',
+      caseId: 'case_1'
+    });
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        provider: 'ictfax',
+        providerTransmissionId: '88',
+        simulated: false
+      })
+    );
+    expect(faxClient.sendProviderFax).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pdfBytes: expect.any(Buffer)
+      })
+    );
   });
 });

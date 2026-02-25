@@ -19,8 +19,10 @@ import type {
   StripeEventPayload,
   StripePaymentIntent
 } from './sos.types';
-import { SosPostmarkClient } from './email/sos-postmark.client';
-import { SosFaxTransientError, SosSrfaxClient } from './fax/sos-srfax.client';
+import { SosGmailClient } from './email/sos-gmail.client';
+import { SosFaxClient } from './fax/sos-fax.client';
+import { renderSosFaxPacketPdf } from './fax/sos-fax-packet.pdf';
+import { SosFaxTransientError } from './fax/sos-srfax.client';
 import { SosQueue } from './sos.queue';
 import { verifyStripeSignature } from './stripe.signature';
 
@@ -71,8 +73,8 @@ export class SosService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly sosQueue: SosQueue,
-    private readonly sosPostmarkClient: SosPostmarkClient,
-    private readonly sosSrfaxClient: SosSrfaxClient
+    private readonly sosGmailClient: SosGmailClient,
+    private readonly sosFaxClient: SosFaxClient
   ) {}
 
   async receiveStripeWebhook(input: {
@@ -443,7 +445,7 @@ export class SosService {
         ? (latestPayload.canonicalJson as Record<string, unknown>)
         : {};
 
-    const canonicalNext = {
+    const canonicalNext: Record<string, unknown> = {
       ...latestCanonical,
       soap: {
         subjective: input.soap.subjective.trim(),
@@ -452,6 +454,18 @@ export class SosService {
         plan: input.soap.plan.trim()
       }
     };
+
+    const providerFaxNumber = input.soap.providerFaxNumber?.trim();
+    if (providerFaxNumber) {
+      const existingProvider =
+        latestCanonical.provider && typeof latestCanonical.provider === 'object' && !Array.isArray(latestCanonical.provider)
+          ? (latestCanonical.provider as Record<string, unknown>)
+          : {};
+      canonicalNext.provider = {
+        ...existingProvider,
+        faxNumber: providerFaxNumber
+      };
+    }
 
     const newPayload = await this.prisma.sosCasePayload.create({
       data: {
@@ -580,7 +594,7 @@ export class SosService {
     }
 
     try {
-      const sendResult = await this.sosPostmarkClient.sendFollowUp({
+      const sendResult = await this.sosGmailClient.sendFollowUp({
         tenantId: resolved.tenantId,
         toEmail: resolved.identity.email,
         parentName: resolved.identity.parentName,
@@ -626,17 +640,32 @@ export class SosService {
       throw new BadRequestException('Cannot send provider fax: provider fax number is missing');
     }
 
+    const faxPacketPdf = renderSosFaxPacketPdf({
+      caseId: resolved.caseId,
+      generatedAt: new Date().toISOString(),
+      consultType: resolved.consultType,
+      providerFaxNumber: resolved.providerFaxNumber,
+      parentName: resolved.identity.parentName,
+      parentEmail: resolved.identity.email,
+      parentPhone: resolved.identity.phone,
+      parentAddress: resolved.identity.address,
+      babyName: resolved.identity.babyName,
+      babyDob: resolved.identity.babyDob,
+      soap: resolved.soap
+    });
+
     let attempts = 0;
     while (attempts < 3) {
       attempts += 1;
       try {
-        const sendResult = await this.sosSrfaxClient.sendProviderFax({
+        const sendResult = await this.sosFaxClient.sendProviderFax({
           tenantId: resolved.tenantId,
           caseId: resolved.caseId,
           toFaxNumber: resolved.providerFaxNumber,
           subject: `SOS Lactation Provider Fax - ${resolved.caseId}`,
           bodyText:
-            'SOS Lactation provider packet generated from structured SOAP and canonical case data for care coordination.'
+            'SOS Lactation provider packet generated from structured SOAP and canonical case data for care coordination.',
+          pdfBytes: faxPacketPdf
         });
 
         await this.persistSendSuccess({
@@ -759,6 +788,23 @@ export class SosService {
       queuedCount += 1;
     }
 
+    await this.prisma.auditLog.create({
+      data: {
+        tenantId,
+        action: 'sos.followup.sweep.run',
+        entityType: 'sos_scheduler',
+        entityId: tenantId,
+        metadataJson: {
+          windowStartDays,
+          windowEndDays,
+          dueCount: dueCases.length,
+          queuedCount,
+          skippedCount,
+          runAt: now.toISOString()
+        } as Prisma.InputJsonValue
+      }
+    });
+
     return {
       tenantId,
       windowStartDays,
@@ -803,8 +849,16 @@ export class SosService {
     });
     const identity = extractCanonicalIdentity(latestPayload?.canonicalJson);
     const providerFaxNumber = this.extractProviderFaxNumber(latestPayload?.canonicalJson);
+    const soap = this.extractSoap(latestPayload?.canonicalJson);
 
-    return { tenantId, caseId: sosCase.id, identity, providerFaxNumber };
+    return {
+      tenantId,
+      caseId: sosCase.id,
+      consultType: sosCase.consultType,
+      identity,
+      providerFaxNumber,
+      soap
+    };
   }
 
   private extractProviderFaxNumber(canonicalJson: Prisma.JsonValue | null | undefined): string | null {
@@ -818,6 +872,38 @@ export class SosService {
       };
     };
     return value.provider?.fax?.trim() || value.provider?.faxNumber?.trim() || null;
+  }
+
+  private extractSoap(canonicalJson: Prisma.JsonValue | null | undefined): {
+    subjective: string | null;
+    objective: string | null;
+    assessment: string | null;
+    plan: string | null;
+  } {
+    if (!canonicalJson || typeof canonicalJson !== 'object' || Array.isArray(canonicalJson)) {
+      return {
+        subjective: null,
+        objective: null,
+        assessment: null,
+        plan: null
+      };
+    }
+
+    const value = canonicalJson as {
+      soap?: {
+        subjective?: string;
+        objective?: string;
+        assessment?: string;
+        plan?: string;
+      };
+    };
+
+    return {
+      subjective: value.soap?.subjective?.trim() || null,
+      objective: value.soap?.objective?.trim() || null,
+      assessment: value.soap?.assessment?.trim() || null,
+      plan: value.soap?.plan?.trim() || null
+    };
   }
 
   private async persistSendSuccess(input: {

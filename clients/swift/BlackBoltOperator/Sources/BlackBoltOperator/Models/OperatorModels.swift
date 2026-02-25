@@ -308,6 +308,10 @@ struct MonthlyReportTotals: Decodable {
     let bookingsCount: Int
     let sentCount: Int
     let clickCount: Int
+    let runCount: Int
+    let runMessagesSent: Int
+    let runMessagesFailed: Int
+    let runMessagesQueued: Int
 }
 
 struct MonthlyReportEstimates: Decodable {
@@ -331,6 +335,42 @@ struct MonthlyReportPayload: Decodable {
     let estimates: MonthlyReportEstimates
     let praisedBenefits: [MonthlyReportBenefit]
     let narrative: String
+}
+
+struct CampaignRunSummary: Decodable, Identifiable {
+    let id: String
+    let status: String
+    let segmentMode: String
+    let sendWindowAt: String
+    let recipientsTotal: Int
+    let messagesQueued: Int
+    let messagesSent: Int
+    let messagesFailed: Int
+    let lastErrorCode: String?
+    let lastErrorMessage: String?
+    let createdAt: String
+    let updatedAt: String
+}
+
+struct CampaignRunsResponse: Decodable {
+    let items: [CampaignRunSummary]
+}
+
+struct OperatorSmokeCheck: Decodable, Identifiable {
+    let name: String
+    let path: String
+    let passed: Bool
+    let status: Int
+    let reason: String?
+    let failingHeader: String?
+
+    var id: String { "\(name)-\(path)" }
+}
+
+struct OperatorSmokeResponse: Decodable {
+    let tenantId: String
+    let overallPassed: Bool
+    let checks: [OperatorSmokeCheck]
 }
 
 struct OperatorAlert: Identifiable, Hashable {

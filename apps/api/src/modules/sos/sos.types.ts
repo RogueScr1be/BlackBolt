@@ -102,6 +102,7 @@ export type SosSoapInput = {
   objective: string;
   assessment: string;
   plan: string;
+  providerFaxNumber?: string;
 };
 
 export type SosSaveSoapResponse = {
@@ -120,7 +121,7 @@ export type SosSendActionResponse = {
   caseId: string;
   artifactType: 'follow_up_letter_pdf' | 'provider_fax_packet_pdf';
   sentAt: string;
-  provider: 'postmark' | 'srfax';
+  provider: 'gmail' | 'srfax' | 'ictfax';
   sendStatus: 'sent';
   providerMessageId?: string | null;
   providerTransmissionId?: string | null;
@@ -138,13 +139,22 @@ export type SosFollowupSweepResponse = {
 };
 
 export type SosEmailSendResult = {
-  provider: 'postmark';
+  provider: 'gmail';
   providerMessageId: string;
   sentAt: string;
 };
 
+export type SosFaxSendInput = {
+  tenantId: string;
+  caseId: string;
+  toFaxNumber: string;
+  subject: string;
+  bodyText: string;
+  pdfBytes: Buffer;
+};
+
 export type SosFaxSendResult = {
-  provider: 'srfax';
+  provider: 'srfax' | 'ictfax';
   providerTransmissionId: string;
   status: string;
   sentAt: string;

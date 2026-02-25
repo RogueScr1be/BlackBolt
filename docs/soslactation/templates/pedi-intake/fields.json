@@ -1,6 +1,6 @@
 {
   "sourceFile": "/Users/thewhitley/SOS form automation forms/SOS Lactation pedi_intake form fillable.pdf",
-  "extractedAt": "2026-02-18T02:23:34.582Z",
+  "extractedAt": "2026-02-18T03:40:19.286Z",
   "extractionMethod": "token-scan:/T over body + inflated streams",
   "streamScan": {
     "totalFlateStreamsInflated": 796

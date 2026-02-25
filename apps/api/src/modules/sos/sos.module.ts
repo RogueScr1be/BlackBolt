@@ -5,7 +5,9 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { QUEUES } from '../queues/queue.constants';
 import { SosCasesController } from './sos-cases.controller';
 import { SosController } from './sos.controller';
-import { SosPostmarkClient } from './email/sos-postmark.client';
+import { SosGmailClient } from './email/sos-gmail.client';
+import { SosFaxClient } from './fax/sos-fax.client';
+import { SosIctfaxClient } from './fax/sos-ictfax.client';
 import { SosSrfaxClient } from './fax/sos-srfax.client';
 import { SosFollowupQueue } from './sos-followup.queue';
 import { SosIntakeController } from './sos-intake.controller';
@@ -26,7 +28,7 @@ import { SosQueue } from './sos.queue';
     })
   ],
   controllers: [SosController, SosIntakeController, SosCasesController, SosSchedulerController],
-  providers: [SosService, SosQueue, SosFollowupQueue, SosPostmarkClient, SosSrfaxClient],
+  providers: [SosService, SosQueue, SosFollowupQueue, SosGmailClient, SosFaxClient, SosSrfaxClient, SosIctfaxClient],
   exports: [SosService, SosFollowupQueue]
 })
 export class SosModule {}

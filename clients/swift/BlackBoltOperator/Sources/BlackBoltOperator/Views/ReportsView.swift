@@ -1,5 +1,4 @@
 import SwiftUI
-import AppKit
 
 struct ReportsView: View {
     @EnvironmentObject var runtime: OperatorRuntimeConfig
@@ -36,6 +35,7 @@ struct ReportsView: View {
                         Text("Revenue: \(report.totals.revenueCents) cents")
                         Text("Attributed: \(report.totals.attributedCents) cents")
                         Text("Bookings (cons/base/aggr): \(report.estimates.conservativeBookings)/\(report.estimates.baseBookings)/\(report.estimates.aggressiveBookings)")
+                        Text("Runs: \(report.totals.runCount) sent/failed/queued: \(report.totals.runMessagesSent)/\(report.totals.runMessagesFailed)/\(report.totals.runMessagesQueued)")
                         Text(report.narrative)
                     }
                 }
@@ -86,67 +86,19 @@ struct ReportsView: View {
 
     private func exportCurrentReport() {
         guard let report = store.report else { return }
-
-        let lines = [
-            "BlackBolt Monthly Report",
-            "Tenant: \(report.tenantId)",
-            "Month: \(report.month)",
-            "Generated: \(report.generatedAt)",
-            "",
-            "Revenue (cents): \(report.totals.revenueCents)",
-            "Attributed (cents): \(report.totals.attributedCents)",
-            "Bookings: \(report.totals.bookingsCount)",
-            "Sent: \(report.totals.sentCount)",
-            "Clicks: \(report.totals.clickCount)",
-            "",
-            "Estimated bookings range (cons/base/aggr): \(report.estimates.conservativeBookings)/\(report.estimates.baseBookings)/\(report.estimates.aggressiveBookings)",
-            "",
-            "Praised benefits:",
-            report.praisedBenefits.map { "- \($0.benefit): \($0.mentions)" }.joined(separator: "\n"),
-            "",
-            report.narrative
-        ].joined(separator: "\n")
-
-        let data = makePDF(from: lines)
-        let fileName = "blackbolt-report-\(report.tenantId)-\(report.month).pdf"
-        let path = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Downloads")
-            .appendingPathComponent(fileName)
-
-        do {
-            try data.write(to: path)
-            exportMessage = "Exported: \(path.path)"
-        } catch {
-            exportMessage = "Export failed: \(error.localizedDescription)"
+        Task {
+            do {
+                let request = try runtime.request(path: "/v1/tenants/\(report.tenantId)/reports/monthly/pdf?month=\(report.month)")
+                let data = try await OperatorHTTP.perform(request)
+                let fileName = "blackbolt-report-\(report.tenantId)-\(report.month).pdf"
+                let path = FileManager.default.homeDirectoryForCurrentUser
+                    .appendingPathComponent("Downloads")
+                    .appendingPathComponent(fileName)
+                try data.write(to: path)
+                exportMessage = "Exported: \(path.path)"
+            } catch {
+                exportMessage = "Export failed: \(error.localizedDescription)"
+            }
         }
-    }
-
-    private func makePDF(from text: String) -> Data {
-        let mutableData = NSMutableData()
-        guard let consumer = CGDataConsumer(data: mutableData as CFMutableData) else {
-            return Data()
-        }
-
-        var mediaBox = CGRect(x: 0, y: 0, width: 612, height: 792)
-        guard let context = CGContext(consumer: consumer, mediaBox: &mediaBox, nil) else {
-            return Data()
-        }
-
-        context.beginPDFPage(nil)
-        let graphicsContext = NSGraphicsContext(cgContext: context, flipped: false)
-        NSGraphicsContext.saveGraphicsState()
-        NSGraphicsContext.current = graphicsContext
-
-        let attributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: 12),
-            .foregroundColor: NSColor.white
-        ]
-        text.draw(in: CGRect(x: 36, y: 36, width: 540, height: 720), withAttributes: attributes)
-
-        NSGraphicsContext.restoreGraphicsState()
-        context.endPDFPage()
-        context.closePDF()
-
-        return mutableData as Data
     }
 }

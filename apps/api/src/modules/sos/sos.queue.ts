@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { Injectable, Optional, ServiceUnavailableException } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
@@ -10,6 +11,10 @@ export type SosCaseCreateJobPayload = {
   webhookEventId: string;
   idempotencyKey: string;
 };
+
+function toBullJobId(idempotencyKey: string): string {
+  return `sos-case-${createHash('sha256').update(idempotencyKey).digest('hex').slice(0, 32)}`;
+}
 
 @Injectable()
 export class SosQueue {
@@ -25,7 +30,7 @@ export class SosQueue {
     }
 
     const job = await this.queue.add(SOS_CASE_ORCHESTRATION_JOB_NAME, input, {
-      jobId: input.idempotencyKey,
+      jobId: toBullJobId(input.idempotencyKey),
       attempts: 5,
       backoff: {
         type: 'exponential',

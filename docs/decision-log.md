@@ -235,6 +235,16 @@
 - Decision: add `/Users/thewhitley/Documents/New project/docs/soslactation-seo-baseline.md`, `/Users/thewhitley/Documents/New project/docs/reports/soslactation-seo-report-template.md`, and initial monthly report file `/Users/thewhitley/Documents/New project/docs/reports/soslactation-seo-monthly-2026-02.md`.
 - Consequence: every SEO cycle now has a fixed artifact contract for measurement, regression tracking, and operational handoff.
 
+## 2026-02-18 — Phase 0 execution deviation: live WP snapshot completed, host/google gates blocked
+- Context: execution attempted for Phase 0 with provided WP credentials and stated HostGator/GSC/GA4 access grants.
+- Decision: proceed with non-mutating WP baseline capture (admin access validation, active stack snapshot, sitemap/robots/readings state, Lighthouse metrics), but mark Phase 0 gate `FAIL` because HostGator interactive backup/staging session and Google interactive session credentials were not available in terminal; also record PSI API quota block (`HTTP 429`) and use Lighthouse fallback for measurable baseline.
+- Consequence: technical baseline is partially complete and documented, but Phase 1 cannot start until backup+staging+GSC/GA4 gates are completed.
+
+## 2026-02-18 — Phase 0 supplemental finding: Site Kit confirms module linkage
+- Context: direct Google console exports remained blocked, but WP admin session allowed inspection of Site Kit bootstrap payload.
+- Decision: record Search Console and GA4 connectivity, property/account identifiers, and note that dashboard payload currently reports `data_available=false` for both modules at capture time.
+- Consequence: ownership/linkage is verified from within WordPress, but baseline query/page/CWV exports still require direct Google console session or alternate API-keyed pull.
+
 ## 2026-02-18 — SOS Phase 2 Stripe->Drive orchestration slice
 - Context: SOS automation required a runnable product slice beyond documentation, with deterministic case creation and artifact persistence after payment success.
 - Decision: implement tenant-scoped SOS case storage (`sos_cases`, `sos_case_payloads`, `sos_artifacts`, `sos_stripe_webhook_events`), add `POST /v1/webhooks/stripe` for `payment_intent.succeeded`, and enqueue worker processing on `sos.case.orchestration` with idempotency key `sos-case:create:{tenantId}:{paymentIntentId}`.
@@ -267,3 +277,168 @@
 - Decision: wire SOS follow-up email to dedicated Postmark adapter (`SOS_POSTMARK_SERVER_TOKEN`, `SOS_POSTMARK_FROM_EMAIL`), wire provider fax to SRFax adapter (`SOS_FAX_PROVIDER=srfax` + SRFax credentials), and persist provider IDs/status into `sos_artifacts.metadata_json`.
 - Decision: add Bull queue `sos.followup.sweep` with repeat scheduler job and worker processor; processor invokes `runFollowupSweep`, writes job-run ledger state, and raises integration alerts on terminal failures.
 - Consequence: Phase 6 sends and Phase 7 sweep are now executable production paths with idempotent queue orchestration and explicit failure signaling.
+
+## 2026-02-19 — SOS Phase 0 backup baseline executed via SSH
+- Context: HostGator panel automation was blocked by challenge/session friction; SSH key access became available for direct server operations.
+- Decision: execute Phase 0 backup and technical snapshot through SSH (`soslaion@192.254.232.183`) and store host-managed backup references in repo docs.
+- Consequence: rollback artifacts are now concrete and verifiable without requiring cPanel UI automation.
+
+## 2026-02-19 — SOS Phase 0 Google API baseline blocked by disabled services
+- Context: service account authentication succeeded, but API queries to Search Console and GA4 Data returned `403 SERVICE_DISABLED`.
+- Decision: mark Google baseline as partial until `searchconsole.googleapis.com` and `analyticsdata.googleapis.com` are enabled in GCP project `617276434551`.
+- Consequence: Phase 0 remains `FAIL` until Google APIs are enabled and staging clone gate is completed.
+
+## 2026-02-19 — SOS Phase 1 control-plane migration to Rank Math
+- Context: production stack had Clearfy-based SEO/perf overlap and index leakage surfaces (`test`, event/popup post types) exposed in sitemap/indexable pages.
+- Decision: install/activate `seo-by-rank-math`, deactivate `clearfy`, and enforce deterministic sitemap pruning/noindex policy via MU plugin (`sos-seo-phase1.php`) on staging and production.
+- Consequence: single active SEO plugin is now Rank Math, leakage URLs were reduced, and sitemap index is constrained to quality post types.
+
+## 2026-02-19 — SOS Phase 1 deterministic sitemap pruning via WP core
+- Context: Rank Math endpoint `/sitemap_index.xml` did not become available in this host stack after activation, while core sitemap had to remain functional.
+- Decision: use WP core sitemap endpoint as canonical in this phase and enforce pruning with filters: remove `jet-popup`, `mp-event`, `mp-column`, and `mp-event_category`; exclude known noindex/system page IDs from page sitemap.
+- Consequence: sitemap integrity gate can pass with core endpoint while Rank Math remains active for control-plane migration.
+
+## 2026-02-19 — SOS Phase 1 leakage hard-stop for test pages
+- Context: metadata-based noindex was not consistently emitted by the current theme/plugin stack for all target pages.
+- Decision: move explicit test pages (`test`, `*-test`) to `draft` status as a deterministic deindex method.
+- Consequence: those URLs now resolve as non-indexable 404 surfaces and are absent from sitemap exposure.
+
+## 2026-02-19 — SOS Phase 1 transient .htaccess regression and rollback
+- Context: an `.htaccess` X-Robots noindex block was introduced to force header-level noindex for system paths.
+- Decision: rollback the block immediately after detecting production sitemap endpoint `403` regression.
+- Consequence: sitemap availability restored (`200`), and control was kept in MU plugin + content status changes.
+
+## 2026-02-19 — SOS Phase 0 recheck status after API enablement
+- Context: Google APIs were enabled at project level; service account baseline pull was retried.
+- Decision: mark GA4 baseline as unblocked (`200`), but keep Phase 0 blocked for GSC because service account still lacks property permission (`403 forbidden`).
+- Consequence: Phase 0 remains partial until GSC property access is granted to service account principal.
+
+## 2026-02-19 — SOS Phase 0 final closure after GSC permission fix
+- Context: prior Phase 0 blocker was GSC service-account permission denial.
+- Decision: rerun GSC+GA4 API pulls after property ownership update; accept URL-prefix property (`https://soslactation.com/`) as canonical for this workflow.
+- Consequence: Phase 0 gate is now complete and marked PASS.
+
+## 2026-02-19 — Focused deterministic noindex hardening for commerce/system pages
+- Context: commerce/system URLs (`checkout`, `cart`, `shop`, `wpbc-booking`, `wpbc-booking-received`) remained inconsistently indexable via page-level metadata alone.
+- Decision: extend MU policy with slug-scoped `wp_robots` enforcement and `send_headers` `X-Robots-Tag: noindex,follow`, and exclude scoped page IDs from sitemap query args.
+- Consequence: noindex behavior is deterministic at runtime and scoped URLs are removed from sitemap exposure before Phase 2 CWV work.
+
+## 2026-02-19 — Phase 2 staging performance stack activation (LiteSpeed-first)
+- Context: Phase 2 required a single performance stack with conservative JS risk profile and rollback safety.
+- Decision: activate `litespeed-cache` on staging, deactivate overlapping `wp-cloudflare-page-cache`, keep Rank Math active, and apply conservative toggles (cache/browser cache, CSS minify, JS minify+defer+delay include list, HTML minify, lazy media, WebP).
+- Consequence: staging now has a deterministic single performance stack and documented rollback artifacts for config and content state.
+
+## 2026-02-19 — PSI quota fallback to Lighthouse for Phase 2 evidence
+- Context: PageSpeed Insights API returned `429 quota exceeded` during the execution window.
+- Decision: use Lighthouse CLI mobile+desktop on the same locked 4-URL staging set as authoritative before/after evidence for this run and log PSI as blocked.
+- Consequence: Phase 2 staging metrics remain comparable and auditable despite temporary PSI quota exhaustion.
+
+## 2026-02-19 — Hold production Phase 2 cutover after mixed LCP movement
+- Context: staging Lighthouse performance scores improved across all locked URLs, but mobile LCP regressed on homepage and booking templates.
+- Decision: mark `Phase 2 Staging: PASS` and `Production Phase 2 Ready: FAIL` pending an additional LCP-focused stabilization cycle.
+- Consequence: no production Phase 2 mutation is shipped in this run; risk is contained to staging.
+
+## 2026-02-19 — Phase 2.1 LCP stabilization attempt did not clear gate
+- Context: Phase 2.1 targeted homepage/booking LCP recovery on staging with no production changes.
+- Decision: test LiteSpeed render-path variants (`guest=1`, `guest_optm=1`, and media lazy-load variants) with full Lighthouse remeasurement on locked URLs.
+- Consequence: homepage LCP improved in one candidate run, but booking LCP and mobile score guardrail did not pass versus prior Phase 2 baseline, so the gate remained failed.
+
+## 2026-02-19 — Phase 2.1 rollback to prior stable Phase 2 tuning
+- Context: stabilization variants did not satisfy gate criteria and increased risk of inconsistent mobile outcomes.
+- Decision: revert Phase 2.1 delta settings on staging (`guest=0`, `guest_optm=0`, `media-lazy=1`) and keep existing conservative Phase 2 stack as active state.
+- Consequence: staging returns to prior known-good Phase 2 profile; production remains on hold and Phase 3 start is blocked.
+
+## 2026-02-20 — Phase 2.2 home/booking template remediation attempt
+- Context: follow-up required a narrower template-level pass focused on home and booking LCP candidates.
+- Decision: apply Elementor node-level edits on pages `254` and `2507` (hero section no-lazy class + image size targeting) and add a narrow staging MU rule to prioritize target LCP attachment IDs while removing non-target high-priority image hints.
+- Consequence: home LCP improved modestly, but booking LCP and mobile score regressed against prior Phase 2 baseline, so mini-gate failed and full 4-URL batch did not run.
+
+## 2026-02-20 — Phase 2.2 rollback and hold
+- Context: mini-gate failure required immediate reversion per rollback policy.
+- Decision: revert Elementor node changes on `254` and `2507`, remove temporary MU plugin `sos-cwv-phase22.php`, flush cache, and revalidate noindex/canonical safety.
+- Consequence: staging returned to prior stable Phase 2 state; `Production Phase 2 Ready` remains `FAIL` and `Phase 3 Start Ready` remains `FAIL`.
+
+## 2026-02-20 — Phase 2.2b redesign pass (content-first booking, background-first home)
+- Context: a second booking-focused pass was requested with deeper composition changes rather than only priority toggles.
+- Decision: attempt Elementor structural updates (booking secondary section reordered later, home hero/logo priority reshaping) plus a temporary narrow MU rule for page-specific media priority normalization.
+- Consequence: mini-gate still failed against prior Phase 2 baseline (home and booking LCP did not improve; booking mobile score regressed materially), so full 4-URL batch was blocked.
+
+## 2026-02-20 — Phase 2.2b rollback and production hold maintained
+- Context: Phase 2.2b mini-gate fail triggered rollback protocol.
+- Decision: restore `254` and `2507` Elementor JSON from phase2-2b snapshot, remove temporary MU plugin `sos-cwv-phase22b.php`, flush cache, and re-run noindex/canonical/sitemap safety checks.
+- Consequence: staging returned to prior stable state with safety controls intact; `Production Phase 2 Ready` and `Phase 3 Start Ready` remain `FAIL`.
+
+## 2026-02-20 — Phase 2.2c booking hero text/CTA-first attempt
+- Context: next action required a booking-only remediation pass to remove above-the-fold decorative media while leaving home unchanged.
+- Decision: run a narrow staging mutation on page `2507` (clear icon/media widgets `71a9a610`, `5e1dcc7e`, `41305cbb`, `5005ea4`, `84fb074`, remove widget `57bdf674`) with mini-gate-only remeasurement.
+- Consequence: mobile mini-gate failed hard against locked baseline (`home LCP +13372.26`, `booking LCP +11137.03`, booking score `32` below guardrail), so full 4-URL batch was blocked.
+
+## 2026-02-20 — Phase 2.2c rollback and hold retained
+- Context: Phase 2.2c mini-gate failure required immediate rollback per gate policy.
+- Decision: restore staging DB from `/home1/soslaion/backups/phase2-2c-stg-20260220T153044Z/soslaion_wp68837_20260220T153044Z.sql`, flush Elementor CSS cache, flush WordPress cache, and rerun noindex/canonical/sitemap safety checks.
+- Consequence: staging returned to safe prior state; `Phase 2.2c Mini-Gate` is `FAIL`, and both `Production Phase 2 Ready` and `Phase 3 Start Ready` remain `FAIL`.
+
+## 2026-02-20 — Phase 2.2d CSS-only booking icon suppression attempt
+- Context: next controlled pass required zero template/data mutation and focused only on booking hero/card decorative media.
+- Decision: deploy temporary staging MU plugin `sos-cwv-phase22d.php` that applies booking-page CSS suppression (`.elementor-element-411cc003 .elementor-image-box-img` and `.elementor-element-57bdf674`) and rerun mini-gate on home + booking only.
+- Consequence: home improved vs locked baseline, but booking still failed gate (`score -7`, `LCP +6869.72`), so mini-gate remained failed and full 4-URL batch stayed blocked.
+
+## 2026-02-20 — Phase 2.2d rollback completed; HTTP revalidation blocked by timeout window
+- Context: mini-gate failure triggered immediate rollback.
+- Decision: remove temporary MU plugin `sos-cwv-phase22d.php`, flush Elementor CSS cache and WordPress cache, and confirm rollback state via SSH (`blog_public=0`, Rank Math active, Clearfy inactive).
+- Consequence: staging mutation was fully reverted and hold remains (`Production Phase 2 Ready: FAIL`, `Phase 3 Start Ready: FAIL`); external HTTP safety matrix checks were attempted but timed out during this run window and must be re-run when staging responsiveness normalizes.
+
+## 2026-02-20 — Staging decommission of legacy Booking plugin
+- Context: booking plugin was confirmed legacy and not required for active WPForms/Stripe consultation flows.
+- Decision: decommission in safe mode on staging by adding MU redirects from `/wpbc-booking/` and `/wpbc-booking-received/` to `/book-a-consultation/`, then deactivate plugin `booking` while preserving booking tables for rollback.
+- Consequence: legacy booking endpoints now 301 to consultation page, booking plugin is inactive, and rollback remains low-risk because data tables were retained.
+
+## 2026-02-20 — WPForms entries issue diagnosed as visibility/update-path, not data loss
+- Context: operator report indicated entries looked wiped or invisible in dashboard despite emails still sending.
+- Decision: verify entries table integrity and latest rows by form ID, audit form settings for `disable_entries`, harden administrator WPForms entry capabilities, clear transients/cache, and run plugin update refresh.
+- Consequence: entries are confirmed intact and write-path functional (new staging test row inserted as `entry_id=1905`), but update-path remains blocked because WPForms license is missing; dashboard UI visibility needs authenticated browser-side confirmation after capability fixes.
+
+## 2026-02-20 — Broad legacy plugin decommission wave approved and executed
+- Context: after inventory and dependency probes, legacy booking stack and low-value legacy plugins were selected for removal.
+- Decision: decommission `booking`, `clearfy`, `i-recommend-this`, and `mailchimp-for-wp` with staging-first gate, production rollout only after staging pass, and booking-table quarantine.
+- Consequence: both staging and production now run without those four plugins, with deterministic redirects for legacy booking URLs and no observed smoke-test regressions on core pages/forms.
+
+## 2026-02-20 — WPForms license location check result
+- Context: update path for WPForms remained blocked and license source was unknown.
+- Decision: perform masked option/config checks for license storage.
+- Consequence: no active license key found in `wp-config.php` (`WPFORMS_LICENSE_KEY` absent) and `wpforms_settings[license]` is empty on staging and production; WPForms remains operational for current flows but update channel remains unavailable without license or manual package migration.
+
+## 2026-02-21 — Phase 2R gate criteria pass and production promotion
+- Context: Phase 2 remained blocked after multiple prior mini-gate failures, requiring a deterministic pass/fail gate before production mutation.
+- Decision: run a new staging mini-gate (`pass6`) and full 4-URL validation set, then evaluate against declared criteria (home+booking mobile LCP improvement and no locked mobile score drop >3).
+- Consequence: gate passed and CWV patch `sos-cwv-phase2r.php` was promoted to production with backup-first rollback posture.
+
+## 2026-02-21 — Showcase SEO controls moved to deterministic MU layer
+- Context: theme/render stack and edge caching produced inconsistent title/meta propagation on money pages when relying on plugin defaults alone.
+- Decision: deploy `sos-seo-showcase.php` MU plugin (title map, meta description map, LocalBusiness + Service/FAQ schema) and validate with cache-bypass URL checks.
+- Consequence: showcase pages now return deterministic title/meta/schema outputs in fresh renders without requiring additional plugin churn.
+
+## 2026-02-21 — Internal-link graph hardening via targeted template/post mutations
+- Context: services -> booking -> authority-cluster link paths required explicit strengthening for showcase URLs.
+- Decision: update Elementor fields on pages `254`, `1170`, `2507`, `959` and append CTA/internal-link blocks on authority posts (`2672`, `2606`, `2608`) through WP-CLI scripted mutations.
+- Consequence: money pages and authority posts now cross-link with explicit booking/service pathways.
+
+## 2026-02-21 — Local-pack execution standardized with NAP/cadence artifacts
+- Context: Phase 4 required repeatable operations beyond one-off edits.
+- Decision: normalize on-site NAP language (including contact page wording + LocalBusiness schema) and add runbook/template artifacts for review/citation cadence.
+- Consequence: local SEO operations now have a deterministic weekly/monthly execution contract tied to consultation completions.
+
+## 2026-02-21 — WPForms migration source-of-truth export completed
+- Context: Step 5 required non-blocking migration readiness without disrupting live form conversion paths.
+- Decision: export WPForms form definitions + WPForms tables and add explicit cutover checklist.
+- Consequence: migration can proceed with rollback-safe form/entry archives while current WPForms flows remain active.
+
+## 2026-02-21 — Utility noindex caveat accepted with layered controls
+- Context: external header/meta noindex on `/checkout/`, `/cart/`, and `/shop/` remains inconsistent due upstream cache behavior.
+- Decision: keep layered controls active (MU logic, sitemap exclusion, legacy booking redirect noindex) and carry residual risk explicitly in reporting.
+- Consequence: index-surface protection remains in place, with utility noindex header behavior flagged as an open operational caveat.
+
+## 2026-02-21 — Utility noindex gap closed with narrow .htaccess rules
+- Context: upstream cache served utility pages without consistent noindex header/meta propagation on `/checkout/`, `/cart/`, and `/shop/`.
+- Decision: add path-scoped `X-Robots-Tag: noindex,follow` rules in production/staging `.htaccess` for utility slugs only, with pre-change file backups and post-change sitemap verification.
+- Consequence: utility URLs now emit deterministic noindex headers while `/wp-sitemap.xml` remains `200`; legacy booking redirects continue single-hop behavior.

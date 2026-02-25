@@ -11,7 +11,8 @@ done
 
 now_ts="$(date +%s)"
 now_iso="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-rand_suffix="$(LC_ALL=C tr -dc 'a-z0-9' </dev/urandom | head -c 8)"
+# Avoid tr|head SIGPIPE under pipefail; openssl yields fixed-width random hex.
+rand_suffix="$(openssl rand -hex 4)"
 event_id="evt_sos_${now_ts}_${rand_suffix}"
 payment_intent_id="pi_sos_${now_ts}_${rand_suffix}"
 

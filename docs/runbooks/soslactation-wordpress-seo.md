@@ -252,3 +252,6 @@ For each phase, provide:
 - LiteSpeed Cache is preferred when compatible with host stack; WP Rocket is acceptable fallback.
 - test/thin/system URLs identified here are non-business-critical and safe for `noindex`.
 - This runbook governs operations; actual WordPress mutations occur during implementation runs.
+
+## 2026-02-19 Execution Note
+- If Rank Math is active but `/sitemap_index.xml` is unavailable in host stack, use WP core sitemap (`/wp-sitemap.xml`) as temporary canonical endpoint and enforce pruning via filter policy until Rank Math sitemap module is reliably enabled.

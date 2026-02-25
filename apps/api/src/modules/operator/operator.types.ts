@@ -53,6 +53,10 @@ export type MonthlyReportPayload = {
     bookings_count: number;
     sent_count: number;
     click_count: number;
+    run_count: number;
+    run_messages_sent: number;
+    run_messages_failed: number;
+    run_messages_queued: number;
   };
   estimates: {
     conservative_bookings: number;

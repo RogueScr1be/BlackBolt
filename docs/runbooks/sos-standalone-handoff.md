@@ -12,6 +12,9 @@ Latest output:
 
 ## What to Send Leah
 Send the generated zip via email or Google Drive.
+Include:
+- `runbooks/sos-next-thread-handoff.md`
+- `reports/sos-standalone-gate-report.md` (if present)
 
 ## Leah Install Flow
 1. Unzip package.

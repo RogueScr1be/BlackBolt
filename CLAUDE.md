@@ -73,6 +73,11 @@
 ## Governance
 - Work in explicit phases with entry/exit criteria; do not start the next phase until current phase gates pass.
 - For every phase, report: files changed, commands run with outcomes, blast radius, and rollback steps.
+- After every status report or fix (plan, implementation, hotfix), add one new prevention guardrail to `CLAUDE.md`; if any misfire/bug/parse/auth/assumption failure occurred, append an entry to `/Users/thewhitley/Documents/New project/docs/learning-log.md`.
+- For Google Workspace deployment instructions, always provide a documented fallback that does not rely on a single UI entrypoint (for example, direct `script.google.com` path if `Extensions -> Apps Script` fails).
+- For Apps Script operators, avoid required-argument-only run steps in editor workflows; provide a no-argument safe path or script-property path plus a diagnostic function before first production action.
+- For standalone Apps Script setup docs, require one explicit stale-code check (`function exists` signatures) before first run to prevent debugging outdated pasted projects.
+- Never require `Browser.inputBox()`/UI prompt APIs for standalone Apps Script bootstrap; every setup step must have an explicit argument/script-property path that works in headless execution contexts.
 - Keep changes minimal and reversible; prefer scaffolding and placeholders over speculative feature work.
 - Record all non-obvious architectural/tooling choices in `/Users/thewhitley/.codex/worktrees/749b/New project/docs/decision-log.md` before expanding scope.
 - If a requested governance skill is unavailable, mirror its enforcement rules here and continue with deterministic execution.

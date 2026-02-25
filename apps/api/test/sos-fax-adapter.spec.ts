@@ -1,4 +1,5 @@
 import { ServiceUnavailableException } from '@nestjs/common';
+import { SosFaxClient } from '../src/modules/sos/fax/sos-fax.client';
 import { SosFaxTransientError, SosSrfaxClient } from '../src/modules/sos/fax/sos-srfax.client';
 
 describe('SosSrfaxClient', () => {
@@ -72,5 +73,84 @@ describe('SosSrfaxClient', () => {
 
     expect(result.providerTransmissionId).toBe('tx_123');
     expect(result.provider).toBe('srfax');
+  });
+});
+
+describe('SosFaxClient provider selector', () => {
+  afterEach(() => {
+    delete process.env.SOS_FAX_PROVIDER;
+  });
+
+  it('uses SRFax by default', async () => {
+    const srfax = {
+      sendProviderFax: jest.fn().mockResolvedValue({
+        provider: 'srfax',
+        providerTransmissionId: 'tx_1',
+        status: 'queued',
+        sentAt: '2026-02-21T00:00:00.000Z'
+      })
+    };
+    const ictfax = {
+      sendProviderFax: jest.fn()
+    };
+
+    const client = new SosFaxClient(srfax as never, ictfax as never);
+    const result = await client.sendProviderFax({
+      tenantId: 'tenant-sos',
+      caseId: 'case_1',
+      toFaxNumber: '8321112222',
+      subject: 'Fax',
+      bodyText: 'Body',
+      pdfBytes: Buffer.from('pdf')
+    });
+
+    expect(result.provider).toBe('srfax');
+    expect(srfax.sendProviderFax).toHaveBeenCalledTimes(1);
+    expect(ictfax.sendProviderFax).not.toHaveBeenCalled();
+  });
+
+  it('routes to ICTFax when configured', async () => {
+    process.env.SOS_FAX_PROVIDER = 'ictfax';
+    const srfax = {
+      sendProviderFax: jest.fn()
+    };
+    const ictfax = {
+      sendProviderFax: jest.fn().mockResolvedValue({
+        provider: 'ictfax',
+        providerTransmissionId: 'tx_2',
+        status: 'processing',
+        sentAt: '2026-02-21T00:00:00.000Z'
+      })
+    };
+
+    const client = new SosFaxClient(srfax as never, ictfax as never);
+    const result = await client.sendProviderFax({
+      tenantId: 'tenant-sos',
+      caseId: 'case_1',
+      toFaxNumber: '8321112222',
+      subject: 'Fax',
+      bodyText: 'Body',
+      pdfBytes: Buffer.from('pdf')
+    });
+
+    expect(result.provider).toBe('ictfax');
+    expect(ictfax.sendProviderFax).toHaveBeenCalledTimes(1);
+    expect(srfax.sendProviderFax).not.toHaveBeenCalled();
+  });
+
+  it('fails for unsupported provider values', async () => {
+    process.env.SOS_FAX_PROVIDER = 'unsupported';
+    const client = new SosFaxClient({ sendProviderFax: jest.fn() } as never, { sendProviderFax: jest.fn() } as never);
+
+    await expect(
+      client.sendProviderFax({
+        tenantId: 'tenant-sos',
+        caseId: 'case_1',
+        toFaxNumber: '8321112222',
+        subject: 'Fax',
+        bodyText: 'Body',
+        pdfBytes: Buffer.from('pdf')
+      })
+    ).rejects.toBeInstanceOf(ServiceUnavailableException);
   });
 });

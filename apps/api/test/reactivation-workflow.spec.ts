@@ -29,6 +29,10 @@ describe('Reactivation workflow', () => {
       campaign: {
         create: jest.fn().mockResolvedValue({ id: 'camp-1' })
       },
+      campaignRun: {
+        create: jest.fn().mockResolvedValue({ id: 'run-1' }),
+        update: jest.fn().mockResolvedValue({})
+      },
       auditLog: {
         create: jest.fn().mockResolvedValue({})
       },
@@ -40,6 +44,9 @@ describe('Reactivation workflow', () => {
       },
       campaignMessage: {
         create: jest.fn().mockResolvedValue({ id: 'cm-1' })
+      },
+      linkCode: {
+        upsert: jest.fn().mockResolvedValue({})
       },
       integrationAlert: { create: jest.fn().mockResolvedValue({}) }
     };

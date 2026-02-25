@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { Injectable, OnModuleInit, Optional, ServiceUnavailableException } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
@@ -12,6 +13,10 @@ import type { SosFollowupSweepJobPayload } from './sos.types';
 type SosFollowupSchedulerPayload = {
   triggeredBy: 'schedule';
 };
+
+function toBullJobId(idempotencyKey: string): string {
+  return `sos-followup-${createHash('sha256').update(idempotencyKey).digest('hex').slice(0, 32)}`;
+}
 
 @Injectable()
 export class SosFollowupQueue implements OnModuleInit {
@@ -48,7 +53,7 @@ export class SosFollowupQueue implements OnModuleInit {
       throw new ServiceUnavailableException('SOS follow-up sweep queue is unavailable');
     }
     const job = await this.queue.add(SOS_FOLLOWUP_SWEEP_JOB_NAME, input, {
-      jobId: input.idempotencyKey,
+      jobId: toBullJobId(input.idempotencyKey),
       attempts: 5,
       backoff: { type: 'exponential', delay: 3000 },
       removeOnComplete: false,

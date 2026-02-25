@@ -3,6 +3,9 @@
 ## Goal
 Deploy SOS as a dedicated runtime separate from BlackBolt shared production.
 
+## Contract Reference
+- Source-of-truth scope/contracts: `docs/runbooks/sos-standalone-contract.md`
+
 ## Runtime Topology
 - `sos-api` service (HTTP API + webhooks)
 - `sos-worker` service (BullMQ processors + daily sweep scheduler)

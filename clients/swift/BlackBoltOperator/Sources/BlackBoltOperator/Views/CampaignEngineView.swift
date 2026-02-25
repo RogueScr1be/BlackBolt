@@ -6,7 +6,7 @@ struct CampaignEngineView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Campaign list")
+            Text("Runs")
                 .font(.title3)
                 .fontWeight(.semibold)
 
@@ -38,10 +38,40 @@ struct CampaignEngineView: View {
                     .font(.caption)
             }
 
-            GroupBox("Recent Workflow Activity") {
-                ForEach(store.events.prefix(8)) { item in
-                    Text("\(item.eventType): \(item.summary)")
+            GroupBox("Campaign Runs") {
+                if store.campaignRuns.isEmpty {
+                    Text("No campaign runs yet.")
                         .font(.caption)
+                        .foregroundColor(.secondary)
+                } else {
+                    ForEach(store.campaignRuns.prefix(12)) { run in
+                        HStack(spacing: 8) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(run.id)
+                                    .font(.caption.monospaced())
+                                Text("status: \(run.status) queued/sent/failed: \(run.messagesQueued)/\(run.messagesSent)/\(run.messagesFailed)")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                                if let error = run.lastErrorMessage, !error.isEmpty {
+                                    Text(error)
+                                        .font(.caption2)
+                                        .foregroundColor(.red)
+                                }
+                            }
+                            Spacer()
+                            if run.status == "PAUSED" {
+                                Button("Resume") {
+                                    Task { await store.setCampaignRunPaused(runtime: runtime, runId: run.id, paused: false) }
+                                }
+                                .disabled(store.connectionState == .invalidConfig || store.isLoading)
+                            } else if run.status == "RUNNING" || run.status == "QUEUED" {
+                                Button("Pause") {
+                                    Task { await store.setCampaignRunPaused(runtime: runtime, runId: run.id, paused: true) }
+                                }
+                                .disabled(store.connectionState == .invalidConfig || store.isLoading)
+                            }
+                        }
+                    }
                 }
             }
             if let error = store.lastError {

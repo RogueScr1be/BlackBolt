@@ -1,5 +1,4 @@
 import { Injectable, ServiceUnavailableException } from '@nestjs/common';
-import type { SosEmailSendResult } from '../sos.types';
 
 @Injectable()
 export class SosPostmarkClient {
@@ -10,7 +9,7 @@ export class SosPostmarkClient {
     subject: string;
     bodyText: string;
     caseId: string;
-  }): Promise<SosEmailSendResult> {
+  }): Promise<{ provider: 'postmark'; providerMessageId: string; sentAt: string }> {
     const token = process.env.SOS_POSTMARK_SERVER_TOKEN;
     const from = process.env.SOS_POSTMARK_FROM_EMAIL;
     if (!token || !from) {

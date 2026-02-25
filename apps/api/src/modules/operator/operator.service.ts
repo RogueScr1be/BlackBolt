@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { ReviewsService } from '../reviews/reviews.service';
 import { PostmarkOpsService } from '../postmark/postmark-ops.service';
+import { OperatorCredentialsService } from '../operator-credentials/operator-credentials.service';
 import type { CommandCenterPayload, MonthlyReportPayload, OperatorAlert, OperatorHealth } from './operator.types';
 
 type Trend = 'healthy' | 'warning' | 'critical';
@@ -12,7 +13,8 @@ export class OperatorService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly reviewsService: ReviewsService,
-    private readonly postmarkOpsService: PostmarkOpsService
+    private readonly postmarkOpsService: PostmarkOpsService,
+    private readonly operatorCredentials: OperatorCredentialsService
   ) {}
 
   async getCommandCenter(tenantId: string): Promise<CommandCenterPayload> {
@@ -240,7 +242,7 @@ export class OperatorService {
     const from = new Date(Date.UTC(year, monthIndex - 1, 1));
     const to = new Date(Date.UTC(year, monthIndex, 1));
 
-    const [revenue, attributed, bookings, sends, clicks, draftMessages] = await Promise.all([
+    const [revenue, attributed, bookings, sends, clicks, draftMessages, runStats] = await Promise.all([
       this.prisma.revenueEvent.aggregate({
         where: { tenantId, occurredAt: { gte: from, lt: to } },
         _sum: { amountCents: true }
@@ -266,6 +268,11 @@ export class OperatorService {
         where: { tenantId, createdAt: { gte: from, lt: to } },
         select: { bodyText: true },
         take: 400
+      }),
+      this.prisma.campaignRun.aggregate({
+        where: { tenantId, createdAt: { gte: from, lt: to } },
+        _count: { _all: true },
+        _sum: { messagesSent: true, messagesFailed: true, messagesQueued: true }
       })
     ]);
 
@@ -286,7 +293,11 @@ export class OperatorService {
         attributed_cents: attributedCents,
         bookings_count: bookings,
         sent_count: sends,
-        click_count: clicks
+        click_count: clicks,
+        run_count: runStats._count._all ?? 0,
+        run_messages_sent: runStats._sum.messagesSent ?? 0,
+        run_messages_failed: runStats._sum.messagesFailed ?? 0,
+        run_messages_queued: runStats._sum.messagesQueued ?? 0
       },
       estimates: {
         conservative_bookings: bookingConservative,
@@ -295,6 +306,92 @@ export class OperatorService {
       },
       praised_benefits: praised,
       narrative: `Estimated reactivation impact for ${month}: ${bookingConservative}-${bookingAggressive} attributed bookings with base case ${bookingBase}.`
+    };
+  }
+
+  async runSmokeChecks(input: { tenantId: string; headers: Record<string, unknown> }) {
+    await this.assertTenant(input.tenantId);
+
+    const rawTenantHeader = input.headers['x-tenant-id'];
+    const tenantHeader = Array.isArray(rawTenantHeader) ? rawTenantHeader[0] : rawTenantHeader;
+    const rawOperatorHeader = input.headers['x-operator-key'];
+    const operatorHeader = Array.isArray(rawOperatorHeader) ? rawOperatorHeader[0] : rawOperatorHeader;
+
+    const checks = [
+      {
+        name: 'health',
+        path: '/health',
+        passed: true,
+        status: 200,
+        reason: null as string | null,
+        failing_header: null as string | null
+      },
+      {
+        name: 'dashboard_summary',
+        path: '/dashboard/summary',
+        passed: true,
+        status: 200,
+        reason: null as string | null,
+        failing_header: null as string | null
+      }
+    ];
+
+    if (!tenantHeader || tenantHeader !== input.tenantId) {
+      checks[1].passed = false;
+      checks[1].status = 403;
+      checks[1].reason = tenantHeader ? 'tenant header does not match route tenant' : 'tenant header missing';
+      checks[1].failing_header = 'x-tenant-id';
+    } else if (!operatorHeader || typeof operatorHeader !== 'string') {
+      checks[1].passed = false;
+      checks[1].status = 401;
+      checks[1].reason = 'operator key missing';
+      checks[1].failing_header = 'x-operator-key';
+    } else {
+      const valid = await this.operatorCredentials.verifyKey({
+        tenantId: input.tenantId,
+        keyPlaintext: operatorHeader
+      });
+      if (!valid) {
+        checks[1].passed = false;
+        checks[1].status = 401;
+        checks[1].reason = 'operator key invalid for tenant';
+        checks[1].failing_header = 'x-operator-key';
+      }
+    }
+
+    return {
+      tenant_id: input.tenantId,
+      overall_passed: checks.every((item) => item.passed),
+      checks
+    };
+  }
+
+  async rotateOperatorKey(tenantId: string, actorUserId: string | null) {
+    await this.assertTenant(tenantId);
+
+    const operatorKey = this.operatorCredentials.generateOperatorKey();
+    await this.operatorCredentials.upsertKey({
+      tenantId,
+      keyPlaintext: operatorKey,
+      rotatedBy: actorUserId ?? 'operator'
+    });
+
+    await this.prisma.auditLog.create({
+      data: {
+        tenantId,
+        actorUserId,
+        action: 'OPERATOR_KEY_ROTATED',
+        entityType: 'operator.credential',
+        entityId: tenantId,
+        metadataJson: {
+          rotatedAt: new Date().toISOString()
+        }
+      }
+    });
+
+    return {
+      tenant_id: tenantId,
+      operator_key: operatorKey
     };
   }
 

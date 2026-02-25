@@ -16,6 +16,7 @@ export class SosSrfaxClient {
     toFaxNumber: string;
     subject: string;
     bodyText: string;
+    pdfBytes?: Buffer;
   }): Promise<SosFaxSendResult> {
     const provider = process.env.SOS_FAX_PROVIDER ?? 'srfax';
     if (provider !== 'srfax') {
