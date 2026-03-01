@@ -7,14 +7,15 @@
     "node": "24.13.1"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "npm run prisma:generate && tsc -p tsconfig.build.json",
     "start": "node dist/main.api.js",
     "start:api": "node dist/main.api.js",
     "start:worker": "node dist/main.worker.js",
     "start:dev": "ts-node-dev --respawn --transpile-only src/main.ts",
     "lint": "eslint --ext .ts src",
     "test": "jest --config jest.config.ts --runInBand",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "prisma:generate": "prisma generate --schema ../../prisma/schema.prisma"
   },
   "dependencies": {
     "@nestjs/bullmq": "11.0.1",
