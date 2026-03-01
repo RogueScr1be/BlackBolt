@@ -19,10 +19,6 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { EventsModule } from './modules/events/events.module';
 import { AlertsModule } from './modules/alerts/alerts.module';
 import { OperatorTenantsModule } from './modules/operator-tenants/operator-tenants.module';
-import { OperatorCredentialsModule } from './modules/operator-credentials/operator-credentials.module';
-import { CampaignRunsModule } from './modules/campaign-runs/campaign-runs.module';
-import { LinksModule } from './modules/links/links.module';
-import { ReportsModule } from './modules/reports/reports.module';
 import { SosModule } from './modules/sos/sos.module';
 
 @Module({
@@ -44,10 +40,6 @@ import { SosModule } from './modules/sos/sos.module';
     EventsModule,
     AlertsModule,
     OperatorTenantsModule,
-    OperatorCredentialsModule,
-    CampaignRunsModule,
-    LinksModule,
-    ReportsModule,
     SosModule
   ],
   providers: [
