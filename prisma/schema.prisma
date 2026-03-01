@@ -369,16 +369,24 @@ model ApprovalItem {
   status           String
   approvedByUserId String?  @map("approved_by_user_id")
   approvedAt       DateTime? @map("approved_at")
+  runId            String?  @map("run_id")
+  rejectedAt       DateTime? @map("rejected_at")
+  rejectedReason   String?  @map("rejected_reason")
   createdAt        DateTime @default(now()) @map("created_at")
 
   tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   draftMessage     DraftMessage @relation(fields: [draftMessageId], references: [id], onDelete: Restrict)
   approvedByUser   User? @relation("ApprovalActor", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  campaignRun      CampaignRun? @relation(fields: [runId], references: [id], onDelete: SetNull)
 
   @@unique([tenantId, draftMessageId])
   @@index([tenantId])
+  @@index([runId])
+  @@index([status])
+  @@index([tenantId, status])
   @@map("approval_items")
 }
+
 
 model Campaign {
   id              String   @id @default(cuid())
@@ -455,6 +463,7 @@ model CampaignRun {
   triggerReview    Review   @relation(fields: [triggerReviewId], references: [id], onDelete: Restrict)
   campaign         Campaign @relation(fields: [campaignId], references: [id], onDelete: Restrict)
   messages         CampaignMessage[]
+  approvals       ApprovalItem[]
 
   @@index([tenantId, createdAt])
   @@index([tenantId, status])

@@ -21,6 +21,7 @@ export const OPENAPI_OPERATION_IDS = [
   'getPortfolioTenants',
   'getPostmarkOperatorSummary',
   'getRevenueSummary',
+  'getSuppressionImportStatus',
   'getSosCaseDetail',
   'getTenantApproval',
   'getTenantReviewQueue',
