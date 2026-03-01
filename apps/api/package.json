@@ -7,7 +7,7 @@
     "node": "24.13.1"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "prisma generate && tsc -p tsconfig.build.json",
     "start": "node dist/main.api.js",
     "start:api": "node dist/main.api.js",
     "start:worker": "node dist/main.worker.js",
