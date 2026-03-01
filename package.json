@@ -31,8 +31,24 @@
     "objective:rollout:shadow": "bash scripts/smoke/objective-rollout-shadow.sh",
     "objective:rollout:live": "bash scripts/smoke/objective-rollout-live.sh",
     "objective:rollout:stabilize": "bash scripts/smoke/objective-rollout-stabilize.sh",
+    "objective:migrate:deploy": "bash scripts/smoke/objective-migrate-deploy.sh",
+    "objective:deploy": "bash scripts/smoke/objective-railway-deploy.sh",
+    "routing:check": "node scripts/project-routing/check-routing.mjs --intake docs/project-routing/thread-intake.active.json",
+    "routing:self-test": "bash scripts/project-routing/self-test.sh",
+    "routing:guarded-exec": "bash scripts/project-routing/guarded-exec.sh",
+    "routing:preflight": "bash scripts/project-routing/scope-preflight.sh",
+    "routing:dry-run": "bash scripts/project-routing/dry-run-thread-starts.sh",
+    "routing:dry-run:local": "bash scripts/project-routing/dry-run-thread-starts.sh --skip-railway",
+    "routing:verify:services": "bash scripts/project-routing/verify-service-vars.sh",
+    "routing:triage": "node scripts/project-routing/triage-worktree.mjs",
     "repo:check-duplicates": "node scripts/check-no-suffixed-duplicates.mjs",
+    "workspace:smoke": "node scripts/workspace/smoke-check.mjs",
+    "workspace:bootstrap": "node scripts/workspace/trial-bootstrap.mjs",
     "sos:extract-fields": "node scripts/soslactation/extract-all.mjs",
+    "sos:extract-fields:strict": "node scripts/soslactation/extract-all.mjs --require-consult-fillable",
+    "sos:pdf:audit": "node scripts/soslactation/pdf-workflow.mjs audit",
+    "sos:pdf:audit:strict": "node scripts/soslactation/pdf-workflow.mjs audit --require-consult-fillable",
+    "sos:pdf:extract": "node scripts/soslactation/pdf-workflow.mjs extract",
     "sos:check:registry": "node scripts/soslactation/check-registry.mjs",
     "sos:check:mappings": "node scripts/soslactation/check-mappings.mjs",
     "sos:check": "npm run sos:check:registry && npm run sos:check:mappings",
@@ -52,6 +68,7 @@
     "prisma:migrate:deploy": "npm --workspace @blackbolt/api exec -- prisma migrate deploy --schema ../../prisma/schema.prisma",
     "tenant:seed": "npm --workspace @blackbolt/api exec -- ts-node ../../scripts/seed-tenant.ts",
     "swift:generate": "node scripts/generate-swift-client.mjs",
-    "test:offline": "TEST_OFFLINE=1 npm run contract:ci && npm run api:test"
+    "test:offline": "TEST_OFFLINE=1 npm run contract:ci && npm run api:test",
+    "postinstall": "npm run prisma:generate"
   }
 }
