@@ -69,6 +69,6 @@
     "tenant:seed": "npm --workspace @blackbolt/api exec -- ts-node ../../scripts/seed-tenant.ts",
     "swift:generate": "node scripts/generate-swift-client.mjs",
     "test:offline": "TEST_OFFLINE=1 npm run contract:ci && npm run api:test",
-    "postinstall": "npm run prisma:generate"
+    "postinstall": "prisma generate --schema ./prisma/schema.prisma"
   }
 }
