@@ -2,15 +2,15 @@ FROM node:24-alpine
 
 WORKDIR /app
 
-# Copy everything from the repository
+# Copy repository files
 COPY . .
 
 # Install dependencies
-RUN npm ci
+RUN npm install
 
-# Build
+# Build the API
 RUN npm run api:build
 
-# Start
+# Expose port and start the API
 EXPOSE 3000
 CMD ["npm", "run", "api:start:prod"]
