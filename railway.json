@@ -1,3 +1,4 @@
 {
-  "builder": "dockerfile"
+  "builder": "dockerfile",
+  "dockerfile": "./Dockerfile"
 }
