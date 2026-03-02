@@ -2,11 +2,12 @@ FROM node:24-alpine
 
 WORKDIR /app
 
-# Copy package files
+# Copy package files (needed for dependency installation)
 COPY package.json package-lock.json ./
+
+# Copy source code and schema (needed for build)
 COPY apps/ ./apps/
 COPY prisma/ ./prisma/
-COPY scripts/ ./scripts/
 
 # Install dependencies
 RUN npm ci
