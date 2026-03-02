@@ -14,6 +14,7 @@ RUN npm install
 # Build the API
 RUN npm run api:build
 
-# Expose port and start the API
+# Expose port and start the API with migrations
 EXPOSE 3000
-CMD ["npm", "run", "api:start:prod"]
+RUN chmod +x scripts/start-api-with-migrations.sh
+CMD ["bash", "scripts/start-api-with-migrations.sh"]
