@@ -1,9 +1,12 @@
 FROM node:24-alpine
 
+RUN apk add --no-cache git curl
+
 WORKDIR /app
 
-# Copy repository files
-COPY . .
+# Clone the repository directly from GitHub
+RUN git clone https://github.com/RogueScr1be/BlackBolt.git . && \
+    git checkout main
 
 # Install dependencies
 RUN npm install
