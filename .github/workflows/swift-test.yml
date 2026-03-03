@@ -1,0 +1,135 @@
+name: Swift Test
+
+on:
+  pull_request:
+    branches:
+      - main
+      - 'codex/*'
+    paths:
+      - 'clients/swift/BlackBoltOperator/**'
+      - '.github/workflows/swift-test.yml'
+      - 'scripts/operator/**'
+  push:
+    branches:
+      - main
+      - 'codex/*'
+    paths:
+      - 'clients/swift/BlackBoltOperator/**'
+      - '.github/workflows/swift-test.yml'
+      - 'scripts/operator/**'
+
+env:
+  SWIFT_VERSION: '6.0'
+
+jobs:
+  test:
+    name: Run Swift Tests
+    runs-on: macos-latest-13
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Swift
+        run: swift --version
+
+      - name: Cache Swift Package dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            clients/swift/BlackBoltOperator/.build
+            ~/.swiftpm
+          key: ${{ runner.os }}-swift-test-${{ hashFiles('**/Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-swift-test-
+            ${{ runner.os }}-swift-
+
+      - name: Run XCTest Suite
+        working-directory: clients/swift/BlackBoltOperator
+        run: |
+          echo "Running XCTest suite..."
+          swift test \
+            --verbose \
+            --enable-code-coverage \
+            2>&1 | tee test-results.log
+
+      - name: Generate Coverage Report
+        working-directory: clients/swift/BlackBoltOperator
+        run: |
+          echo "Generating coverage report..."
+
+          # Use xcrun to generate coverage data if available
+          if command -v xcrun &> /dev/null; then
+            echo "Processing coverage with xcrun..."
+            xcrun llvm-cov report \
+              .build/debug/BlackBoltOperatorPackageTests.xctest/Contents/MacOS/BlackBoltOperatorPackageTests \
+              -instr-profile .build/debug/codecov/default.profdata \
+              -use-color 2>/dev/null || echo "Coverage details not available"
+          fi
+
+          # Summary of test coverage
+          if [ -d ".build/debug/CodeCoverage" ]; then
+            echo "Code coverage directory found"
+            du -sh .build/debug/CodeCoverage
+          fi
+
+      - name: Parse Test Results
+        if: always()
+        working-directory: clients/swift/BlackBoltOperator
+        run: |
+          echo "Parsing test results..."
+
+          # Count tests
+          PASSED=$(grep -c "✓" test-results.log || echo 0)
+          FAILED=$(grep -c "✗" test-results.log || echo 0)
+
+          echo "### Test Results" >> /tmp/test-summary.md
+          echo "- **Tests Passed:** ${PASSED}" >> /tmp/test-summary.md
+          echo "- **Tests Failed:** ${FAILED}" >> /tmp/test-summary.md
+          echo "- **Timestamp:** $(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> /tmp/test-summary.md
+
+      - name: Comment PR with Test Results
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const summary = fs.existsSync('/tmp/test-summary.md')
+              ? fs.readFileSync('/tmp/test-summary.md', 'utf8')
+              : '## Test Results\n\nTest execution completed.';
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: summary
+            });
+
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: swift-test-results
+          path: |
+            clients/swift/BlackBoltOperator/test-results.log
+            /tmp/test-summary.md
+          retention-days: 30
+
+      - name: Upload Coverage Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: swift-coverage-report
+          path: |
+            clients/swift/BlackBoltOperator/.build/debug/CodeCoverage
+          retention-days: 30
+
+      - name: Fail if Tests Failed
+        if: failure()
+        run: |
+          echo "❌ Swift test suite failed"
+          exit 1

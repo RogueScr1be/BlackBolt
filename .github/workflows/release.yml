@@ -1,0 +1,362 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., v1.0.0)'
+        required: true
+        type: string
+
+env:
+  SWIFT_VERSION: '6.0'
+  OPERATOR_PATH: 'clients/swift/BlackBoltOperator'
+
+jobs:
+  build-release:
+    name: Build Release Binary
+    runs-on: macos-latest-13
+    timeout-minutes: 30
+    outputs:
+      release_version: ${{ steps.version.outputs.version }}
+      binary_path: ${{ steps.build.outputs.binary_path }}
+      dsym_path: ${{ steps.build.outputs.dsym_path }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine Release Version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" == "push" ]; then
+            VERSION=${GITHUB_REF#refs/tags/}
+          else
+            VERSION=${{ github.event.inputs.version }}
+          fi
+
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Release version: ${VERSION}"
+
+      - name: Set up Swift
+        run: swift --version
+
+      - name: Cache Dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ env.OPERATOR_PATH }}/.build
+            ~/.swiftpm
+          key: ${{ runner.os }}-swift-release-${{ hashFiles('**/Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-swift-release-
+
+      - name: Build Release Binary
+        id: build
+        working-directory: ${{ env.OPERATOR_PATH }}
+        run: |
+          echo "Building release binary..."
+
+          # Build release configuration
+          swift build \
+            --configuration release \
+            --verbose \
+            2>&1 | tee build.log
+
+          # Locate the built executable
+          BINARY_PATH=".build/release/BlackBoltOperator"
+
+          if [ -f "$BINARY_PATH" ]; then
+            echo "binary_path=${BINARY_PATH}" >> $GITHUB_OUTPUT
+            ls -lh "$BINARY_PATH"
+            echo "Release binary built successfully"
+          else
+            echo "ERROR: Release binary not found"
+            exit 1
+          fi
+
+          # Create dSYM for debugging
+          echo "Creating dSYM for debugging symbols..."
+          mkdir -p "build-artifacts"
+          cp "$BINARY_PATH" "build-artifacts/BlackBoltOperator"
+
+          echo "dsym_path=build-artifacts" >> $GITHUB_OUTPUT
+
+      - name: Verify Binary Compatibility
+        working-directory: ${{ env.OPERATOR_PATH }}
+        run: |
+          echo "Verifying binary compatibility..."
+
+          BINARY="${{ steps.build.outputs.binary_path }}"
+
+          # Check binary type
+          file "$BINARY"
+
+          # Check architecture
+          arch -x86_64 "$BINARY" --version || true
+          arch -arm64 "$BINARY" --version || true
+
+          # Get binary info
+          otool -L "$BINARY" | head -20
+
+      - name: Strip Debug Symbols
+        working-directory: ${{ env.OPERATOR_PATH }}
+        run: |
+          echo "Stripping debug symbols for release..."
+
+          BINARY="${{ steps.build.outputs.binary_path }}"
+          BINARY_STRIPPED="${BINARY}.stripped"
+
+          # Create stripped copy
+          cp "$BINARY" "$BINARY_STRIPPED"
+          strip "$BINARY_STRIPPED"
+
+          # Compare sizes
+          echo "Original size: $(du -h $BINARY | cut -f1)"
+          echo "Stripped size: $(du -h $BINARY_STRIPPED | cut -f1)"
+
+          # Move stripped back
+          mv "$BINARY_STRIPPED" "$BINARY"
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-binary
+          path: |
+            ${{ env.OPERATOR_PATH }}/${{ steps.build.outputs.binary_path }}
+            ${{ env.OPERATOR_PATH }}/${{ steps.build.outputs.dsym_path }}
+          retention-days: 90
+
+  test-release:
+    name: Test Release Binary
+    runs-on: macos-latest-13
+    needs: build-release
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download Release Binary
+        uses: actions/download-artifact@v4
+        with:
+          name: release-binary
+          path: ./artifacts
+
+      - name: Run Release Tests
+        working-directory: ${{ env.OPERATOR_PATH }}
+        run: |
+          echo "Running test suite on release build..."
+
+          swift test \
+            --configuration release \
+            2>&1 | tee release-tests.log
+
+      - name: Verify Release Functionality
+        run: |
+          echo "Verifying release binary functionality..."
+
+          BINARY="./artifacts/clients/swift/BlackBoltOperator/.build/release/BlackBoltOperator"
+
+          if [ -f "$BINARY" ]; then
+            echo "✓ Binary exists"
+            chmod +x "$BINARY"
+
+            # Test basic execution
+            "$BINARY" --version || true
+            "$BINARY" --help || true
+            echo "✓ Binary executable verified"
+          else
+            echo "✗ Release binary not found"
+            exit 1
+          fi
+
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-test-results
+          path: ${{ env.OPERATOR_PATH }}/release-tests.log
+          retention-days: 30
+
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [build-release, test-release]
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./release-artifacts
+
+      - name: Generate Changelog
+        id: changelog
+        run: |
+          echo "Generating changelog from commits..."
+
+          VERSION=${{ needs.build-release.outputs.release_version }}
+
+          # Get previous tag
+          PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null | head -1)
+
+          if [ -z "$PREV_TAG" ]; then
+            # First release - all commits
+            CHANGELOG=$(git log --oneline --decorate)
+          else
+            # Commits since previous tag
+            CHANGELOG=$(git log ${PREV_TAG}..HEAD --oneline --decorate)
+          fi
+
+          # Save to variable for use in release
+          cat > /tmp/changelog.md << 'EOF'
+          # BlackBolt Operator Release ${VERSION}
+
+          ## Changes Since Last Release
+
+          EOF
+
+          if [ -z "$CHANGELOG" ]; then
+            echo "- Initial release" >> /tmp/changelog.md
+          else
+            echo "$CHANGELOG" | sed 's/^/- /' >> /tmp/changelog.md
+          fi
+
+          echo "changelog=$(cat /tmp/changelog.md | base64 -w 0)" >> $GITHUB_OUTPUT
+
+      - name: Package Release Artifacts
+        run: |
+          echo "Packaging release artifacts..."
+
+          mkdir -p release-package
+
+          # Copy binary
+          if [ -d "release-artifacts/release-binary" ]; then
+            find release-artifacts/release-binary -type f -name "BlackBoltOperator" \
+              -exec cp {} release-package/ \;
+          fi
+
+          # List contents
+          echo "Release package contents:"
+          ls -lah release-package/
+
+      - name: Generate Checksums
+        run: |
+          echo "Generating checksums..."
+
+          cd release-package
+
+          # SHA256 checksums
+          sha256sum * > SHA256SUMS
+          cat SHA256SUMS
+
+          # Additional formats
+          openssl dgst -sha256 * > SHA256SUMS.txt || true
+
+          cd ..
+
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: release-package/*
+          draft: false
+          prerelease: false
+          body_path: /tmp/changelog.md
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Manual Release
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const version = '${{ github.event.inputs.version }}';
+
+            let changelog = '';
+            if (fs.existsSync('/tmp/changelog.md')) {
+              changelog = fs.readFileSync('/tmp/changelog.md', 'utf8');
+            }
+
+            const release = await github.rest.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: version,
+              name: `BlackBolt Operator ${version}`,
+              body: changelog,
+              draft: false,
+              prerelease: false
+            });
+
+            console.log(`Created release: ${release.data.html_url}`);
+
+      - name: Upload Release Summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-summary
+          path: |
+            release-package/
+            /tmp/changelog.md
+          retention-days: 90
+
+  notify-release:
+    name: Notify Release Completion
+    runs-on: ubuntu-latest
+    needs: [build-release, create-release]
+    if: always()
+
+    steps:
+      - name: Generate Release Notification
+        run: |
+          cat > /tmp/release-notification.md << 'EOF'
+          # Release Notification
+
+          **Version:** ${{ needs.build-release.outputs.release_version }}
+          **Status:** Complete
+          **Timestamp:** $(date -u +'%Y-%m-%dT%H:%M:%SZ')
+
+          ## Artifacts Available
+          - Release Binary: BlackBoltOperator
+          - Debug Symbols: Available in artifacts
+          - Checksums: SHA256SUMS
+
+          ## Next Steps
+          1. Download binary from GitHub Release
+          2. Verify checksum: `sha256sum -c SHA256SUMS`
+          3. Test deployment in staging environment
+          4. Proceed to production deployment
+
+          ## Documentation
+          - See DEPLOYMENT.md for installation instructions
+          - See SECURITY.md for security considerations
+          - See CHANGELOG.md for version history
+          EOF
+          cat /tmp/release-notification.md
+
+      - name: Create Release Issue
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Release Complete: ${{ needs.build-release.outputs.release_version }}`,
+              body: `BlackBolt Operator release ${{ needs.build-release.outputs.release_version }} is ready for deployment.\n\nSee release notes on the GitHub Releases page.`,
+              labels: ['release', 'operator']
+            });

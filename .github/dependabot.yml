@@ -1,0 +1,70 @@
+version: 2
+
+updates:
+  # Swift Package Manager dependencies
+  - package-ecosystem: "swift"
+    directory: "/clients/swift/BlackBoltOperator"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "02:00"
+    open-pull-requests-limit: 5
+    pull-request-branch-name:
+      separator: "/"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    reviewers:
+      - "thewhitley"
+    assignees:
+      - "thewhitley"
+    labels:
+      - "dependencies"
+      - "swift"
+    allow:
+      - dependency-type: "direct"
+      - dependency-type: "indirect"
+    ignore:
+      # Ignore pre-release versions for critical dependencies
+      - dependency-name: "BlackBoltAPI"
+        update-types:
+          - "version-update:semver-major"
+    rebase-strategy: "auto"
+    versioning-strategy: "auto"
+
+  # GitHub Actions updates
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "03:00"
+    open-pull-requests-limit: 5
+    pull-request-branch-name:
+      separator: "/"
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+    reviewers:
+      - "thewhitley"
+    assignees:
+      - "thewhitley"
+    labels:
+      - "ci"
+      - "github-actions"
+    allow:
+      - dependency-type: "direct"
+    rebase-strategy: "auto"
+
+# Global settings
+registries:
+  swift-pm:
+    type: "git"
+    url: "https://github.com"
+    token: "${{ secrets.GITHUB_TOKEN }}"
+
+# Vulnerability alerts
+vulnerability-alerts:
+  enabled: true
+  auto-dismiss-security-alerts: false
+  dismiss-dismissed-security-alerts: false
