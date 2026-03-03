@@ -54,7 +54,7 @@
 ## SOS WPForms Ledger Lane (DB-Primary + Email Fallback)
 
 ### Operating policy
-1. Primary source is WordPress MySQL (`wp_wpforms_entries` + `wp_wpforms_entry_fields`) for `form_id=2495`.
+1. Primary source is WordPress MySQL (`wp_wpforms_entries` + `wp_wpforms_entry_fields`) for all `form_id` values (forward-only).
 2. Status allowlist is strict: `completed` and `publish`.
 3. Email ingestion remains enabled only as fallback.
 4. Fallback is allowed only when the DB row is still missing after `WPFORMS_EMAIL_FALLBACK_MINUTES`.
@@ -62,6 +62,20 @@
    - DB lane key: `wpforms:db:{entry_id}`
    - Email lane key: `wpforms:email:{gmail_message_id}`
    - Ledger write must keep source marker + source ID to prevent duplicate Intake rows.
+6. Storage model is dual-tab:
+   - `Raw Mirror`: append-only DB payload evidence.
+   - `Intake`: transformed normalized records for operations.
+
+### HostGator cron command (DB primary lane)
+1. Provision env values at cron runtime (or secure include file):
+   - `WPFORMS_DB_HOST`, `WPFORMS_DB_PORT`, `WPFORMS_DB_NAME`, `WPFORMS_DB_USER`, `WPFORMS_DB_PASSWORD`
+   - `WPFORMS_APPS_SCRIPT_WEBAPP_URL`
+   - `WPFORMS_DB_SYNC_TOKEN`
+   - `WPFORMS_DB_STATUS_ALLOWLIST=completed,publish`
+2. Execute every 1-2 minutes:
+   - `php /home/<cpanel-user>/scripts/wpforms-db-forward-sync.php`
+3. Cursor must be persisted:
+   - default cursor file `/tmp/wpforms_db_forward_cursor.txt` (override via `WPFORMS_DB_CURSOR_FILE` if needed).
 
 ### Full go-live acceptance checklist (no waivers)
 1. Binding/setup:
@@ -84,3 +98,6 @@
 2. Capture Intake and Errors sheet screenshots for matching rows.
 3. Capture Gmail label screenshots (`wpforms/processed`, `wpforms/error`).
 4. Record final acceptance as PASS only when all checklist items pass.
+
+### Deployment reference
+- Detailed cutover steps: `docs/runbooks/wpforms-db-primary-cutover.md`

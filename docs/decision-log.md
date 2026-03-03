@@ -234,3 +234,13 @@
 - Context: prior incident closeout accepted Scenario B/C as waived for that cycle.
 - Decision: full go-live acceptance now requires hard proof for fresh append, immediate rerun idempotency, malformed-to-Errors routing, and 5/5 volume ingest within 5 minutes.
 - Consequence: closeout cannot be marked complete unless all acceptance scenarios are evidenced with timestamps and screenshots.
+
+## 2026-03-03 — SOS WPForms DB-primary transport selection
+- Context: direct Apps Script JDBC against HostGator would increase setup friction (IP allowlists, connector instability) and delay cutover.
+- Decision: use HostGator cron + PHP forward-sync script to POST DB rows into Apps Script `doPost`, with `auth_token` secret validation and forward cursor.
+- Consequence: deployment stays simple in HostGator runtime, supports all `form_id` forward-only ingest, and preserves a deterministic rollback path by disabling cron.
+
+## 2026-03-03 — SOS fallback window default
+- Context: fallback delay was undecided and needed a safe operational default.
+- Decision: set `email_fallback_minutes=15` as baseline for DB-authoritative mode.
+- Consequence: DB lane gets first-write priority while email lane remains a bounded safety net for delayed/missing DB rows.

@@ -118,11 +118,18 @@ Startup fails fast for required variables per role.
 - `WPFORMS_LEDGER_SPREADSHEET_ID`
 
 ### Required runtime knobs
-- `WPFORMS_DB_FORM_ID=2495`
+- `WPFORMS_DB_FORM_IDS=all` (forward-only; no single-form filter)
 - `WPFORMS_DB_STATUS_ALLOWLIST=completed,publish`
 - `WPFORMS_DB_PRIMARY_ENABLED=1`
 - `WPFORMS_EMAIL_FALLBACK_ENABLED=1`
-- `WPFORMS_EMAIL_FALLBACK_MINUTES` (default `15` unless operator override is approved)
+- `WPFORMS_EMAIL_FALLBACK_MINUTES=15` (recommended default unless operator override is approved)
+
+### HostGator cron runtime vars
+- `WPFORMS_APPS_SCRIPT_WEBAPP_URL`
+- `WPFORMS_DB_SYNC_TOKEN`
+- `WPFORMS_DB_BATCH_SIZE` (default `200`)
+- `WPFORMS_DB_CURSOR_FILE` (default `/tmp/wpforms_db_forward_cursor.txt`)
+- `WPFORMS_DB_SOURCE_NAME` (default `hostgator-wpforms-cron`)
 
 ### Gmail label contract (fallback lane)
 - `WPFORMS_GMAIL_LABEL_INBOX=wpforms/inbox`
@@ -134,3 +141,8 @@ Startup fails fast for required variables per role.
 2. Email lane may write only when DB lane has not produced that row after `WPFORMS_EMAIL_FALLBACK_MINUTES`.
 3. Every write must store lane/source identity so duplicate suppression works across both lanes.
 4. Keep secrets in platform secret manager only; never commit credentials to repo or screenshots.
+
+### HostGator sender scripts
+- `scripts/sos/wpforms-db-forward-sync.php`
+- `scripts/sos/run-wpforms-db-forward-sync.sh`
+- `scripts/sos/wpforms-db-forward-sync.env.example`
