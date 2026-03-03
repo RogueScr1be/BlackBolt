@@ -1,0 +1,98 @@
+# SwiftFormat Configuration for BlackBolt Operator
+# Code formatting rules compatible with Swift 6.0
+
+# Indentation
+--indent 2
+
+# Spaces around operators
+--operatorwrap before
+--nospaceoperators
+
+# Brace wrapping
+--funcargs nocolon
+--closingparen balanced
+--commaspace true
+--indent 2
+--indentcase false
+--maxwidth 120
+--patternlet inline
+--semicolons never
+--trimwhitespace always
+--wraparguments before-first
+--wrapcollections before-first
+
+# Specific formatting rules
+--allman false
+--anon-formatter inline
+--binarygrouping none
+--decimalgrouping none
+--disable-all-rules false
+--empty-subscripts remove
+--fragment false
+--generictypes remove
+--header "/*\n * Copyright (c) BlackBolt Inc. All rights reserved.\n */\n"
+--hexgrouping none
+--ifdef no-indent
+--indentcase false
+--indentation indent
+--insertlines true
+--leadingdelimiter false
+--linebreaks lf
+--markcategories false
+--modifierorder
+--nospaceoperators
+--octalgrouping none
+--orgmode false
+--patternlet inline
+--ranges nospace
+--redundanttype inferred
+--self insert
+--selfrequired
+--shortoptionals always
+--socii false
+--spacearoundbraces spaced
+--spacearoundcomments true
+--spaceinsidebrackets false
+--stripunusedargs unnamed-only
+--swiftversion 6.0
+--tabwidth 2
+--throwcapture automatic
+--trailingclosures
+--trailingcommas false
+--trimwhitespace always
+--typeattributes preserve
+--uppercasehexa false
+--varargcomments true
+--voidasempty true
+--wraparguments before-first
+--wrapcollections before-first
+--wrapparameters before-first
+--xcodeindentation false
+
+# Rules to exclude
+--disable blankLinesAroundMark,blankLinesAtStartOfScope,blankLinesAtEndOfScope
+
+# Import organization
+--importgrouping testable-bottom
+
+# Comment formatting
+--linecomments indent
+--blockcommentindent indent
+
+# Closure formatting
+--closureparameters multiline
+
+# Function declaration formatting
+--funcargs multiline
+
+# Specific parameter wrapping
+--wrapparameters before-first
+
+# Function return type formatting
+--funcreturntype preserve
+
+# Type definition formatting
+--typedefs before
+
+# Typealias formatting
+--typealias before

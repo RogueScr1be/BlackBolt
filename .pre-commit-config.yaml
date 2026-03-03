@@ -1,0 +1,127 @@
+# Pre-commit hooks configuration for BlackBolt project
+# Ensures code quality and security before commits
+
+repos:
+  # Swift Linting - SwiftLint
+  - repo: local
+    hooks:
+      - id: swiftlint
+        name: SwiftLint
+        entry: bash -c 'swiftlint --fix --strict'
+        language: system
+        types: [swift]
+        stages: [commit]
+        pass_filenames: false
+
+  # Swift Code Formatting - SwiftFormat
+  - repo: local
+    hooks:
+      - id: swiftformat
+        name: SwiftFormat
+        entry: bash -c 'swiftformat .'
+        language: system
+        types: [swift]
+        stages: [commit]
+        pass_filenames: false
+
+  # Git Secrets - Credential Detection
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        name: detect-secrets
+        entry: detect-secrets scan
+        language: python
+        types: [text]
+        stages: [commit]
+
+  # YAML Validation
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.28.0
+    hooks:
+      - id: yamllint
+        name: yamllint
+        entry: yamllint
+        language: python
+        types: [yaml]
+        stages: [commit]
+
+  # Markdown Linting
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.35.0
+    hooks:
+      - id: markdownlint
+        name: markdownlint
+        entry: markdownlint
+        language: node
+        types: [markdown]
+        stages: [commit]
+
+  # File size checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: check-added-large-files
+        name: Check for large files
+        entry: check-added-large-files
+        language: python
+        stages: [commit]
+        args: ['--maxkb=1000']
+
+  # JSON validation
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: check-json
+        name: Check JSON
+        entry: check-json
+        language: python
+        types: [json]
+        stages: [commit]
+
+  # Trailing whitespace
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+        name: Trim trailing whitespace
+        entry: trailing-whitespace-fixer
+        language: python
+        types: [text]
+        stages: [commit]
+
+  # End of file fixer
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: end-of-file-fixer
+        name: Fix end of file
+        entry: end-of-file-fixer
+        language: python
+        types: [text]
+        stages: [commit]
+
+  # Check for merge conflicts
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: check-merge-conflict
+        name: Check for merge conflicts
+        entry: check-merge-conflict
+        language: python
+        stages: [commit]
+
+  # Private key detection
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        name: Detect secrets
+        entry: detect-secrets scan
+        language: python
+        types: [text]
+        stages: [commit]
+
+fail_fast: false
+default_stages: [commit]
+minimum_pre_commit_version: 2.15.0
