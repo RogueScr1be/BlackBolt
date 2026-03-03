@@ -224,3 +224,13 @@
 - Context: previously, newly ingested reviews were persisted but did not execute full reactivation workflow states.
 - Decision: extend GBP ingest worker to run deterministic workflow gating for newly inserted reviews (classification, confidence policy, segment selection, constrained draft creation, approval/manual lane split, and send scheduling queue).
 - Consequence: 5-star genuine positives now move through automated path by default with risk/manual overrides, aligned to 1.0 policy constraints.
+
+## 2026-03-03 — SOS WPForms source precedence and fallback policy
+- Context: email-scrape ingestion closed as a dedupe-path incident, but final go-live acceptance requires reducing latency and avoiding email-only dependency.
+- Decision: adopt DB-primary ingestion from `soslaion_wp68837` (`wp_wpforms_entries` + `wp_wpforms_entry_fields`) with strict fallback to Gmail only when DB row is missing after `WPFORMS_EMAIL_FALLBACK_MINUTES`.
+- Consequence: ledger writes are near-real-time from source-of-record data while preserving operational continuity through bounded email fallback.
+
+## 2026-03-03 — SOS WPForms acceptance gate lock (no B/C waiver)
+- Context: prior incident closeout accepted Scenario B/C as waived for that cycle.
+- Decision: full go-live acceptance now requires hard proof for fresh append, immediate rerun idempotency, malformed-to-Errors routing, and 5/5 volume ingest within 5 minutes.
+- Consequence: closeout cannot be marked complete unless all acceptance scenarios are evidenced with timestamps and screenshots.

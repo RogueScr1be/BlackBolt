@@ -106,3 +106,31 @@ Startup fails fast for required variables per role.
   1. `railway link` (project `BlackBolt`, environment `production`)
   2. `railway status`
   3. `npm run objective:rollout:preflight`
+
+## SOS WPForms DB-Primary Lane Contract
+
+### Required secrets (do not log values)
+- `WPFORMS_DB_HOST`
+- `WPFORMS_DB_PORT` (default `3306`)
+- `WPFORMS_DB_NAME` (current: `soslaion_wp68837`)
+- `WPFORMS_DB_USER`
+- `WPFORMS_DB_PASSWORD`
+- `WPFORMS_LEDGER_SPREADSHEET_ID`
+
+### Required runtime knobs
+- `WPFORMS_DB_FORM_ID=2495`
+- `WPFORMS_DB_STATUS_ALLOWLIST=completed,publish`
+- `WPFORMS_DB_PRIMARY_ENABLED=1`
+- `WPFORMS_EMAIL_FALLBACK_ENABLED=1`
+- `WPFORMS_EMAIL_FALLBACK_MINUTES` (default `15` unless operator override is approved)
+
+### Gmail label contract (fallback lane)
+- `WPFORMS_GMAIL_LABEL_INBOX=wpforms/inbox`
+- `WPFORMS_GMAIL_LABEL_PROCESSED=wpforms/processed`
+- `WPFORMS_GMAIL_LABEL_ERROR=wpforms/error`
+
+### Dual-lane safety rules
+1. DB lane is authoritative for new Intake writes.
+2. Email lane may write only when DB lane has not produced that row after `WPFORMS_EMAIL_FALLBACK_MINUTES`.
+3. Every write must store lane/source identity so duplicate suppression works across both lanes.
+4. Keep secrets in platform secret manager only; never commit credentials to repo or screenshots.
