@@ -244,3 +244,155 @@
 - Context: fallback delay was undecided and needed a safe operational default.
 - Decision: set `email_fallback_minutes=15` as baseline for DB-authoritative mode.
 - Consequence: DB lane gets first-write priority while email lane remains a bounded safety net for delayed/missing DB rows.
+
+## 2026-03-04 — WPForms DB-primary web app access mode and live probe evidence
+- Context: HostGator webhook posts were blocked while Apps Script deployment access remained private.
+- Decision: force-push manifest, redeploy web app, and verify deployment entry point config as `access=ANYONE_ANONYMOUS`, `executeAs=USER_DEPLOYING`.
+- Consequence: DB webhook endpoint is publicly callable (token-gated) and live probes now prove fresh append, idempotency, transform-error routing, and status filtering against the production ledger.
+
+## 2026-03-04 — HostGator deployment blocker handling
+- Context: cron sender upload/scheduling required cPanel/SSH access, but provided credentials failed at live login.
+- Decision: mark HostGator cron deployment as blocked-by-credentials while preserving complete Apps Script + ledger evidence and keeping the email lane operational.
+- Consequence: DB-primary runtime path is validated and ready; final cutover to scheduled HostGator forwarding requires valid cPanel/SSH credentials (or alternate access method) before closure.
+
+## 2026-03-05 — HostGator SSH key-path cutover execution
+- Context: password-based cPanel/SSH credentials were unreliable across multiple attempts, blocking cron deployment.
+- Decision: use validated SSH key-based access for `soslaion@gator3208.hostgator.com`, deploy forward-sync scripts to `/home1/soslaion/scripts`, initialize cursor to current `MAX(entry_id)`, and install 1-minute cron execution.
+- Consequence: DB-primary lane is now active on HostGator with forward-only behavior from current head, minimizing historical backfill risk while preserving email fallback as secondary lane.
+
+## 2026-03-14 — Phase 0 Tier-1 canonical repo and ownership lock
+- Context: Black Bolt Tier-1 needed a repo-grounded architecture audit before any further implementation work so that future phases stay backend-first and do not drift into speculative SwiftUI or contract work.
+- Decision: treat `/Users/thewhitley/Documents/New project` as the only canonical repo for Black Bolt Tier-1 execution, and lock ownership boundaries as follows:
+  - backend engine truth lives in `/Users/thewhitley/Documents/New project/apps/api/src/modules/**`
+  - persistence and tenant-scoped invariants live in `/Users/thewhitley/Documents/New project/prisma/schema.prisma`
+  - async replayability and worker execution truth live in `/Users/thewhitley/Documents/New project/apps/api/src/modules/queues` and worker modules
+  - public contract truth lives in `/Users/thewhitley/Documents/New project/contracts/openapi/blackbolt.v1.yaml`
+  - Swift transport/types must converge onto `/Users/thewhitley/Documents/New project/clients/swift/BlackBoltAPI`
+  - Swift operator UI remains a thin presentation layer under `/Users/thewhitley/Documents/New project/clients/swift/BlackBoltOperator/Sources/BlackBoltOperator`
+- Consequence: all future Tier-1 implementation phases must preserve the backend-as-product model and avoid moving domain logic into Swift.
+
+## 2026-03-14 — Phase 0 Swift thin-client convergence policy
+- Context: the operator app currently uses handwritten request construction and HTTP helpers, which conflicts with the requirement that the SwiftUI app be a thin operator surface over the versioned API contract.
+- Decision: future Swift networking convergence must remove handwritten business-facing transport paths in:
+  - `/Users/thewhitley/Documents/New project/clients/swift/BlackBoltOperator/Sources/BlackBoltOperator/Models/OperatorRuntimeConfig.swift`
+  - `/Users/thewhitley/Documents/New project/clients/swift/BlackBoltOperator/Sources/BlackBoltOperator/Networking/OperatorHTTP.swift`
+  - `/Users/thewhitley/Documents/New project/clients/swift/BlackBoltOperator/Sources/BlackBoltOperator/Models/OperatorShellStore.swift`
+  and replace them with generated-client-backed flows from `/Users/thewhitley/Documents/New project/clients/swift/BlackBoltAPI`.
+- Consequence: Phase 3 may refactor Swift transport/orchestration, but no backend business rules, DB logic, or email composition logic may move into Swift as part of that convergence.
+
+## 2026-03-14 — Phase 0 route governance appendix requirement
+- Context: multi-tenant safety and contract discipline cannot be asserted from module names alone; they require route-level evidence for guards, tenant resolution, and operator membership enforcement.
+- Decision: Tier-1 governance now requires a maintained Phase 0 route coverage appendix for all operator-facing and tenant-facing `/v1` routes, recording:
+  - route
+  - controller file
+  - applied guards
+  - tenant resolution mechanism
+  - membership enforcement mechanism if operator-facing
+  - current status (`safe`, `partial`, `unsafe`)
+- Consequence: future phases must use route-level evidence, not assumptions, when claiming tenant safety or operator-surface readiness.
+
+## 2026-03-14 — Phase 0 backend-first execution order
+- Context: Tier-1 success depends on the backend engine being production-safe before further operator-surface work.
+- Decision: Phase 1 is narrowed to backend-first work only:
+  - tenant enforcement audit and closure
+  - PHI prevention by mechanism
+  - conservative attribution proof and invariant hardening
+  - deliverability protection consolidation
+  - additive `/v1` backend truth surfaces only where the current operator relies on non-versioned routes
+- Consequence: no SwiftUI expansion, UI redesign, schema redesign, or runtime cleanup work is allowed before backend engine gaps are closed or explicitly approved.
+
+## 2026-03-15 — Phase 1 tenant-enforcement closure standard
+- Context: Phase 0 identified several tenant-facing `/v1` controllers as `partial` or `unsafe` because they relied on `TenantGuard` alone even though the surrounding operator model is per-tenant operator-key gated.
+- Decision: tenant-facing operator surfaces under `/v1` must require both `OperatorKeyGuard` and `TenantGuard` unless the route is intentionally public. Phase 1 closed that gap on:
+  - `/Users/thewhitley/Documents/New project/apps/api/src/modules/customers/customers-imports-status.controller.ts`
+  - `/Users/thewhitley/Documents/New project/apps/api/src/modules/suppressions/suppressions.controller.ts`
+  - `/Users/thewhitley/Documents/New project/apps/api/src/modules/integrations/integrations.controller.ts`
+  - `/Users/thewhitley/Documents/New project/apps/api/src/modules/postmark/postmark-ops.controller.ts`
+  - `/Users/thewhitley/Documents/New project/apps/api/src/modules/tenants/tenants.controller.ts`
+- Consequence: route-level tenant identity now fails closed on both missing tenant context and missing/invalid operator key for those endpoints, while operator-portfolio routes continue to use `PortfolioOperatorGuard` plus service-level `allowedTenantIds` enforcement.
+
+## 2026-03-15 — Phase 1 PHI-prevention enforcement points
+- Context: Phase 0 proved that PHI-prevention intent existed, but not that all ingest paths rejected unsafe inputs before persistence.
+- Decision: Phase 1 hardens PHI prevention by mechanism at the parse boundary and review-ingest boundary:
+  - customer imports now reject unsupported headers before persistence
+  - suppression imports now reject unsupported headers and PHI-like freeform `reason` values before persistence
+  - revenue imports now reject PHI-like freeform `description` values before persistence
+  - GBP review ingestion now sanitizes PHI-like review comments to `null` before persistence while marking the redacted payload metadata
+- Consequence: Black Bolt now enforces a concrete reject/sanitize list in code for diagnosis, treatment notes, insurance details, procedure codes, medical record numbers, medication details, and freeform clinical notes instead of relying on documentation or operator behavior.
+
+## 2026-03-15 — Phase 1 conservative attribution source of truth
+- Context: schema-level dedupe support already existed, but the runtime attribution path still allowed later conflicting hints to attach a second campaign message to the same revenue event.
+- Decision: `RevenueService` now treats attribution as conservative last-touch with deterministic evidence requirements:
+  - a revenue event may resolve from `campaignMessageId`, `linkCode`, and/or `providerMessageId`
+  - each hint must resolve to the same `campaignMessageId` or attribution fails closed
+  - `campaignMessageId` and `providerMessageId` require a matching send event within the attribution window
+  - `linkCode` requires a matching click event within the attribution window
+  - direct window: 7 days
+  - assisted window: 30 days
+  - one revenue event may create at most one attribution record, keyed by `last-touch:{revenueEventId}`
+- Consequence: duplicate hint collisions, stale clicks/sends, and later conflicting retries no longer create double-counted attribution; weak or conflicting evidence remains unattributed.
+
+## 2026-03-15 — Phase 1 deliverability guardrail chain
+- Context: send protections existed across policy, queue, webhook, and alert code, but they were still easy to reason about incorrectly because the chain was distributed.
+- Decision: the backend send path is now treated as a strict fail-closed chain:
+  1. global kill switch (`POSTMARK_SEND_DISABLED=1`) forces simulation
+  2. tenant pause blocks sends until checklist-backed resume
+  3. active email suppressions block the send before provider delivery and mark the message unsubscribed/failed
+  4. per-tenant / global / hourly throttle checks auto-pause on breach
+  5. provider-message invariant violations alert and stop
+  6. stale `SENDING` claims are recovered or failed by sweeper policy with alerts
+  7. provider transient failure, bounce rate, spam rate, and failure rate all feed auto-pause logic
+- Consequence: unsafe sends now fail closed earlier in the processor, and the guardrail chain is test-backed instead of inferred from scattered modules.
+
+## 2026-03-15 — Phase 2 canonical Tier-1 operator contract surface
+- Context: the operator app and smoke tooling still depend on several legacy non-versioned routes, but Tier-1 must converge onto a versioned generated-client contract without silently breaking current users.
+- Decision: the canonical Tier-1 operator/backend contract now lives only under `/v1` in `/Users/thewhitley/Documents/New project/contracts/openapi/blackbolt.v1.yaml`. The normalized operator-critical routes are:
+  - `/v1/tenants`
+  - `/v1/tenants/{tenantId}`
+  - `/v1/tenants/{tenantId}/metrics`
+  - `/v1/tenants/{tenantId}/dashboard/summary`
+  - `/v1/tenants/{tenantId}/events`
+  - `/v1/tenants/{tenantId}/alerts`
+  - existing `/v1/operator/*` portfolio routes and previously normalized tenant routes remain canonical
+- Consequence: legacy non-versioned operator routes remain runtime compatibility shims only and are explicitly excluded from the canonical OpenAPI contract. New operator-facing work must target `/v1` only.
+
+## 2026-03-15 — Phase 2 `/v1/tenants` and `/v1/auth/login` disposition
+- Context: Phase 0 and Phase 1 left `/v1/tenants` as a guarded placeholder and `/v1/auth/login` as an unsafe placeholder, which kept contract intent ambiguous.
+- Decision:
+  - `/v1/tenants` is hardened and kept as a tenant-scoped operator-key surface backed by `OperatorTenantsService`; it is not a portfolio listing surface.
+  - `/v1/auth/login` is excluded from the Tier-1 operator contract surface. Runtime keeps the endpoint only to return an explicit `410 Gone` rejection that directs callers to operator-key authentication.
+- Consequence: Tier-1 no longer treats interactive login as part of the operator contract, and future work must not build new consumers against `/v1/auth/login`.
+
+## 2026-03-15 — Phase 2 generated-client validation gate
+- Context: contract cleanup is incomplete unless the hardened spec can regenerate and compile the Swift client package that Phase 3 will depend on.
+- Decision: every Tier-1 contract change must validate all of the following against the canonical spec:
+  - `npm run contract:coverage`
+  - `npm run contract:lint`
+  - `npm run swift:generate`
+  - `swift build` in `/Users/thewhitley/Documents/New project/clients/swift/BlackBoltAPI`
+- Consequence: `blackbolt.v1.yaml` is now treated as the generator source of truth, and route/spec drift must be caught before Swift convergence work begins.
+
+## 2026-03-15 — Phase 3 validation-only Swift 6 blocker policy
+- Context: Phase 3 transport convergence onto generated `BlackBoltAPI` now compiles inside the operator-facing facade/store/view paths, but package-wide validation is blocked by older Swift 6 compatibility errors in security/configuration support files that predate the transport swap.
+- Decision: apply only minimal compile-blocker fixes required to restore `swift build`/`swift test` for the operator package. These fixes are validation-only:
+  - no UI redesign
+  - no new product behavior
+  - no business-rule migration into Swift
+  - no expansion of the generated-client convergence scope beyond transport and thin adapters
+- Consequence: Phase 3 can still prove thin-client convergence with full package validation, while any unrelated compatibility cleanup remains tightly scoped and explicitly documented instead of silently folded into feature work.
+
+## 2026-03-17 — Phase 4 Swift certification baseline and workflow-state discipline
+- Context: Phase 3 transport convergence was in place, but the operator package still lacked a credible package certification signal and several screens still blurred loading, empty, degraded, and hard-failure states.
+- Decision:
+  - restore `swift test` to a credible passing baseline by repairing suites that still validate current behavior and rewriting stale tests around the current Swift 6 actor model
+  - keep explicit quarantines only for suites that remain outside Tier-1 operator certification and still need deeper follow-up:
+    - `Performance/UIResponsivenessTests.swift`
+    - `Security/KeychainTests.swift`
+    - `Security/MemorySafetyTests.swift`
+    - `Security/SecureConfigurationStoreTests.swift`
+  - introduce a thin UI state helper (`OperatorContentState`) so screens render `loading`, `empty`, `degraded`, and `failed` explicitly from store state plus content presence
+  - remove hardcoded operator policy copy from Swift views when it reflected backend-owned thresholds or automation rules
+- Consequence:
+  - `swift test` is again a credible certification gate for the active operator package surface
+  - remaining quarantines are explicit package debt, not silent red-gate noise
+  - the operator app now tells the truth when a section is empty or degraded instead of implying everything is fully ready

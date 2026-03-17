@@ -36,8 +36,15 @@ final class OperatorShellStore: ObservableObject {
     @Published var revenueImportStatusState: SectionLoadState = .idle
     @Published var requestDiagnostics: [EndpointDiagnostic] = []
 
+    private let apiService: any OperatorAPIServicing
+
+    init(apiService: any OperatorAPIServicing = GeneratedOperatorAPIService()) {
+        self.apiService = apiService
+    }
+
     func refresh(runtime: OperatorRuntimeConfig) async {
-        guard preflight(runtime: runtime) else { return }
+        guard let context = resolveContext(runtime: runtime) else { return }
+
         isLoading = true
         dashboardState = .loading
         alertsState = .loading
@@ -49,61 +56,40 @@ final class OperatorShellStore: ObservableObject {
         revenueImportsState = .loading
         defer { isLoading = false }
 
-        async let dashboardResult: Result<DashboardSummaryResponse, OperatorAppError> = fetchJSON(
-            runtime: runtime,
-            path: "/dashboard/summary",
-            as: DashboardSummaryResponse.self
-        )
-        async let alertsResult: Result<OperatorAlertsResponse, OperatorAppError> = fetchJSON(
-            runtime: runtime,
-            path: "/alerts?state=open",
-            as: OperatorAlertsResponse.self
-        )
-        async let eventsResult: Result<OperatorEventsResponse, OperatorAppError> = fetchJSON(
-            runtime: runtime,
-            path: "/events",
-            as: OperatorEventsResponse.self
-        )
-        async let tenantsListResult: Result<OperatorTenantListResponse, OperatorAppError> = fetchJSON(
-            runtime: runtime,
-            path: "/tenants",
-            as: OperatorTenantListResponse.self
-        )
-        async let tenantDetailResult: Result<OperatorTenantDetail, OperatorAppError> = fetchJSON(
-            runtime: runtime,
-            path: "/tenants/\(runtime.tenantId)",
-            as: OperatorTenantDetail.self
-        )
-        async let tenantMetricsResult: Result<OperatorTenantMetricsResponse, OperatorAppError> = fetchJSON(
-            runtime: runtime,
-            path: "/tenants/\(runtime.tenantId)/metrics?range=30d",
-            as: OperatorTenantMetricsResponse.self
-        )
-        async let campaignRunsResult: Result<CampaignRunsResponse, OperatorAppError> = fetchJSON(
-            runtime: runtime,
-            path: "/v1/tenants/\(runtime.tenantId)/campaign-runs?limit=25",
-            as: CampaignRunsResponse.self
-        )
-        async let reviewQueueResult: Result<OperatorReviewQueueResponse, OperatorAppError> = fetchJSON(
-            runtime: runtime,
-            path: "/v1/operator/reviews/queue?state=all",
-            as: OperatorReviewQueueResponse.self
-        )
-        async let approvalsResult: Result<OperatorApprovalListResponse, OperatorAppError> = fetchJSON(
-            runtime: runtime,
-            path: "/v1/operator/approvals?state=awaiting_approval",
-            as: OperatorApprovalListResponse.self
-        )
-        async let customerSegmentsResult: Result<CustomerSegmentSummaryResponse, OperatorAppError> = fetchJSON(
-            runtime: runtime,
-            path: "/v1/tenants/\(runtime.tenantId)/customers/segments",
-            as: CustomerSegmentSummaryResponse.self
-        )
-        async let revenueImportsResult: Result<RevenueImportListResponse, OperatorAppError> = fetchJSON(
-            runtime: runtime,
-            path: "/v1/tenants/\(runtime.tenantId)/revenue/imports?limit=10",
-            as: RevenueImportListResponse.self
-        )
+        let tenantId = context.tenantId
+        async let dashboardResult = fetchResult(path: "/v1/tenants/\(tenantId)/dashboard/summary") {
+            try await apiService.dashboardSummary(context: context)
+        }
+        async let alertsResult = fetchResult(path: "/v1/tenants/\(tenantId)/alerts") {
+            try await apiService.alerts(context: context, state: "open")
+        }
+        async let eventsResult = fetchResult(path: "/v1/tenants/\(tenantId)/events") {
+            try await apiService.events(context: context)
+        }
+        async let tenantsListResult = fetchResult(path: "/v1/tenants") {
+            try await apiService.tenants(context: context)
+        }
+        async let tenantDetailResult = fetchResult(path: "/v1/tenants/\(tenantId)") {
+            try await apiService.tenantDetail(context: context, tenantId: tenantId)
+        }
+        async let tenantMetricsResult = fetchResult(path: "/v1/tenants/\(tenantId)/metrics") {
+            try await apiService.tenantMetrics(context: context, tenantId: tenantId, range: "30d")
+        }
+        async let campaignRunsResult = fetchResult(path: "/v1/tenants/\(tenantId)/campaign-runs") {
+            try await apiService.campaignRuns(context: context, tenantId: tenantId, limit: 25)
+        }
+        async let reviewQueueResult = fetchResult(path: "/v1/operator/reviews/queue") {
+            try await apiService.reviewQueue(context: context, state: "all", tenantId: nil)
+        }
+        async let approvalsResult = fetchResult(path: "/v1/operator/approvals") {
+            try await apiService.approvals(context: context, state: "awaiting_approval", tenantId: nil)
+        }
+        async let customerSegmentsResult = fetchResult(path: "/v1/tenants/\(tenantId)/customers/segments") {
+            try await apiService.customerSegments(context: context, tenantId: tenantId)
+        }
+        async let revenueImportsResult = fetchResult(path: "/v1/tenants/\(tenantId)/revenue/imports") {
+            try await apiService.revenueImports(context: context, tenantId: tenantId, limit: 10)
+        }
 
         let (
             dashboardResolved,
@@ -182,7 +168,6 @@ final class OperatorShellStore: ObservableObject {
         }
 
         if failures.count < 11 {
-            // Partial failures should not lock the whole app; preserve successful section data.
             let failure = failures[0]
             lastError = failure
             errorMessage = "Some sections failed to refresh. Check tab-level errors and retry."
@@ -195,76 +180,63 @@ final class OperatorShellStore: ObservableObject {
     }
 
     func reloadDashboard(runtime: OperatorRuntimeConfig) async {
-        guard preflight(runtime: runtime) else { return }
+        guard let context = resolveContext(runtime: runtime) else { return }
         dashboardState = .loading
-        let result: Result<DashboardSummaryResponse, OperatorAppError> = await fetchJSON(
-            runtime: runtime,
-            path: "/dashboard/summary",
-            as: DashboardSummaryResponse.self
-        )
+        let path = "/v1/tenants/\(context.tenantId)/dashboard/summary"
+        let result = await fetchResult(path: path) {
+            try await apiService.dashboardSummary(context: context)
+        }
         applySectionResult(result, state: &dashboardState) { dashboard = $0 }
     }
 
     func reloadAlerts(runtime: OperatorRuntimeConfig) async {
-        guard preflight(runtime: runtime) else { return }
+        guard let context = resolveContext(runtime: runtime) else { return }
         alertsState = .loading
-        let result: Result<OperatorAlertsResponse, OperatorAppError> = await fetchJSON(
-            runtime: runtime,
-            path: "/alerts?state=open",
-            as: OperatorAlertsResponse.self
-        )
+        let path = "/v1/tenants/\(context.tenantId)/alerts"
+        let result = await fetchResult(path: path) {
+            try await apiService.alerts(context: context, state: "open")
+        }
         applySectionResult(result, state: &alertsState) { alerts = $0.items }
     }
 
     func reloadCampaignRuns(runtime: OperatorRuntimeConfig) async {
-        guard preflight(runtime: runtime) else { return }
+        guard let context = resolveContext(runtime: runtime) else { return }
         campaignRunsState = .loading
-        let result: Result<CampaignRunsResponse, OperatorAppError> = await fetchJSON(
-            runtime: runtime,
-            path: "/v1/tenants/\(runtime.tenantId)/campaign-runs?limit=25",
-            as: CampaignRunsResponse.self
-        )
+        let path = "/v1/tenants/\(context.tenantId)/campaign-runs"
+        let result = await fetchResult(path: path) {
+            try await apiService.campaignRuns(context: context, tenantId: context.tenantId, limit: 25)
+        }
         applySectionResult(result, state: &campaignRunsState) { campaignRuns = $0.items }
     }
 
     func reloadReviewQueue(runtime: OperatorRuntimeConfig, state: String = "all", tenantId: String? = nil) async {
-        guard preflight(runtime: runtime) else { return }
+        guard let context = resolveContext(runtime: runtime) else { return }
         reviewQueueState = .loading
-        var path = "/v1/operator/reviews/queue?state=\(state)"
-        if let tenantId, !tenantId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            path += "&tenant_id=\(tenantId)"
+        let path = "/v1/operator/reviews/queue"
+        let result = await fetchResult(path: path) {
+            try await apiService.reviewQueue(context: context, state: state, tenantId: tenantId)
         }
-        let result: Result<OperatorReviewQueueResponse, OperatorAppError> = await fetchJSON(
-            runtime: runtime,
-            path: path,
-            as: OperatorReviewQueueResponse.self
-        )
         applySectionResult(result, state: &reviewQueueState) { reviewQueue = $0.items }
     }
 
     func reloadApprovals(runtime: OperatorRuntimeConfig, state: String = "awaiting_approval", tenantId: String? = nil) async {
-        guard preflight(runtime: runtime) else { return }
+        guard let context = resolveContext(runtime: runtime) else { return }
         approvalsState = .loading
-        var path = "/v1/operator/approvals?state=\(state)"
-        if let tenantId, !tenantId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            path += "&tenant_id=\(tenantId)"
+        let path = "/v1/operator/approvals"
+        let result = await fetchResult(path: path) {
+            try await apiService.approvals(context: context, state: state, tenantId: tenantId)
         }
-        let result: Result<OperatorApprovalListResponse, OperatorAppError> = await fetchJSON(
-            runtime: runtime,
-            path: path,
-            as: OperatorApprovalListResponse.self
-        )
         applySectionResult(result, state: &approvalsState) { approvalQueue = $0.items }
     }
 
     func loadApprovalDetail(runtime: OperatorRuntimeConfig, approvalId: String) async {
-        guard preflight(runtime: runtime) else { return }
+        guard let context = resolveContext(runtime: runtime) else { return }
         guard !approvalId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-        let result: Result<OperatorApprovalDetail, OperatorAppError> = await fetchJSON(
-            runtime: runtime,
-            path: "/v1/operator/approvals/\(approvalId)",
-            as: OperatorApprovalDetail.self
-        )
+
+        let path = "/v1/operator/approvals/\(approvalId)"
+        let result = await fetchResult(path: path) {
+            try await apiService.approvalDetail(context: context, approvalId: approvalId)
+        }
         switch result {
         case .success(let detail):
             selectedApproval = detail
@@ -284,127 +256,123 @@ final class OperatorShellStore: ObservableObject {
         segment: String,
         sendWindowAt: String
     ) async {
-        guard preflight(runtime: runtime) else { return }
-        let payload =
-            "{"
-            + "\"subject\":\"\(escapeJSONString(subject))\","
-            + "\"body\":\"\(escapeJSONString(body))\","
-            + "\"segment\":\"\(escapeJSONString(segment))\","
-            + "\"send_window_at\":\"\(escapeJSONString(sendWindowAt))\""
-            + "}"
+        guard let context = resolveContext(runtime: runtime) else { return }
+        let path = "/v1/operator/approvals/\(approvalId)/draft"
+
         do {
-            let data = try await patch(
-                runtime: runtime,
-                path: "/v1/operator/approvals/\(approvalId)/draft",
-                body: payload
+            selectedApproval = try await apiService.patchApprovalDraft(
+                context: context,
+                approvalId: approvalId,
+                subject: subject,
+                body: body,
+                segment: segment,
+                sendWindowAt: sendWindowAt
             )
-            let decoder = JSONDecoder()
-            decoder.keyDecodingStrategy = .convertFromSnakeCase
-            selectedApproval = try decoder.decode(OperatorApprovalDetail.self, from: data)
+            recordDiagnostic(path: path, statusCode: 200, success: true)
             await reloadApprovals(runtime: runtime)
             await reloadReviewQueue(runtime: runtime)
         } catch {
-            apply(error: error)
+            let appError = mapToAppError(error: error, fallbackPath: path)
+            recordDiagnostic(path: appError.path ?? path, statusCode: appError.httpStatus, success: false)
+            apply(error: appError)
         }
     }
 
     func approveSelectedApproval(runtime: OperatorRuntimeConfig, approvalId: String) async {
-        guard preflight(runtime: runtime) else { return }
+        guard let context = resolveContext(runtime: runtime) else { return }
+        let path = "/v1/operator/approvals/\(approvalId)/approve"
+
         do {
-            _ = try await post(runtime: runtime, path: "/v1/operator/approvals/\(approvalId)/approve", body: nil)
+            try await apiService.approveApproval(context: context, approvalId: approvalId)
+            recordDiagnostic(path: path, statusCode: 200, success: true)
             selectedApproval = nil
             await reloadApprovals(runtime: runtime)
             await reloadReviewQueue(runtime: runtime)
             await reloadCampaignRuns(runtime: runtime)
         } catch {
-            apply(error: error)
+            let appError = mapToAppError(error: error, fallbackPath: path)
+            recordDiagnostic(path: appError.path ?? path, statusCode: appError.httpStatus, success: false)
+            apply(error: appError)
         }
     }
 
     func rejectSelectedApproval(runtime: OperatorRuntimeConfig, approvalId: String, reason: String) async {
-        guard preflight(runtime: runtime) else { return }
-        let payload = "{ \"reason\": \"\(escapeJSONString(reason))\" }"
+        guard let context = resolveContext(runtime: runtime) else { return }
+        let path = "/v1/operator/approvals/\(approvalId)/reject"
+
         do {
-            _ = try await post(
-                runtime: runtime,
-                path: "/v1/operator/approvals/\(approvalId)/reject",
-                body: payload
-            )
+            try await apiService.rejectApproval(context: context, approvalId: approvalId, reason: reason)
+            recordDiagnostic(path: path, statusCode: 200, success: true)
             selectedApproval = nil
             await reloadApprovals(runtime: runtime)
             await reloadReviewQueue(runtime: runtime)
             await reloadCampaignRuns(runtime: runtime)
         } catch {
-            apply(error: error)
+            let appError = mapToAppError(error: error, fallbackPath: path)
+            recordDiagnostic(path: appError.path ?? path, statusCode: appError.httpStatus, success: false)
+            apply(error: appError)
         }
     }
 
     func executeIntervention(runtime: OperatorRuntimeConfig, capability: String, alertID: String?) async {
-        guard preflight(runtime: runtime) else { return }
+        guard let context = resolveContext(runtime: runtime) else { return }
+        let path: String
+
         do {
             switch capability {
             case "retry-gbp-ingestion":
-                _ = try await post(runtime: runtime, path: "/v1/tenants/\(runtime.tenantId)/interventions/retry-gbp-ingestion", body: nil)
+                path = "/v1/tenants/\(context.tenantId)/interventions/retry-gbp-ingestion"
+                try await apiService.retryGbpIngestion(context: context, tenantId: context.tenantId)
             case "resume-postmark":
-                _ = try await post(runtime: runtime, path: "/v1/tenants/\(runtime.tenantId)/interventions/resume-postmark", body: nil)
+                path = "/v1/tenants/\(context.tenantId)/interventions/resume-postmark"
+                try await apiService.resumePostmarkIntervention(context: context, tenantId: context.tenantId)
             case "ack-alert":
                 guard let alertID else { return }
-                let json = "{\"alert_id\":\"\(alertID)\"}"
-                _ = try await post(runtime: runtime, path: "/v1/tenants/\(runtime.tenantId)/interventions/ack-alert", body: json)
+                path = "/v1/tenants/\(context.tenantId)/interventions/ack-alert"
+                try await apiService.ackAlert(context: context, tenantId: context.tenantId, alertId: alertID)
             default:
-                break
+                return
             }
+
+            recordDiagnostic(path: path, statusCode: 200, success: true)
             interventionStatusMessage = "Intervention succeeded (\(capability))."
             await refresh(runtime: runtime)
         } catch {
+            let appError = mapToAppError(error: error, fallbackPath: "/v1/tenants/\(context.tenantId)/interventions")
+            recordDiagnostic(path: appError.path ?? "/v1/tenants/\(context.tenantId)/interventions", statusCode: appError.httpStatus, success: false)
             interventionStatusMessage = "Intervention failed (\(capability))."
-            apply(error: error)
+            apply(error: appError)
         }
     }
 
     func loadMonthlyReport(runtime: OperatorRuntimeConfig, month: String) async {
-        guard preflight(runtime: runtime) else { return }
+        guard let context = resolveContext(runtime: runtime) else { return }
         reportsState = .loading
-        do {
-            let request = try runtime.request(path: "/v1/tenants/\(runtime.tenantId)/reports/monthly?month=\(month)")
-            let (data, status) = try await OperatorHTTP.performWithStatus(request)
-            recordDiagnostic(path: "/v1/tenants/\(runtime.tenantId)/reports/monthly", statusCode: status, success: true)
-            let decoder = JSONDecoder()
-            decoder.keyDecodingStrategy = .convertFromSnakeCase
-            report = try decoder.decode(MonthlyReportPayload.self, from: data)
+        let path = "/v1/tenants/\(context.tenantId)/reports/monthly"
+        let result = await fetchResult(path: path) {
+            try await apiService.monthlyReport(context: context, tenantId: context.tenantId, month: month)
+        }
+
+        switch result {
+        case .success(let report):
+            self.report = report
             reportsState = .ready
             connectionState = .ready
             lastError = nil
             errorMessage = nil
-        } catch {
-            apply(error: error)
-            if let appError = error as? OperatorAppError {
-                reportsState = .failed(appError)
-                recordDiagnostic(path: appError.path ?? "/v1/tenants/\(runtime.tenantId)/reports/monthly", statusCode: appError.httpStatus, success: false)
-            } else {
-                reportsState = .failed(
-                    OperatorAppError(
-                        code: "unknown_error",
-                        message: error.localizedDescription,
-                        httpStatus: nil,
-                        path: "/v1/tenants/\(runtime.tenantId)/reports/monthly"
-                    )
-                )
-            }
+        case .failure(let appError):
+            apply(error: appError)
+            reportsState = .failed(appError)
         }
     }
 
     func runSmokeTest(runtime: OperatorRuntimeConfig) async {
-        guard preflight(runtime: runtime) else { return }
+        guard let context = resolveContext(runtime: runtime) else { return }
+        let path = "/v1/tenants/\(context.tenantId)/operator/smoke"
+
         do {
-            var request = try runtime.request(path: "/v1/tenants/\(runtime.tenantId)/operator/smoke", method: "POST")
-            request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.httpBody = Data("{}".utf8)
-            let (data, status) = try await OperatorHTTP.performWithStatus(request)
-            recordDiagnostic(path: "/v1/tenants/\(runtime.tenantId)/operator/smoke", statusCode: status, success: true)
-            let decoder = JSONDecoder()
-            decoder.keyDecodingStrategy = .convertFromSnakeCase
-            smoke = try decoder.decode(OperatorSmokeResponse.self, from: data)
+            smoke = try await apiService.operatorSmoke(context: context, tenantId: context.tenantId)
+            recordDiagnostic(path: path, statusCode: 200, success: true)
             connectionState = .ready
             lastError = nil
             errorMessage = nil
@@ -413,20 +381,18 @@ final class OperatorShellStore: ObservableObject {
                 await refresh(runtime: runtime)
             }
         } catch {
-            apply(error: error)
-            if let appError = error as? OperatorAppError {
-                recordDiagnostic(path: appError.path ?? "/v1/tenants/\(runtime.tenantId)/operator/smoke", statusCode: appError.httpStatus, success: false)
-            }
+            let appError = mapToAppError(error: error, fallbackPath: path)
+            recordDiagnostic(path: appError.path ?? path, statusCode: appError.httpStatus, success: false)
+            apply(error: appError)
         }
     }
 
     func loadBootstrapStatus(runtime: OperatorRuntimeConfig) async {
-        guard preflight(runtime: runtime) else { return }
-        let result: Result<BootstrapStatusResponse, OperatorAppError> = await fetchJSON(
-            runtime: runtime,
-            path: "/v1/bootstrap/status",
-            as: BootstrapStatusResponse.self
-        )
+        guard let context = resolveContext(runtime: runtime) else { return }
+        let result = await fetchResult(path: "/v1/bootstrap/status") {
+            try await apiService.bootstrapStatus(context: context)
+        }
+
         switch result {
         case .success(let status):
             bootstrapStatus = status
@@ -437,57 +403,40 @@ final class OperatorShellStore: ObservableObject {
     }
 
     func listRevenueImports(runtime: OperatorRuntimeConfig) async {
-        guard preflight(runtime: runtime) else { return }
+        guard let context = resolveContext(runtime: runtime) else { return }
         revenueImportsState = .loading
-        let result: Result<RevenueImportListResponse, OperatorAppError> = await fetchJSON(
-            runtime: runtime,
-            path: "/v1/tenants/\(runtime.tenantId)/revenue/imports?limit=20",
-            as: RevenueImportListResponse.self
-        )
+        let path = "/v1/tenants/\(context.tenantId)/revenue/imports"
+        let result = await fetchResult(path: path) {
+            try await apiService.revenueImports(context: context, tenantId: context.tenantId, limit: 20)
+        }
         applySectionResult(result, state: &revenueImportsState) { revenueImports = $0.items }
     }
 
     func getRevenueImportStatus(runtime: OperatorRuntimeConfig, importId: String) async {
-        guard preflight(runtime: runtime) else { return }
+        guard let context = resolveContext(runtime: runtime) else { return }
         guard !importId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         revenueImportStatusState = .loading
         let path = "/v1/revenue-imports/\(importId)"
-        let result: Result<RevenueImportStatusResponse, OperatorAppError> = await fetchJSON(
-            runtime: runtime,
-            path: path,
-            as: RevenueImportStatusResponse.self
-        )
+        let result = await fetchResult(path: path) {
+            try await apiService.revenueImportStatus(context: context, revenueImportId: importId)
+        }
         applySectionResult(result, state: &revenueImportStatusState) { revenueImportStatus = $0 }
     }
 
     func createRevenueImport(runtime: OperatorRuntimeConfig, fileURL: URL) async {
-        guard preflight(runtime: runtime) else { return }
+        guard let context = resolveContext(runtime: runtime) else { return }
         isLoading = true
         revenueImportStatusState = .loading
         defer { isLoading = false }
 
+        let path = "/v1/tenants/\(context.tenantId)/revenue/imports"
         do {
-            let fileData = try Data(contentsOf: fileURL)
-            let boundary = "BlackBoltBoundary-\(UUID().uuidString)"
-            let body = buildMultipartBody(
-                boundary: boundary,
-                fileData: fileData,
-                filename: fileURL.lastPathComponent
+            let created = try await apiService.createRevenueImport(
+                context: context,
+                tenantId: context.tenantId,
+                fileURL: fileURL
             )
-
-            var request = try runtime.request(
-                path: "/v1/tenants/\(runtime.tenantId)/revenue/imports",
-                method: "POST"
-            )
-            request.addValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-            request.httpBody = body
-
-            let (data, status) = try await OperatorHTTP.performWithStatus(request)
-            recordDiagnostic(path: "/v1/tenants/\(runtime.tenantId)/revenue/imports", statusCode: status, success: true)
-
-            let decoder = JSONDecoder()
-            decoder.keyDecodingStrategy = .convertFromSnakeCase
-            let created = try decoder.decode(CreateRevenueImportResponse.self, from: data)
+            recordDiagnostic(path: path, statusCode: 202, success: true)
             connectionState = .ready
             lastError = nil
             errorMessage = nil
@@ -496,21 +445,29 @@ final class OperatorShellStore: ObservableObject {
             await pollRevenueImportUntilTerminal(runtime: runtime, importId: created.revenueImportId)
             await refresh(runtime: runtime)
         } catch {
-            apply(error: error)
-            if let appError = error as? OperatorAppError {
-                recordDiagnostic(path: appError.path ?? "/v1/tenants/\(runtime.tenantId)/revenue/imports", statusCode: appError.httpStatus, success: false)
-            }
+            let appError = mapToAppError(error: error, fallbackPath: path)
+            recordDiagnostic(path: appError.path ?? path, statusCode: appError.httpStatus, success: false)
+            apply(error: appError)
         }
     }
 
     func setCampaignRunPaused(runtime: OperatorRuntimeConfig, runId: String, paused: Bool) async {
-        guard preflight(runtime: runtime) else { return }
-        let action = paused ? "pause" : "resume"
+        guard let context = resolveContext(runtime: runtime) else { return }
+        let path = "/v1/tenants/\(context.tenantId)/campaign-runs/\(runId)/\(paused ? "pause" : "resume")"
+
         do {
-            _ = try await post(runtime: runtime, path: "/v1/tenants/\(runtime.tenantId)/campaign-runs/\(runId)/\(action)", body: nil)
+            try await apiService.setCampaignRunPaused(
+                context: context,
+                tenantId: context.tenantId,
+                runId: runId,
+                paused: paused
+            )
+            recordDiagnostic(path: path, statusCode: 200, success: true)
             await refresh(runtime: runtime)
         } catch {
-            apply(error: error)
+            let appError = mapToAppError(error: error, fallbackPath: path)
+            recordDiagnostic(path: appError.path ?? path, statusCode: appError.httpStatus, success: false)
+            apply(error: appError)
         }
     }
 
@@ -520,6 +477,19 @@ final class OperatorShellStore: ObservableObject {
 
     var unresolvedAlerts: [OperatorAlertListItem] {
         alerts.filter { $0.state == "open" }
+    }
+
+    func contentState(for state: SectionLoadState, hasContent: Bool) -> OperatorContentState {
+        switch state {
+        case .idle:
+            return hasContent ? .ready : .empty
+        case .loading:
+            return hasContent ? .ready : .loading
+        case .ready:
+            return hasContent ? .ready : .empty
+        case .failed(let appError):
+            return hasContent ? .degraded(appError) : .failed(appError)
+        }
     }
 
     func hasRequiredSettings(runtime: OperatorRuntimeConfig) -> Bool {
@@ -555,31 +525,6 @@ final class OperatorShellStore: ObservableObject {
         requestDiagnostics.last(where: { !$0.success })
     }
 
-    private func post(runtime: OperatorRuntimeConfig, path: String, body: String?) async throws -> Data {
-        var request = try runtime.request(path: path, method: "POST")
-        if let body {
-            request.httpBody = Data(body.utf8)
-            request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        }
-        return try await OperatorHTTP.perform(request)
-    }
-
-    private func patch(runtime: OperatorRuntimeConfig, path: String, body: String?) async throws -> Data {
-        var request = try runtime.request(path: path, method: "PATCH")
-        if let body {
-            request.httpBody = Data(body.utf8)
-            request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        }
-        return try await OperatorHTTP.perform(request)
-    }
-
-    private func escapeJSONString(_ value: String) -> String {
-        value
-            .replacingOccurrences(of: "\\", with: "\\\\")
-            .replacingOccurrences(of: "\"", with: "\\\"")
-            .replacingOccurrences(of: "\n", with: "\\n")
-    }
-
     private func pollRevenueImportUntilTerminal(runtime: OperatorRuntimeConfig, importId: String) async {
         let maxAttempts = 25
         for _ in 0..<maxAttempts {
@@ -594,54 +539,61 @@ final class OperatorShellStore: ObservableObject {
         }
     }
 
-    private func buildMultipartBody(boundary: String, fileData: Data, filename: String) -> Data {
-        var body = Data()
-        let prefix = "--\(boundary)\r\n"
-        body.append(Data(prefix.utf8))
-        body.append(Data("Content-Disposition: form-data; name=\"file\"; filename=\"\(filename)\"\r\n".utf8))
-        body.append(Data("Content-Type: text/csv\r\n\r\n".utf8))
-        body.append(fileData)
-        body.append(Data("\r\n--\(boundary)--\r\n".utf8))
-        return body
+    private func resolveContext(runtime: OperatorRuntimeConfig) -> OperatorAPIContext? {
+        guard preflight(runtime: runtime) else { return nil }
+        do {
+            return try runtime.apiContext()
+        } catch {
+            apply(error: error)
+            return nil
+        }
     }
 
     private func preflight(runtime: OperatorRuntimeConfig) -> Bool {
         let issues = requiredIssues(for: runtime)
-
         preflightIssues = issues
-        if issues.isEmpty {
-            return true
+
+        guard issues.isEmpty else {
+            let appError = OperatorAppError(
+                code: "invalid_config",
+                message: "Missing required settings: \(describeIssues(issues)). Open Settings to continue.",
+                httpStatus: nil,
+                path: nil
+            )
+            lastError = appError
+            connectionState = .invalidConfig
+            errorMessage = appError.message
+            return false
         }
 
-        let appError = OperatorAppError(
-            code: "invalid_config",
-            message: "Missing required settings: \(describeIssues(issues)). Open Settings to continue.",
-            httpStatus: nil,
-            path: nil
-        )
-        lastError = appError
-        connectionState = .invalidConfig
-        errorMessage = appError.message
-        return false
+        return true
+    }
+
+    private func fetchResult<T>(
+        path: String,
+        operation: () async throws -> T
+    ) async -> Result<T, OperatorAppError> {
+        do {
+            let value = try await operation()
+            recordDiagnostic(path: path, statusCode: 200, success: true)
+            return .success(value)
+        } catch {
+            let appError = mapToAppError(error: error, fallbackPath: path)
+            recordDiagnostic(path: appError.path ?? path, statusCode: appError.httpStatus, success: false)
+            return .failure(appError)
+        }
     }
 
     private func apply(error: Error) {
-        if let appError = error as? OperatorAppError {
-            lastError = appError
-            errorMessage = appError.message
-            connectionState = stateFor(appError: appError)
-            return
-        }
-
-        let fallback = OperatorAppError(
+        let appError = error as? OperatorAppError ?? OperatorAppError(
             code: "unknown_error",
             message: error.localizedDescription,
             httpStatus: nil,
             path: nil
         )
-        lastError = fallback
-        errorMessage = fallback.message
-        connectionState = .serverError
+        lastError = appError
+        errorMessage = appError.message
+        connectionState = stateFor(appError: appError)
     }
 
     private func stateFor(appError: OperatorAppError) -> OperatorConnectionState {
@@ -699,25 +651,6 @@ final class OperatorShellStore: ObservableObject {
             state = .ready
         case .failure(let appError):
             state = .failed(appError)
-        }
-    }
-
-    private func fetchJSON<T: Decodable>(
-        runtime: OperatorRuntimeConfig,
-        path: String,
-        as type: T.Type
-    ) async -> Result<T, OperatorAppError> {
-        do {
-            let request = try runtime.request(path: path)
-            let (data, status) = try await OperatorHTTP.performWithStatus(request)
-            recordDiagnostic(path: path, statusCode: status, success: true)
-            let decoder = JSONDecoder()
-            decoder.keyDecodingStrategy = .convertFromSnakeCase
-            return .success(try decoder.decode(type, from: data))
-        } catch {
-            let appError = mapToAppError(error: error, fallbackPath: path)
-            recordDiagnostic(path: appError.path ?? path, statusCode: appError.httpStatus, success: false)
-            return .failure(appError)
         }
     }
 

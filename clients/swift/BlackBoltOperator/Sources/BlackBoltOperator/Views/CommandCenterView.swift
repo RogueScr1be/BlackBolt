@@ -3,13 +3,19 @@ import SwiftUI
 struct CommandCenterView: View {
     @EnvironmentObject var runtime: OperatorRuntimeConfig
 
-    @State private var healthOK = false
+    @State private var commandCenter: CommandCenterPayload?
     @State private var revenue: RevenueSummaryResponse?
     @State private var gbpSummary: GbpOperatorSummary?
     @State private var postmarkSummary: PostmarkOperatorSummary?
     @State private var alerts: [OperatorAlert] = []
     @State private var errorMessage: String?
     @State private var isLoading = false
+
+    private let apiService: any OperatorAPIServicing
+
+    init(apiService: any OperatorAPIServicing = GeneratedOperatorAPIService()) {
+        self.apiService = apiService
+    }
 
     var body: some View {
         List {
@@ -57,8 +63,9 @@ struct CommandCenterView: View {
 
             Section("Revenue") {
                 if let revenue {
-                    metricRow("Last 24h attributed", "\(revenue.proof.last24h.attributedCents) cents")
-                    metricRow("Last 1h attributed", "\(revenue.proof.last1h.attributedCents) cents")
+                    metricRow("Attributed total", "\(revenue.rollup.direct.amountCents + revenue.rollup.assisted.amountCents) cents")
+                    metricRow("Direct", "\(revenue.rollup.direct.amountCents) cents")
+                    metricRow("Assisted", "\(revenue.rollup.assisted.amountCents) cents")
                     metricRow("Top campaigns", "\(revenue.topCampaigns.count)")
                 } else {
                     Text("Revenue summary unavailable")
@@ -67,7 +74,9 @@ struct CommandCenterView: View {
             }
 
             Section("Health") {
-                metricRow("API", healthOK ? "Healthy" : "Unhealthy")
+                metricRow("Deliverability", commandCenter?.health.deliverability ?? "Unknown")
+                metricRow("Review velocity", commandCenter?.health.reviewVelocity ?? "Unknown")
+                metricRow("Worker liveness", commandCenter?.health.workerLiveness ?? "Unknown")
                 metricRow("GBP", gbpSummary?.gbpIntegrationStatus ?? "Unknown")
                 metricRow("Postmark paused", (postmarkSummary?.paused ?? false) ? "Yes" : "No")
                 metricRow("Resume checklist ack", (postmarkSummary?.resumeChecklistAck ?? false) ? "Ready" : "Pending")
@@ -108,23 +117,24 @@ struct CommandCenterView: View {
         defer { isLoading = false }
 
         do {
-            let healthReq = try runtime.request(path: "/health")
-            let revenueReq = try runtime.request(path: "/v1/tenants/\(runtime.tenantId)/revenue/summary")
-            let gbpReq = try runtime.request(path: "/v1/tenants/\(runtime.tenantId)/integrations/gbp/operator-summary")
-            let postmarkReq = try runtime.request(path: "/v1/tenants/\(runtime.tenantId)/integrations/postmark/operator-summary")
+            let context = try runtime.apiContext()
+            async let commandCenterTask = apiService.commandCenter(context: context, tenantId: context.tenantId)
+            async let revenueTask = apiService.revenueSummary(context: context, tenantId: context.tenantId)
+            async let gbpTask = apiService.gbpSummary(context: context, tenantId: context.tenantId)
+            async let postmarkTask = apiService.postmarkSummary(context: context, tenantId: context.tenantId)
 
-            async let healthTask = OperatorHTTP.fetchJSON(healthReq, as: HealthResponse.self)
-            async let revenueTask = OperatorHTTP.fetchJSON(revenueReq, as: RevenueSummaryResponse.self)
-            async let gbpTask = OperatorHTTP.fetchJSON(gbpReq, as: GbpOperatorSummary.self)
-            async let postmarkTask = OperatorHTTP.fetchJSON(postmarkReq, as: PostmarkOperatorSummary.self)
+            let (commandCenterResp, revenueResp, gbpResp, postmarkResp) = try await (
+                commandCenterTask,
+                revenueTask,
+                gbpTask,
+                postmarkTask
+            )
 
-            let (healthResp, revenueResp, gbpResp, postmarkResp) = try await (healthTask, revenueTask, gbpTask, postmarkTask)
-
-            healthOK = healthResp.ok
+            commandCenter = commandCenterResp
             revenue = revenueResp
             gbpSummary = gbpResp
             postmarkSummary = postmarkResp
-            alerts = buildAlerts(health: healthResp, gbp: gbpResp, postmark: postmarkResp)
+            alerts = buildAlerts(commandCenter: commandCenterResp, gbp: gbpResp, postmark: postmarkResp)
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -132,21 +142,17 @@ struct CommandCenterView: View {
     }
 
     private func buildAlerts(
-        health: HealthResponse,
+        commandCenter: CommandCenterPayload,
         gbp: GbpOperatorSummary,
         postmark: PostmarkOperatorSummary
     ) -> [OperatorAlert] {
-        var items: [OperatorAlert] = []
-
-        if !health.ok {
-            items.append(
-                OperatorAlert(
-                    id: "api-health",
-                    severity: .critical,
-                    title: "API health degraded",
-                    message: "The API health endpoint is not reporting healthy.",
-                    source: "Health"
-                )
+        var items = commandCenter.alerts.map { alert in
+            OperatorAlert(
+                id: alert.id,
+                severity: mapSeverity(alert.severity),
+                title: alert.title,
+                message: alert.suggestedAction,
+                source: "Command Center"
             )
         }
 
@@ -194,9 +200,9 @@ struct CommandCenterView: View {
 
     private func mapSeverity(_ raw: String?) -> OperatorAlert.Severity {
         switch raw?.lowercased() {
-        case "high":
+        case "critical", "high":
             return .critical
-        case "medium":
+        case "warning", "medium":
             return .warning
         default:
             return .info

@@ -1,0 +1,62 @@
+{
+  "users": [
+    {
+      "id": "user-1",
+      "name": "Test User 1",
+      "email": "user1@example.com",
+      "role": "admin"
+    },
+    {
+      "id": "user-2",
+      "name": "Test User 2",
+      "email": "user2@example.com",
+      "role": "operator"
+    }
+  ],
+  "tenants": [
+    {
+      "id": "tenant-1",
+      "name": "Test Tenant 1",
+      "status": "active"
+    },
+    {
+      "id": "tenant-2",
+      "name": "Test Tenant 2",
+      "status": "active"
+    }
+  ],
+  "operators": [
+    {
+      "id": "operator-1",
+      "name": "Test Operator 1",
+      "apiKey": "test-api-key-1",
+      "status": "active"
+    }
+  ],
+  "imports": [
+    {
+      "id": "import-1",
+      "status": "completed",
+      "totalRows": 1000,
+      "succeededRows": 950,
+      "failedRows": 50
+    }
+  ],
+  "segments": [
+    {
+      "segment": "premium",
+      "count": 1500,
+      "percentage": 30
+    },
+    {
+      "segment": "standard",
+      "count": 3000,
+      "percentage": 60
+    },
+    {
+      "segment": "trial",
+      "count": 500,
+      "percentage": 10
+    }
+  ]
+}

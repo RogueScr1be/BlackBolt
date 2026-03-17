@@ -26,7 +26,10 @@ struct DashboardView: View {
                     }
                 }
 
-                if case .failed(let sectionError) = store.dashboardState {
+                switch dashboardContentState {
+                case .loading:
+                    ProgressView("Loading dashboard summary...")
+                case .failed(let sectionError):
                     HStack {
                         Text(sectionError.message)
                             .font(.caption)
@@ -37,6 +40,16 @@ struct DashboardView: View {
                         }
                         .disabled(store.isLoading || !store.hasRequiredSettings(runtime: runtime))
                     }
+                case .empty:
+                    Text("No dashboard summary returned yet.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                case .degraded(let sectionError):
+                    Text("Dashboard summary is showing the last successful payload. Latest refresh failed: \(sectionError.message)")
+                        .font(.caption)
+                        .foregroundColor(.orange)
+                case .ready:
+                    EmptyView()
                 }
 
                 if let dashboard = store.dashboard {
@@ -101,55 +114,74 @@ struct DashboardView: View {
                 }
 
                 GroupBox("Tenant Grid") {
-                    if store.tenants.isEmpty {
-                        Text("No tenants available")
+                    switch tenantGridState {
+                    case .loading:
+                        ProgressView("Loading tenant status...")
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    case .failed(let error):
+                        Text(error.message)
+                            .font(.caption)
+                            .foregroundColor(.red)
+                    case .empty:
+                        Text("No tenants available.")
                             .foregroundColor(.secondary)
-                    } else {
-                        ForEach(store.tenants) { tenant in
-                            HStack {
-                                Text(tenant.name)
-                                Spacer()
-                                Text("Health \(tenant.healthScore)")
-                                Text("Actions \(tenant.actionRequiredCount)")
-                            }
+                    case .degraded(let error):
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Tenant status is degraded: \(error.message)")
+                                .font(.caption)
+                                .foregroundColor(.orange)
+                            tenantGrid
                         }
+                    case .ready:
+                        tenantGrid
                     }
                 }
 
                 GroupBox("Live Revenue Feed") {
-                    let feed = store.events.filter { $0.eventType == "revenue_event" }
-                    if feed.isEmpty {
-                        Text("No revenue activity yet")
+                    switch revenueFeedState {
+                    case .loading:
+                        ProgressView("Loading revenue activity...")
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    case .failed(let error):
+                        Text(error.message)
+                            .font(.caption)
+                            .foregroundColor(.red)
+                    case .empty:
+                        Text("No revenue activity yet.")
                             .foregroundColor(.secondary)
-                    } else {
-                        ForEach(feed.prefix(6)) { item in
-                            HStack {
-                                Text(item.createdAt)
-                                    .font(.caption2)
-                                    .foregroundColor(.secondary)
-                                Spacer()
-                                Text("\(item.amountCents ?? 0) cents")
-                                    .font(.body.monospacedDigit())
-                            }
+                    case .degraded(let error):
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Revenue activity is partially degraded: \(error.message)")
+                                .font(.caption)
+                                .foregroundColor(.orange)
+                            revenueFeed
                         }
+                    case .ready:
+                        revenueFeed
                     }
                 }
 
                 GroupBox("Action Required") {
-                    if store.unresolvedAlerts.isEmpty {
+                    switch alertContentState {
+                    case .loading:
+                        ProgressView("Loading alerts...")
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    case .failed(let error):
+                        Text(error.message)
+                            .font(.caption)
+                            .foregroundColor(.red)
+                    case .empty:
                         Text("No open alerts.")
                             .foregroundColor(.secondary)
-                    } else {
-                        ForEach(store.unresolvedAlerts.prefix(8)) { alert in
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text("[\(alert.severity.uppercased())] \(alert.title)")
-                                    .font(.headline)
-                                Text(alert.suggestedAction)
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                    case .degraded(let error):
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Alert feed is partially degraded: \(error.message)")
+                                .font(.caption)
+                                .foregroundColor(.orange)
+                            alertList
                         }
+                    case .ready:
+                        alertList
                     }
                 }
 
@@ -171,6 +203,66 @@ struct DashboardView: View {
                 }
             }
             .padding(16)
+        }
+    }
+
+    private var dashboardContentState: OperatorContentState {
+        store.contentState(for: store.dashboardState, hasContent: store.dashboard != nil)
+    }
+
+    private var tenantGridState: OperatorContentState {
+        store.contentState(for: store.tenantsState, hasContent: !store.tenants.isEmpty)
+    }
+
+    private var revenueFeedItems: [OperatorActivityEvent] {
+        store.events.filter { $0.eventType == "revenue_event" }
+    }
+
+    private var revenueFeedState: OperatorContentState {
+        store.contentState(for: store.eventsState, hasContent: !revenueFeedItems.isEmpty)
+    }
+
+    private var alertContentState: OperatorContentState {
+        store.contentState(for: store.alertsState, hasContent: !store.unresolvedAlerts.isEmpty)
+    }
+
+    @ViewBuilder
+    private var tenantGrid: some View {
+        ForEach(store.tenants) { tenant in
+            HStack {
+                Text(tenant.name)
+                Spacer()
+                Text("Health \(tenant.healthScore)")
+                Text("Actions \(tenant.actionRequiredCount)")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var revenueFeed: some View {
+        ForEach(revenueFeedItems.prefix(6)) { item in
+            HStack {
+                Text(item.createdAt)
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+                Spacer()
+                Text("\(item.amountCents ?? 0) cents")
+                    .font(.body.monospacedDigit())
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var alertList: some View {
+        ForEach(store.unresolvedAlerts.prefix(8)) { alert in
+            VStack(alignment: .leading, spacing: 3) {
+                Text("[\(alert.severity.uppercased())] \(alert.title)")
+                    .font(.headline)
+                Text(alert.suggestedAction)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 }

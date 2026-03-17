@@ -36,40 +36,25 @@ final class OperatorRuntimeConfig: ObservableObject {
         self.operatorKey = defaults.string(forKey: Keys.operatorKey) ?? ""
     }
 
-    func request(path: String, method: String = "GET") throws -> URLRequest {
+    func apiContext() throws -> OperatorAPIContext {
         let base = apiBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !base.isEmpty, let baseURL = URL(string: base) else {
-            throw URLError(.badURL)
+            throw OperatorAppError(
+                code: "invalid_config",
+                message: "Invalid API base URL. Update Settings and retry.",
+                httpStatus: nil,
+                path: nil
+            )
         }
-
-        let normalizedPath = path.hasPrefix("/") ? String(path.dropFirst()) : path
-        guard let percentEncoded = normalizedPath.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) else {
-            throw URLError(.badURL)
-        }
-        let pieces = normalizedPath.split(separator: "?", maxSplits: 1, omittingEmptySubsequences: false)
-        let pathPart = String(pieces[0])
-        var components = URLComponents(url: baseURL.appendingPathComponent(pathPart), resolvingAgainstBaseURL: false)
-        if pieces.count == 2 {
-            components?.percentEncodedQuery = String(pieces[1])
-        }
-        guard let url = components?.url ?? URL(string: base + "/" + percentEncoded) else {
-            throw URLError(.badURL)
-        }
-        var req = URLRequest(url: url)
-        req.httpMethod = method
-        req.addValue(tenantId, forHTTPHeaderField: "x-tenant-id")
-        req.addValue("operator", forHTTPHeaderField: "x-user-id")
-        let key = operatorKey.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !key.isEmpty {
-            req.addValue(key, forHTTPHeaderField: "X-Operator-Key")
-        }
-        if let auth = resolvedAuthorizationHeader() {
-            req.addValue(auth, forHTTPHeaderField: "Authorization")
-        }
-        return req
+        return OperatorAPIContext(
+            serverURL: baseURL,
+            tenantId: tenantId.trimmingCharacters(in: .whitespacesAndNewlines),
+            operatorKey: operatorKey.trimmingCharacters(in: .whitespacesAndNewlines),
+            authorizationHeader: resolvedAuthorizationHeader()
+        )
     }
 
-    private func resolvedAuthorizationHeader() -> String? {
+    func resolvedAuthorizationHeader() -> String? {
         let raw = authHeader.trimmingCharacters(in: .whitespacesAndNewlines)
         if raw.isEmpty || raw == "-" {
             return nil

@@ -160,7 +160,118 @@
 - Service logic is implemented beyond static placeholder copy.
 - UI action is wired to a real network call and handles error states.
 
+## Tier-1 Phase 0 Guardrails
+- Canonical repo for Black Bolt Tier-1 work is `/Users/thewhitley/Documents/New project`. Do not use older worktrees except as explicitly cited historical context.
+- Tier-1 execution order is backend-first:
+- Phase 0 and Phase 1 focus on backend engine truth, tenant safety, PHI prevention, attribution correctness, and deliverability protection before any SwiftUI expansion.
+- Do not treat sparse or functional operator screens as proof that backend feature completeness exists.
+- Operator-facing and tenant-facing `/v1` routes require a maintained coverage appendix recording:
+- route
+- controller file
+- applied guards
+- tenant resolution mechanism
+- membership enforcement mechanism if operator-facing
+- current status (`safe`, `partial`, `unsafe`)
+- When route safety depends on service-layer filtering rather than explicit controller/guard guarantees, classify it as `partial` until proven otherwise.
+- Current operator UI depends on non-versioned routes in `dashboard`, `events`, `alerts`, and `operator-tenants`; treat this as a contract-discipline gap until equivalent backend truth is locked under `/v1`.
+- Swift operator networking must converge onto generated `BlackBoltAPI`; do not add new handwritten business-facing transport paths in:
+- `clients/swift/BlackBoltOperator/Sources/BlackBoltOperator/Models/OperatorRuntimeConfig.swift`
+- `clients/swift/BlackBoltOperator/Sources/BlackBoltOperator/Networking/OperatorHTTP.swift`
+- `clients/swift/BlackBoltOperator/Sources/BlackBoltOperator/Models/OperatorShellStore.swift`
+- Do not silently clean up duplicate-path or generated clutter during audit phases. Record hygiene risks first, then clean them only in an explicitly approved phase.
+
+## Tier-1 Phase 1 Guardrails
+- Tenant-facing operator endpoints under `/v1` must use both `OperatorKeyGuard` and `TenantGuard` unless the route is intentionally public by product design.
+- When a tenant-scoped route omits `:tenantId` in the path (for example import-status lookups), the request still fails closed through `x-tenant-id` and the backing service query must scope by `{ id, tenantId }`.
+- Portfolio operator routes are only `safe` when the controller passes `allowedTenantIds` through to service methods that re-check tenant ownership before lookup or mutation.
+- PHI prevention must happen before persistence:
+- reject unsupported import headers at parse boundary
+- reject PHI-like freeform import content before row creation
+- sanitize PHI-like review comments before review persistence
+- Minimum PHI reject categories in code: diagnosis, treatment notes, insurance details, procedure codes, medical record numbers, medication details, and clinical notes.
+- Conservative attribution is last-touch and fail-closed:
+- direct window = 7 days
+- assisted window = 30 days
+- all provided evidence hints must resolve to the same campaign message or the revenue event remains unattributed
+- one revenue event may create at most one attribution record (`last-touch:{revenueEventId}`)
+- Deliverability guardrail chain is mandatory and ordered:
+- global kill switch -> tenant pause -> suppression block -> throttle -> invariant alert -> stale-claim recovery -> provider/bounce/spam/failure auto-pause
+- Active email suppressions must block the send before Postmark delivery; never rely on downstream unsubscribe handling as the primary safeguard.
+
+## Tier-1 Phase 2 Guardrails
+- The canonical operator/backend contract lives only under `/v1` in `/Users/thewhitley/Documents/New project/contracts/openapi/blackbolt.v1.yaml`.
+- If the current operator app still depends on non-versioned routes, keep them only as temporary backend compatibility paths. Do not add them to the canonical OpenAPI contract.
+- Canonical normalized operator-critical tenant routes are:
+  - `/v1/tenants`
+  - `/v1/tenants/{tenantId}`
+  - `/v1/tenants/{tenantId}/metrics`
+  - `/v1/tenants/{tenantId}/dashboard/summary`
+  - `/v1/tenants/{tenantId}/events`
+  - `/v1/tenants/{tenantId}/alerts`
+- `/v1/tenants` is a tenant-scoped operator-key surface, not a portfolio-wide listing route.
+- `/v1/auth/login` is excluded from Tier-1. Do not build new clients or workflows against it.
+- Every contract edit must pass:
+  - `npm run contract:coverage`
+  - `npm run contract:lint`
+  - `npm run swift:generate`
+  - `swift build` in `/Users/thewhitley/Documents/New project/clients/swift/BlackBoltAPI`
+- Known generator debt:
+  - this spec is OpenAPI `3.1.0` but still has many legacy `nullable:` fields
+  - generator currently compiles by translating them, but future touched schemas should prefer explicit 3.1 null unions instead of adding more `nullable:` usage
+- During contract-hardening phases, Swift operator source remains read-only unless a compile fix is unavoidable. Do not use Phase 2 as a pretext for Swift convergence.
+
+## Tier-1 Phase 3 Guardrails
+- Swift operator app business flows must go through generated `BlackBoltAPI` transport, not handwritten request code.
+- Keep the layering explicit:
+  - generated client = typed transport surface
+  - `OperatorAPIService` = small facade/adapters for UI-friendly shapes
+  - `OperatorShellStore` = orchestration and screen state only
+  - SwiftUI views = rendering and user interaction only
+- Do not reintroduce business-flow transport in:
+  - `clients/swift/BlackBoltOperator/Sources/BlackBoltOperator/Networking/OperatorHTTP.swift`
+  - `clients/swift/BlackBoltOperator/Sources/BlackBoltOperator/Models/OperatorRuntimeConfig.swift`
+  - `clients/swift/BlackBoltOperator/Sources/BlackBoltOperator/Models/OperatorShellStore.swift`
+  - any SwiftUI view via `URLSession.shared`
+- Deprecated compatibility routes remain backend-only shims during migration. Operator app source must not depend on:
+  - `/dashboard/summary`
+  - `/alerts`
+  - `/events`
+  - `/tenants`
+  - `/tenants/{tenantId}`
+  - `/tenants/{tenantId}/metrics`
+- If Phase 3 source/build validation passes but `swift test` is blocked by older suite drift, record the blocker explicitly instead of misattributing it to the transport migration.
+- Minimal validation-only compile fixes in unrelated Swift support files are acceptable when they are required to restore `swift build`, but they must not expand product scope or move backend logic into Swift.
+
+## Tier-1 Phase 4 Guardrails
+- `swift test` for `clients/swift/BlackBoltOperator` must remain a credible certification signal.
+- If a Swift test suite no longer reflects the current architecture:
+  - fix it if it still validates live behavior
+  - rewrite it if the surface still matters but the helper/API assumptions drifted
+  - quarantine it only with explicit documentation in `docs/failure-log.md`
+- Operator screens must render state honestly:
+  - `loading` when no payload is available yet
+  - `empty` when the backend returned no usable content
+  - `degraded` when stale content is being shown after a failed refresh
+  - `failed` when no usable payload exists
+- Do not hardcode backend-owned business policy into Swift view copy. Thresholds, trigger logic, and automation defaults must stay backend-owned; Swift may only present API-backed facts or generic operator guidance.
+- Keep transport discipline intact while completing workflows:
+  - no `OperatorHTTP`
+  - no `URLSession.shared` business flows
+  - no reintroduction of deprecated non-versioned operator routes in app source
+
 ## Operator Onboarding Truth
 - Tenant onboarding is complete only after running `npm run tenant:seed -- --name=\"...\" --slug=...`.
 - The seed output is source-of-truth for `tenantId` (`x-tenant-id`) and `operatorKey` (`x-operator-key`).
 - Do not mark operator workflows usable until per-tenant operator credential is present in DB.
+
+## CWV Lane Guardrail
+- Desktop CSS deferral lanes must use explicit handle allowlists and pass a disabled-control median gate before promotion.
+- Mobile LCP lanes must pass a disabled-control median gate and include marker-scoped rollback proof before promotion.
+- CSS preload lanes must verify emitted preload tags on fresh uncached HTML before running Lighthouse gates.
+- Lighthouse v12+ parsing guard: use `lcp-breakdown-insight` and `render-blocking-insight` structures (not deprecated audit ids) when computing gate deltas and LCP subpart evidence.
+- Home desktop hero-media lanes must treat modeled `largest-contentful-paint` as gate authority; improved observed-LCP alone is not sufficient to keep a lane.
+- Desktop home CSS deferral can improve LCP while still failing score via FCP/CLS sensitivity; strict score gate remains authoritative and requires immediate rollback on failure.
+- Desktop home lanes must verify 3-run LCP candidate stability; if candidates switch between runs, run diagnostic-first and avoid CSS timing mutation lanes until discovery is stabilized.
+- Any single-variable CWV lane must hard-stop as NO-GO if pre-proof LCP candidate does not match the lane hypothesis (no mutation allowed).
+- Query-string disabled-controls can force slower cache paths on production; validate control methodology before trusting enabled-vs-disabled deltas.
+- Production CWV gates must not compare `/` against `/?...` controls; use canonical URL for both packs and toggle lane state server-side between 3-run blocks.

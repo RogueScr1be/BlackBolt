@@ -146,6 +146,9 @@ struct OperatorRootView: View {
     }
 
     private func statusLabel(for state: OperatorConnectionState) -> String {
+        if state == .ready, store.lastError != nil {
+            return "DEGRADED"
+        }
         switch state {
         case .ready:
             return "READY"

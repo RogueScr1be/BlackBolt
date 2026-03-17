@@ -1,3 +1,4 @@
+import BlackBoltAPI
 import SwiftUI
 
 private struct ReviewRow: Decodable, Identifiable {
@@ -14,12 +15,29 @@ private struct ReviewPage: Decodable {
     let nextCursor: String?
 }
 
+private extension ReviewRow {
+    init(api: Components.Schemas.Review) {
+        self.id = api.id
+        self.sourceReviewId = api.sourceReviewId
+        self.rating = api.rating
+        self.body = api.body
+        self.reviewerName = api.reviewerName
+        self.reviewedAt = api.reviewedAt.map { ISO8601DateFormatter().string(from: $0) }
+    }
+}
+
 struct ReviewsListView: View {
     @EnvironmentObject var runtime: OperatorRuntimeConfig
     @State private var reviews: [ReviewRow] = []
     @State private var summary: GbpOperatorSummary?
     @State private var pollStatus: String = "Idle"
     @State private var errorMessage: String?
+
+    private let apiService: any OperatorAPIServicing
+
+    init(apiService: any OperatorAPIServicing = GeneratedOperatorAPIService()) {
+        self.apiService = apiService
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -87,10 +105,8 @@ struct ReviewsListView: View {
 
     private func poll() async {
         do {
-            let req = try runtime.request(path: "/v1/tenants/\(runtime.tenantId)/reviews/poll", method: "POST")
-            let (data, response) = try await URLSession.shared.data(for: req)
-            try ensureSuccess(response: response, data: data)
-            let result = try JSONDecoder().decode(PollResponse.self, from: data)
+            let context = try runtime.apiContext()
+            let result = try await apiService.pollReviews(context: context, tenantId: context.tenantId)
             pollStatus = "Queued \(result.jobId ?? "none") on \(result.queue)"
             errorMessage = nil
             await loadSummary()
@@ -102,10 +118,9 @@ struct ReviewsListView: View {
 
     private func loadReviews() async {
         do {
-            let req = try runtime.request(path: "/v1/tenants/\(runtime.tenantId)/reviews")
-            let (data, response) = try await URLSession.shared.data(for: req)
-            try ensureSuccess(response: response, data: data)
-            let page = try JSONDecoder().decode(ReviewPage.self, from: data)
+            let context = try runtime.apiContext()
+            let response = try await apiService.reviews(context: context, tenantId: context.tenantId)
+            let page = ReviewPage(items: response.items.map(ReviewRow.init(api:)), nextCursor: response.nextCursor)
             reviews = page.items
             errorMessage = nil
         } catch {
@@ -115,27 +130,11 @@ struct ReviewsListView: View {
 
     private func loadSummary() async {
         do {
-            let req = try runtime.request(path: "/v1/tenants/\(runtime.tenantId)/integrations/gbp/operator-summary")
-            let (data, response) = try await URLSession.shared.data(for: req)
-            try ensureSuccess(response: response, data: data)
-            summary = try JSONDecoder().decode(GbpOperatorSummary.self, from: data)
+            let context = try runtime.apiContext()
+            summary = try await apiService.gbpSummary(context: context, tenantId: context.tenantId)
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
-        }
-    }
-
-    private func ensureSuccess(response: URLResponse, data: Data) throws {
-        guard let http = response as? HTTPURLResponse else {
-            throw URLError(.badServerResponse)
-        }
-        guard (200 ... 299).contains(http.statusCode) else {
-            let body = String(data: data, encoding: .utf8) ?? ""
-            throw NSError(
-                domain: "OperatorHTTPError",
-                code: http.statusCode,
-                userInfo: [NSLocalizedDescriptionKey: "HTTP \(http.statusCode): \(body)"]
-            )
         }
     }
 }

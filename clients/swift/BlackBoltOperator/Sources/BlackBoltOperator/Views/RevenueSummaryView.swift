@@ -6,6 +6,12 @@ struct RevenueSummaryView: View {
     @State private var errorMessage: String?
     @State private var isLoading = false
 
+    private let apiService: any OperatorAPIServicing
+
+    init(apiService: any OperatorAPIServicing = GeneratedOperatorAPIService()) {
+        self.apiService = apiService
+    }
+
     var body: some View {
         List {
             Section {
@@ -22,8 +28,16 @@ struct RevenueSummaryView: View {
 
             if let summary {
                 Section("Revenue Rollup") {
-                    RevenueWindowCard(title: "Last 24h", window: summary.proof.last24h)
-                    RevenueWindowCard(title: "Last 1h", window: summary.proof.last1h)
+                    RevenueMoneyCard(title: "Total", money: summary.rollup.total)
+                    RevenueMoneyCard(title: "Direct", money: summary.rollup.direct)
+                    RevenueMoneyCard(title: "Assisted", money: summary.rollup.assisted)
+                    RevenueMoneyCard(title: "Unattributed", money: summary.rollup.unattributed)
+                    Text("Model: \(summary.model)  windows: \(summary.windowDaysDirect)d/\(summary.windowDaysAssisted)d")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Text("Range: \(summary.range.from) to \(summary.range.to)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
 
                 Section("Top Attributed") {
@@ -82,27 +96,11 @@ struct RevenueSummaryView: View {
         defer { isLoading = false }
 
         do {
-            let req = try runtime.request(path: "/v1/tenants/\(runtime.tenantId)/revenue/summary")
-            let (data, response) = try await URLSession.shared.data(for: req)
-            try ensureSuccess(response: response, data: data)
-            summary = try JSONDecoder().decode(RevenueSummaryResponse.self, from: data)
+            let context = try runtime.apiContext()
+            summary = try await apiService.revenueSummary(context: context, tenantId: context.tenantId)
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
-        }
-    }
-
-    private func ensureSuccess(response: URLResponse, data: Data) throws {
-        guard let http = response as? HTTPURLResponse else {
-            throw URLError(.badServerResponse)
-        }
-        guard (200 ... 299).contains(http.statusCode) else {
-            let body = String(data: data, encoding: .utf8) ?? ""
-            throw NSError(
-                domain: "OperatorHTTPError",
-                code: http.statusCode,
-                userInfo: [NSLocalizedDescriptionKey: "HTTP \(http.statusCode): \(body)"]
-            )
         }
     }
 
@@ -112,32 +110,17 @@ struct RevenueSummaryView: View {
     }
 }
 
-private struct RevenueWindowCard: View {
+private struct RevenueMoneyCard: View {
     let title: String
-    let window: RevenueWindowRollup
+    let money: MoneyBreakdown
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title)
                 .font(.headline)
-            HStack {
-                metric(label: "Total", value: window.totalCents)
-                Spacer()
-                metric(label: "Attributed", value: window.attributedCents)
-                Spacer()
-                metric(label: "Unattributed", value: window.unattributedCents)
-            }
-        }
-        .padding(.vertical, 4)
-    }
-
-    private func metric(label: String, value: Int) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(label)
-                .font(.caption)
-                .foregroundColor(.secondary)
-            Text("\(value)")
+            Text("\(money.currency) \(String(format: "%.2f", Double(money.amountCents) / 100.0))")
                 .font(.body.monospacedDigit())
         }
+        .padding(.vertical, 4)
     }
 }

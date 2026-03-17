@@ -1,0 +1,55 @@
+{
+  "valid_configurations": {
+    "basic": {
+      "apiBaseURL": "https://api.example.com",
+      "tenantId": "test-tenant",
+      "operatorKey": "test-operator-key",
+      "tlsVersion": "1.3"
+    },
+    "production": {
+      "apiBaseURL": "https://api.production.example.com",
+      "tenantId": "production-tenant",
+      "operatorKey": "prod-operator-key",
+      "tlsVersion": "1.3",
+      "certificatePinning": true
+    },
+    "staging": {
+      "apiBaseURL": "https://api.staging.example.com",
+      "tenantId": "staging-tenant",
+      "operatorKey": "staging-operator-key",
+      "tlsVersion": "1.2"
+    }
+  },
+  "minimal_configurations": {
+    "required_only": {
+      "apiBaseURL": "https://api.example.com"
+    }
+  },
+  "invalid_configurations": {
+    "empty_url": {
+      "apiBaseURL": "",
+      "tenantId": "test"
+    },
+    "empty_tenant": {
+      "apiBaseURL": "https://api.example.com",
+      "tenantId": ""
+    },
+    "missing_required": {
+      "tenantId": "test"
+    }
+  },
+  "security_configurations": {
+    "https_only": {
+      "apiBaseURL": "https://api.example.com",
+      "enforceHTTPS": true,
+      "minTLSVersion": "1.3"
+    },
+    "certificate_pinning": {
+      "apiBaseURL": "https://api.example.com",
+      "certificatePinning": true,
+      "pinnedCertificates": [
+        "sha256/abcdef1234567890"
+      ]
+    }
+  }
+}

@@ -74,4 +74,82 @@ enum Keychain {
         }
         throw KeychainError.unexpectedStatus(status)
     }
+
+    // MARK: - Generic Keychain Read/Write/Delete
+
+    /// Read a string value from the Keychain for the given key
+    /// - Parameter key: The key to read
+    /// - Returns: The stored string, or nil if not found
+    static func read(forKey key: String) throws -> String? {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: key,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne
+        ]
+
+        var item: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &item)
+        if status == errSecItemNotFound {
+            return nil
+        }
+        guard status == errSecSuccess else {
+            throw KeychainError.unexpectedStatus(status)
+        }
+        guard let data = item as? Data else {
+            return nil
+        }
+        return String(data: data, encoding: .utf8)
+    }
+
+    /// Write a string value to the Keychain for the given key
+    /// - Parameters:
+    ///   - value: The string value to store
+    ///   - key: The key to store it under
+    static func write(_ value: String, forKey key: String) throws {
+        let data = Data(value.utf8)
+        let baseQuery: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: key
+        ]
+
+        let updateStatus = SecItemUpdate(
+            baseQuery as CFDictionary,
+            [kSecValueData as String: data] as CFDictionary
+        )
+
+        if updateStatus == errSecSuccess {
+            return
+        }
+
+        if updateStatus == errSecItemNotFound {
+            var addQuery = baseQuery
+            addQuery[kSecValueData as String] = data
+            addQuery[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+            let addStatus = SecItemAdd(addQuery as CFDictionary, nil)
+            guard addStatus == errSecSuccess else {
+                throw KeychainError.unexpectedStatus(addStatus)
+            }
+            return
+        }
+
+        throw KeychainError.unexpectedStatus(updateStatus)
+    }
+
+    /// Delete a value from the Keychain for the given key
+    /// - Parameter key: The key to delete
+    static func delete(forKey key: String) throws {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: key
+        ]
+        let status = SecItemDelete(query as CFDictionary)
+        if status == errSecSuccess || status == errSecItemNotFound {
+            return
+        }
+        throw KeychainError.unexpectedStatus(status)
+    }
 }

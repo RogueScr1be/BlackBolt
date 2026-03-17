@@ -1,5 +1,5 @@
 import Foundation
-import Crypto
+import CryptoKit
 
 /// Errors for configuration storage operations
 enum ConfigurationStoreError: Error, Equatable {
@@ -48,9 +48,7 @@ actor SecureConfigurationStore {
         _ configuration: [String: Codable],
         withIdentifier identifier: String
     ) throws {
-        // Encode configuration
-        let encoder = JSONEncoder()
-        let jsonData = try encoder.encode(configuration)
+        let jsonData = try encodeConfiguration(configuration)
 
         // Encrypt
         let encrypted = try encryptData(jsonData)
@@ -85,11 +83,7 @@ actor SecureConfigurationStore {
         // Decrypt
         let decryptedData = try decryptData(encryptedData)
 
-        // Decode
-        let decoder = JSONDecoder()
-        let configuration = try decoder.decode([String: Codable].self, from: decryptedData)
-
-        return configuration
+        return try decodeConfiguration(decryptedData)
     }
 
     /// Delete a configuration
@@ -177,6 +171,85 @@ actor SecureConfigurationStore {
             return try AES.GCM.open(sealedBox, using: encryptionKey)
         } catch {
             throw ConfigurationStoreError.decryptionFailed
+        }
+    }
+
+    private func encodeConfiguration(_ configuration: [String: Codable]) throws -> Data {
+        let normalized = try configuration.reduce(into: [String: Any]()) { result, entry in
+            result[entry.key] = try normalizeJSONValue(entry.value)
+        }
+
+        guard JSONSerialization.isValidJSONObject(normalized) else {
+            throw ConfigurationStoreError.invalidFormat
+        }
+
+        return try JSONSerialization.data(withJSONObject: normalized, options: [])
+    }
+
+    private func decodeConfiguration(_ data: Data) throws -> [String: Codable] {
+        guard let object = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            throw ConfigurationStoreError.invalidFormat
+        }
+
+        return try object.reduce(into: [String: Codable]()) { result, entry in
+            result[entry.key] = try denormalizeJSONValue(entry.value)
+        }
+    }
+
+    private func normalizeJSONValue(_ value: Codable) throws -> Any {
+        switch value {
+        case let value as String:
+            return value
+        case let value as NSString:
+            return value as String
+        case let value as Bool:
+            return value
+        case let value as NSNumber:
+            return value
+        case let value as Int:
+            return value
+        case let value as Int8:
+            return Int(value)
+        case let value as Int16:
+            return Int(value)
+        case let value as Int32:
+            return Int(value)
+        case let value as Int64:
+            return value
+        case let value as UInt:
+            return value
+        case let value as UInt8:
+            return Int(value)
+        case let value as UInt16:
+            return Int(value)
+        case let value as UInt32:
+            return value
+        case let value as UInt64:
+            return value
+        case let value as Double:
+            return value
+        case let value as Float:
+            return Double(value)
+        default:
+            throw ConfigurationStoreError.invalidFormat
+        }
+    }
+
+    private func denormalizeJSONValue(_ value: Any) throws -> Codable {
+        switch value {
+        case let value as String:
+            return value
+        case let value as NSNumber:
+            if CFGetTypeID(value) == CFBooleanGetTypeID() {
+                return value.boolValue
+            }
+            let doubleValue = value.doubleValue
+            if floor(doubleValue) == doubleValue {
+                return value.intValue
+            }
+            return doubleValue
+        default:
+            throw ConfigurationStoreError.invalidFormat
         }
     }
 }

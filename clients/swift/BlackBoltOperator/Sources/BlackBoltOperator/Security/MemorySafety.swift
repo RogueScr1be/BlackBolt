@@ -10,7 +10,7 @@ enum MemorySafetyError: Error, Equatable {
 
 /// Secure string wrapper that auto-zeros memory when deallocated
 /// Protects sensitive strings like passwords and API keys in memory
-struct SecureString {
+final class SecureString: @unchecked Sendable {
     /// Internal mutable buffer for the string
     private var buffer: [UInt8]
 
@@ -37,8 +37,8 @@ struct SecureString {
     }
 
     /// Zero out the memory
-    mutating func zero() {
-        buffer.withUnsafeMutableBytes { bytes in
+    func zero() {
+        _ = buffer.withUnsafeMutableBytes { bytes in
             memset(bytes.baseAddress, 0, bytes.count)
         }
     }
@@ -46,7 +46,7 @@ struct SecureString {
     /// Deinitializer to zero memory when object is deallocated
     deinit {
         var mutableBuffer = buffer
-        mutableBuffer.withUnsafeMutableBytes { bytes in
+        _ = mutableBuffer.withUnsafeMutableBytes { bytes in
             memset(bytes.baseAddress, 0, bytes.count)
         }
     }
@@ -227,7 +227,7 @@ actor MemorySafety {
 }
 
 /// Memory-safe data wrapper with automatic zeroing
-struct SecureData {
+final class SecureData: @unchecked Sendable {
     private var buffer: [UInt8]
 
     init(_ data: Data) {
@@ -238,15 +238,15 @@ struct SecureData {
         return Data(buffer)
     }
 
-    mutating func zero() {
-        buffer.withUnsafeMutableBytes { bytes in
+    func zero() {
+        _ = buffer.withUnsafeMutableBytes { bytes in
             memset(bytes.baseAddress, 0, bytes.count)
         }
     }
 
     deinit {
         var mutableBuffer = buffer
-        mutableBuffer.withUnsafeMutableBytes { bytes in
+        _ = mutableBuffer.withUnsafeMutableBytes { bytes in
             memset(bytes.baseAddress, 0, bytes.count)
         }
     }

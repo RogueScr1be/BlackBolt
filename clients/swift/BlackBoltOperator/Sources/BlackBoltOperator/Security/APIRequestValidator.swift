@@ -1,5 +1,6 @@
 import Foundation
-import Crypto
+import CryptoKit
+import Security
 
 /// Error types for API request validation
 enum APIRequestValidationError: Error, Equatable {
@@ -166,12 +167,16 @@ actor APIRequestValidator {
         return Data(hmac).base64EncodedString()
     }
 
-    /// Generate a random nonce
-    /// - Returns: Random alphanumeric string
+    /// Generate a cryptographically secure random nonce
+    /// - Returns: Hex-encoded random string
     private func generateNonce() -> String {
-        let characters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-        let nonce = (0 ..< 32).map { _ in characters.randomElement()! }
-        return String(nonce)
+        var nonceBytes = [UInt8](repeating: 0, count: 16)
+        let status = SecRandomCopyBytes(kSecRandomDefault, nonceBytes.count, &nonceBytes)
+        guard status == errSecSuccess else {
+            // Fallback to weaker randomness if secure random fails
+            return UUID().uuidString.replacingOccurrences(of: "-", with: "").prefix(32).description
+        }
+        return nonceBytes.map { String(format: "%02x", $0) }.joined()
     }
 
     /// Clear expired nonces from cache

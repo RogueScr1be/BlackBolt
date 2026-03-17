@@ -15,6 +15,14 @@ enum SectionLoadState: Equatable {
     case failed(OperatorAppError)
 }
 
+enum OperatorContentState: Equatable {
+    case loading
+    case empty
+    case ready
+    case degraded(OperatorAppError)
+    case failed(OperatorAppError)
+}
+
 struct OperatorAppError: Error, Equatable, Identifiable {
     let code: String
     let message: String
@@ -144,17 +152,6 @@ struct GbpOperatorSummary: Decodable {
     let alerts: [IntegrationAlertRow]
 }
 
-struct RevenueWindowRollup: Decodable {
-    let totalCents: Int
-    let attributedCents: Int
-    let unattributedCents: Int
-}
-
-struct RevenueProofRollups: Decodable {
-    let last1h: RevenueWindowRollup
-    let last24h: RevenueWindowRollup
-}
-
 struct MoneyBreakdown: Decodable {
     let amountCents: Int
     let currency: String
@@ -175,10 +172,18 @@ struct RevenueDiagnostics: Decodable {
     let prismaCalls: Int
 }
 
+struct RevenueSummaryRange: Decodable {
+    let from: String
+    let to: String
+}
+
 struct RevenueSummaryResponse: Decodable {
     let tenantId: String
+    let model: String
+    let windowDaysDirect: Int
+    let windowDaysAssisted: Int
+    let range: RevenueSummaryRange
     let rollup: RevenueSummaryRollup
-    let proof: RevenueProofRollups
     let topCampaigns: [RevenueTopCampaign]
     let diagnostics: RevenueDiagnostics?
 }

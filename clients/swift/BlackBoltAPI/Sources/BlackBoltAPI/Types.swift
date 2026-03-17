@@ -13,61 +13,116 @@ import struct Foundation.Date
 public protocol APIProtocol: Sendable {
     /// Health check endpoint
     ///
+    /// Returns a minimal health payload used by the operator shell and smoke tooling.
+    ///
     /// - Remark: HTTP `GET /health`.
     /// - Remark: Generated from `#/paths//health/get(getHealth)`.
     func getHealth(_ input: Operations.GetHealth.Input) async throws -> Operations.GetHealth.Output
+    /// Get tenant bootstrap readiness status
+    ///
+    /// Returns bootstrap readiness checks for the tenant identified by the operator headers.
+    ///
+    /// - Remark: HTTP `GET /v1/bootstrap/status`.
+    /// - Remark: Generated from `#/paths//v1/bootstrap/status/get(getBootstrapStatus)`.
+    func getBootstrapStatus(_ input: Operations.GetBootstrapStatus.Input) async throws -> Operations.GetBootstrapStatus.Output
+    /// List operator-visible tenants for the scoped tenant operator key
+    ///
+    /// Returns the tenant summary available to a tenant-scoped operator key. Tier-1 keeps this tenant-scoped rather than portfolio-wide.
+    ///
+    /// - Remark: HTTP `GET /v1/tenants`.
+    /// - Remark: Generated from `#/paths//v1/tenants/get(listOperatorTenants)`.
+    func listOperatorTenants(_ input: Operations.ListOperatorTenants.Input) async throws -> Operations.ListOperatorTenants.Output
+    /// Get operator-visible tenant detail
+    ///
+    /// Returns tenant detail for the route tenant after tenant-header and tenant-path matching succeeds.
+    ///
+    /// - Remark: HTTP `GET /v1/tenants/{tenantId}`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/get(getOperatorTenant)`.
+    func getOperatorTenant(_ input: Operations.GetOperatorTenant.Input) async throws -> Operations.GetOperatorTenant.Output
+    /// Get operator-visible tenant metrics
+    ///
+    /// Returns tenant metrics series for the selected range after tenant-header and tenant-path matching succeeds.
+    ///
+    /// - Remark: HTTP `GET /v1/tenants/{tenantId}/metrics`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/metrics/get(getOperatorTenantMetrics)`.
+    func getOperatorTenantMetrics(_ input: Operations.GetOperatorTenantMetrics.Input) async throws -> Operations.GetOperatorTenantMetrics.Output
     /// Operator dashboard summary
     ///
     /// Returns top-level KPI summary and dashboard widget counts for the scoped tenant.
     ///
-    /// - Remark: HTTP `GET /dashboard/summary`.
-    /// - Remark: Generated from `#/paths//dashboard/summary/get(getDashboardSummary)`.
+    /// - Remark: HTTP `GET /v1/tenants/{tenantId}/dashboard/summary`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/dashboard/summary/get(getDashboardSummary)`.
     func getDashboardSummary(_ input: Operations.GetDashboardSummary.Input) async throws -> Operations.GetDashboardSummary.Output
     /// List operator activity events
     ///
     /// Returns tenant-scoped event feed items ordered newest-first.
     ///
-    /// - Remark: HTTP `GET /events`.
-    /// - Remark: Generated from `#/paths//events/get(listOperatorEvents)`.
+    /// - Remark: HTTP `GET /v1/tenants/{tenantId}/events`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/events/get(listOperatorEvents)`.
     func listOperatorEvents(_ input: Operations.ListOperatorEvents.Input) async throws -> Operations.ListOperatorEvents.Output
     /// List operator alerts
     ///
     /// Returns tenant-scoped alerts; default state is open.
     ///
-    /// - Remark: HTTP `GET /alerts`.
-    /// - Remark: Generated from `#/paths//alerts/get(listOperatorAlerts)`.
+    /// - Remark: HTTP `GET /v1/tenants/{tenantId}/alerts`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/alerts/get(listOperatorAlerts)`.
     func listOperatorAlerts(_ input: Operations.ListOperatorAlerts.Input) async throws -> Operations.ListOperatorAlerts.Output
-    /// List operator-visible tenants
+    /// List operator portfolio tenants
     ///
-    /// Returns tenant list for the current operator scope.
+    /// Returns all tenant memberships available to the authenticated portfolio operator key.
     ///
-    /// - Remark: HTTP `GET /tenants`.
-    /// - Remark: Generated from `#/paths//tenants/get(listOperatorTenants)`.
-    func listOperatorTenants(_ input: Operations.ListOperatorTenants.Input) async throws -> Operations.ListOperatorTenants.Output
-    /// Get operator tenant detail
+    /// - Remark: HTTP `GET /v1/operator/portfolio/tenants`.
+    /// - Remark: Generated from `#/paths//v1/operator/portfolio/tenants/get(listOperatorPortfolioTenants)`.
+    func listOperatorPortfolioTenants(_ input: Operations.ListOperatorPortfolioTenants.Input) async throws -> Operations.ListOperatorPortfolioTenants.Output
+    /// List review queue across operator portfolio
     ///
-    /// Returns detail for a tenant scoped by tenant header and path.
+    /// Returns review queue items filtered by state, tenant, and timestamp.
     ///
-    /// - Remark: HTTP `GET /tenants/{tenantId}`.
-    /// - Remark: Generated from `#/paths//tenants/{tenantId}/get(getOperatorTenant)`.
-    func getOperatorTenant(_ input: Operations.GetOperatorTenant.Input) async throws -> Operations.GetOperatorTenant.Output
-    /// Get operator tenant metrics time series
+    /// - Remark: HTTP `GET /v1/operator/reviews/queue`.
+    /// - Remark: Generated from `#/paths//v1/operator/reviews/queue/get(listOperatorReviewQueue)`.
+    func listOperatorReviewQueue(_ input: Operations.ListOperatorReviewQueue.Input) async throws -> Operations.ListOperatorReviewQueue.Output
+    /// List approval items across operator portfolio
     ///
-    /// Returns tenant metrics series for dashboard ranges.
+    /// Returns approval cards for awaiting_approval, approved, or rejected state.
     ///
-    /// - Remark: HTTP `GET /tenants/{tenantId}/metrics`.
-    /// - Remark: Generated from `#/paths//tenants/{tenantId}/metrics/get(getOperatorTenantMetrics)`.
-    func getOperatorTenantMetrics(_ input: Operations.GetOperatorTenantMetrics.Input) async throws -> Operations.GetOperatorTenantMetrics.Output
-    /// Placeholder login endpoint
+    /// - Remark: HTTP `GET /v1/operator/approvals`.
+    /// - Remark: Generated from `#/paths//v1/operator/approvals/get(listOperatorApprovals)`.
+    func listOperatorApprovals(_ input: Operations.ListOperatorApprovals.Input) async throws -> Operations.ListOperatorApprovals.Output
+    /// Get approval item detail
     ///
-    /// - Remark: HTTP `POST /v1/auth/login`.
-    /// - Remark: Generated from `#/paths//v1/auth/login/post(authLogin)`.
-    func authLogin(_ input: Operations.AuthLogin.Input) async throws -> Operations.AuthLogin.Output
-    /// Placeholder tenant listing endpoint
+    /// Returns full draft/edit context and run counts for one approval item.
     ///
-    /// - Remark: HTTP `GET /v1/tenants`.
-    /// - Remark: Generated from `#/paths//v1/tenants/get(listTenants)`.
-    func listTenants(_ input: Operations.ListTenants.Input) async throws -> Operations.ListTenants.Output
+    /// - Remark: HTTP `GET /v1/operator/approvals/{approvalId}`.
+    /// - Remark: Generated from `#/paths//v1/operator/approvals/{approvalId}/get(getOperatorApproval)`.
+    func getOperatorApproval(_ input: Operations.GetOperatorApproval.Input) async throws -> Operations.GetOperatorApproval.Output
+    /// Patch draft fields for an approval item
+    ///
+    /// Applies operator edits to subject, body, segment, and send window before approval.
+    ///
+    /// - Remark: HTTP `PATCH /v1/operator/approvals/{approvalId}/draft`.
+    /// - Remark: Generated from `#/paths//v1/operator/approvals/{approvalId}/draft/patch(patchOperatorApprovalDraft)`.
+    func patchOperatorApprovalDraft(_ input: Operations.PatchOperatorApprovalDraft.Input) async throws -> Operations.PatchOperatorApprovalDraft.Output
+    /// Approve a reactivation run
+    ///
+    /// Atomically approves a run and transitions paused messages into queued state.
+    ///
+    /// - Remark: HTTP `POST /v1/operator/approvals/{approvalId}/approve`.
+    /// - Remark: Generated from `#/paths//v1/operator/approvals/{approvalId}/approve/post(approveOperatorApproval)`.
+    func approveOperatorApproval(_ input: Operations.ApproveOperatorApproval.Input) async throws -> Operations.ApproveOperatorApproval.Output
+    /// Reject a reactivation run
+    ///
+    /// Rejects an approval item and keeps the run paused/closed with audit metadata.
+    ///
+    /// - Remark: HTTP `POST /v1/operator/approvals/{approvalId}/reject`.
+    /// - Remark: Generated from `#/paths//v1/operator/approvals/{approvalId}/reject/post(rejectOperatorApproval)`.
+    func rejectOperatorApproval(_ input: Operations.RejectOperatorApproval.Input) async throws -> Operations.RejectOperatorApproval.Output
+    /// Manual reactivation run retrigger
+    ///
+    /// Request a manual retrigger for review-driven reactivation workflow.
+    ///
+    /// - Remark: HTTP `POST /v1/operator/reviews/{reviewId}/reactivation-runs`.
+    /// - Remark: Generated from `#/paths//v1/operator/reviews/{reviewId}/reactivation-runs/post(retriggerReviewReactivationRun)`.
+    func retriggerReviewReactivationRun(_ input: Operations.RetriggerReviewReactivationRun.Input) async throws -> Operations.RetriggerReviewReactivationRun.Output
     /// Upload customer CSV import
     ///
     /// - Remark: HTTP `POST /v1/tenants/{tenantId}/customers/imports`.
@@ -83,6 +138,11 @@ public protocol APIProtocol: Sendable {
     /// - Remark: HTTP `GET /v1/tenants/{tenantId}/customers`.
     /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/customers/get(listCustomers)`.
     func listCustomers(_ input: Operations.ListCustomers.Input) async throws -> Operations.ListCustomers.Output
+    /// List tenant customer segment counts
+    ///
+    /// - Remark: HTTP `GET /v1/tenants/{tenantId}/customers/segments`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/customers/segments/get(listCustomerSegments)`.
+    func listCustomerSegments(_ input: Operations.ListCustomerSegments.Input) async throws -> Operations.ListCustomerSegments.Output
     /// Upload suppression CSV import
     ///
     /// - Remark: HTTP `POST /v1/tenants/{tenantId}/suppressions/imports`.
@@ -122,6 +182,21 @@ public protocol APIProtocol: Sendable {
     /// - Remark: HTTP `POST /v1/tenants/{tenantId}/revenue/events`.
     /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/revenue/events/post(createRevenueEvent)`.
     func createRevenueEvent(_ input: Operations.CreateRevenueEvent.Input) async throws -> Operations.CreateRevenueEvent.Output
+    /// List recent revenue imports for tenant
+    ///
+    /// - Remark: HTTP `GET /v1/tenants/{tenantId}/revenue/imports`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/revenue/imports/get(listRevenueImports)`.
+    func listRevenueImports(_ input: Operations.ListRevenueImports.Input) async throws -> Operations.ListRevenueImports.Output
+    /// Upload revenue CSV import
+    ///
+    /// - Remark: HTTP `POST /v1/tenants/{tenantId}/revenue/imports`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/revenue/imports/post(createRevenueImport)`.
+    func createRevenueImport(_ input: Operations.CreateRevenueImport.Input) async throws -> Operations.CreateRevenueImport.Output
+    /// Get revenue import status
+    ///
+    /// - Remark: HTTP `GET /v1/revenue-imports/{revenueImportId}`.
+    /// - Remark: Generated from `#/paths//v1/revenue-imports/{revenueImportId}/get(getRevenueImportStatus)`.
+    func getRevenueImportStatus(_ input: Operations.GetRevenueImportStatus.Input) async throws -> Operations.GetRevenueImportStatus.Output
     /// Revenue proof summary (attribution rollup)
     ///
     /// Returns an attribution rollup using a conservative model (initially LAST_TOUCH).
@@ -131,6 +206,31 @@ public protocol APIProtocol: Sendable {
     /// - Remark: HTTP `GET /v1/tenants/{tenantId}/revenue/summary`.
     /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/revenue/summary/get(getRevenueSummary)`.
     func getRevenueSummary(_ input: Operations.GetRevenueSummary.Input) async throws -> Operations.GetRevenueSummary.Output
+    /// List campaign runs for tenant
+    ///
+    /// - Remark: HTTP `GET /v1/tenants/{tenantId}/campaign-runs`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/campaign-runs/get(listCampaignRuns)`.
+    func listCampaignRuns(_ input: Operations.ListCampaignRuns.Input) async throws -> Operations.ListCampaignRuns.Output
+    /// Get campaign run detail
+    ///
+    /// - Remark: HTTP `GET /v1/tenants/{tenantId}/campaign-runs/{runId}`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/campaign-runs/{runId}/get(getCampaignRun)`.
+    func getCampaignRun(_ input: Operations.GetCampaignRun.Input) async throws -> Operations.GetCampaignRun.Output
+    /// Pause a campaign run
+    ///
+    /// - Remark: HTTP `POST /v1/tenants/{tenantId}/campaign-runs/{runId}/pause`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/campaign-runs/{runId}/pause/post(pauseCampaignRun)`.
+    func pauseCampaignRun(_ input: Operations.PauseCampaignRun.Input) async throws -> Operations.PauseCampaignRun.Output
+    /// Resume a paused campaign run
+    ///
+    /// - Remark: HTTP `POST /v1/tenants/{tenantId}/campaign-runs/{runId}/resume`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/campaign-runs/{runId}/resume/post(resumeCampaignRun)`.
+    func resumeCampaignRun(_ input: Operations.ResumeCampaignRun.Input) async throws -> Operations.ResumeCampaignRun.Output
+    /// Redirect tracked short link and record click telemetry
+    ///
+    /// - Remark: HTTP `GET /v1/links/{code}`.
+    /// - Remark: Generated from `#/paths//v1/links/{code}/get(redirectTrackedLink)`.
+    func redirectTrackedLink(_ input: Operations.RedirectTrackedLink.Input) async throws -> Operations.RedirectTrackedLink.Output
     /// Receive Postmark webhook events
     ///
     /// - Remark: HTTP `POST /v1/webhooks/postmark`.
@@ -171,71 +271,63 @@ public protocol APIProtocol: Sendable {
     /// - Remark: HTTP `GET /v1/tenants/{tenantId}/reports/monthly`.
     /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/reports/monthly/get(getMonthlyReport)`.
     func getMonthlyReport(_ input: Operations.GetMonthlyReport.Input) async throws -> Operations.GetMonthlyReport.Output
+    /// Monthly report PDF export
+    ///
+    /// - Remark: HTTP `GET /v1/tenants/{tenantId}/reports/monthly/pdf`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/reports/monthly/pdf/get(getMonthlyReportPdf)`.
+    func getMonthlyReportPdf(_ input: Operations.GetMonthlyReportPdf.Input) async throws -> Operations.GetMonthlyReportPdf.Output
+    /// Download monthly report CSV
+    ///
+    /// - Remark: HTTP `GET /v1/tenants/{tenantId}/reports/monthly/export.csv`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/reports/monthly/export.csv/get(getMonthlyReportCsv)`.
+    func getMonthlyReportCsv(_ input: Operations.GetMonthlyReportCsv.Input) async throws -> Operations.GetMonthlyReportCsv.Output
+    /// Run operator smoke checks
+    ///
+    /// - Remark: HTTP `POST /v1/tenants/{tenantId}/operator/smoke`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/operator/smoke/post(runOperatorSmoke)`.
+    func runOperatorSmoke(_ input: Operations.RunOperatorSmoke.Input) async throws -> Operations.RunOperatorSmoke.Output
+    /// Rotate tenant operator key
+    ///
+    /// - Remark: HTTP `POST /v1/tenants/{tenantId}/operator/keys/rotate`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/operator/keys/rotate/post(rotateOperatorKey)`.
+    func rotateOperatorKey(_ input: Operations.RotateOperatorKey.Input) async throws -> Operations.RotateOperatorKey.Output
 }
 
 /// Convenience overloads for operation inputs.
 extension APIProtocol {
     /// Health check endpoint
     ///
+    /// Returns a minimal health payload used by the operator shell and smoke tooling.
+    ///
     /// - Remark: HTTP `GET /health`.
     /// - Remark: Generated from `#/paths//health/get(getHealth)`.
     public func getHealth(headers: Operations.GetHealth.Input.Headers = .init()) async throws -> Operations.GetHealth.Output {
         try await getHealth(Operations.GetHealth.Input(headers: headers))
     }
-    /// Operator dashboard summary
+    /// Get tenant bootstrap readiness status
     ///
-    /// Returns top-level KPI summary and dashboard widget counts for the scoped tenant.
+    /// Returns bootstrap readiness checks for the tenant identified by the operator headers.
     ///
-    /// - Remark: HTTP `GET /dashboard/summary`.
-    /// - Remark: Generated from `#/paths//dashboard/summary/get(getDashboardSummary)`.
-    public func getDashboardSummary(headers: Operations.GetDashboardSummary.Input.Headers) async throws -> Operations.GetDashboardSummary.Output {
-        try await getDashboardSummary(Operations.GetDashboardSummary.Input(headers: headers))
+    /// - Remark: HTTP `GET /v1/bootstrap/status`.
+    /// - Remark: Generated from `#/paths//v1/bootstrap/status/get(getBootstrapStatus)`.
+    public func getBootstrapStatus(headers: Operations.GetBootstrapStatus.Input.Headers) async throws -> Operations.GetBootstrapStatus.Output {
+        try await getBootstrapStatus(Operations.GetBootstrapStatus.Input(headers: headers))
     }
-    /// List operator activity events
+    /// List operator-visible tenants for the scoped tenant operator key
     ///
-    /// Returns tenant-scoped event feed items ordered newest-first.
+    /// Returns the tenant summary available to a tenant-scoped operator key. Tier-1 keeps this tenant-scoped rather than portfolio-wide.
     ///
-    /// - Remark: HTTP `GET /events`.
-    /// - Remark: Generated from `#/paths//events/get(listOperatorEvents)`.
-    public func listOperatorEvents(
-        query: Operations.ListOperatorEvents.Input.Query = .init(),
-        headers: Operations.ListOperatorEvents.Input.Headers
-    ) async throws -> Operations.ListOperatorEvents.Output {
-        try await listOperatorEvents(Operations.ListOperatorEvents.Input(
-            query: query,
-            headers: headers
-        ))
-    }
-    /// List operator alerts
-    ///
-    /// Returns tenant-scoped alerts; default state is open.
-    ///
-    /// - Remark: HTTP `GET /alerts`.
-    /// - Remark: Generated from `#/paths//alerts/get(listOperatorAlerts)`.
-    public func listOperatorAlerts(
-        query: Operations.ListOperatorAlerts.Input.Query = .init(),
-        headers: Operations.ListOperatorAlerts.Input.Headers
-    ) async throws -> Operations.ListOperatorAlerts.Output {
-        try await listOperatorAlerts(Operations.ListOperatorAlerts.Input(
-            query: query,
-            headers: headers
-        ))
-    }
-    /// List operator-visible tenants
-    ///
-    /// Returns tenant list for the current operator scope.
-    ///
-    /// - Remark: HTTP `GET /tenants`.
-    /// - Remark: Generated from `#/paths//tenants/get(listOperatorTenants)`.
+    /// - Remark: HTTP `GET /v1/tenants`.
+    /// - Remark: Generated from `#/paths//v1/tenants/get(listOperatorTenants)`.
     public func listOperatorTenants(headers: Operations.ListOperatorTenants.Input.Headers) async throws -> Operations.ListOperatorTenants.Output {
         try await listOperatorTenants(Operations.ListOperatorTenants.Input(headers: headers))
     }
-    /// Get operator tenant detail
+    /// Get operator-visible tenant detail
     ///
-    /// Returns detail for a tenant scoped by tenant header and path.
+    /// Returns tenant detail for the route tenant after tenant-header and tenant-path matching succeeds.
     ///
-    /// - Remark: HTTP `GET /tenants/{tenantId}`.
-    /// - Remark: Generated from `#/paths//tenants/{tenantId}/get(getOperatorTenant)`.
+    /// - Remark: HTTP `GET /v1/tenants/{tenantId}`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/get(getOperatorTenant)`.
     public func getOperatorTenant(
         path: Operations.GetOperatorTenant.Input.Path,
         headers: Operations.GetOperatorTenant.Input.Headers
@@ -245,12 +337,12 @@ extension APIProtocol {
             headers: headers
         ))
     }
-    /// Get operator tenant metrics time series
+    /// Get operator-visible tenant metrics
     ///
-    /// Returns tenant metrics series for dashboard ranges.
+    /// Returns tenant metrics series for the selected range after tenant-header and tenant-path matching succeeds.
     ///
-    /// - Remark: HTTP `GET /tenants/{tenantId}/metrics`.
-    /// - Remark: Generated from `#/paths//tenants/{tenantId}/metrics/get(getOperatorTenantMetrics)`.
+    /// - Remark: HTTP `GET /v1/tenants/{tenantId}/metrics`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/metrics/get(getOperatorTenantMetrics)`.
     public func getOperatorTenantMetrics(
         path: Operations.GetOperatorTenantMetrics.Input.Path,
         query: Operations.GetOperatorTenantMetrics.Input.Query,
@@ -262,25 +354,174 @@ extension APIProtocol {
             headers: headers
         ))
     }
-    /// Placeholder login endpoint
+    /// Operator dashboard summary
     ///
-    /// - Remark: HTTP `POST /v1/auth/login`.
-    /// - Remark: Generated from `#/paths//v1/auth/login/post(authLogin)`.
-    public func authLogin(
-        headers: Operations.AuthLogin.Input.Headers = .init(),
-        body: Operations.AuthLogin.Input.Body
-    ) async throws -> Operations.AuthLogin.Output {
-        try await authLogin(Operations.AuthLogin.Input(
+    /// Returns top-level KPI summary and dashboard widget counts for the scoped tenant.
+    ///
+    /// - Remark: HTTP `GET /v1/tenants/{tenantId}/dashboard/summary`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/dashboard/summary/get(getDashboardSummary)`.
+    public func getDashboardSummary(
+        path: Operations.GetDashboardSummary.Input.Path,
+        headers: Operations.GetDashboardSummary.Input.Headers
+    ) async throws -> Operations.GetDashboardSummary.Output {
+        try await getDashboardSummary(Operations.GetDashboardSummary.Input(
+            path: path,
+            headers: headers
+        ))
+    }
+    /// List operator activity events
+    ///
+    /// Returns tenant-scoped event feed items ordered newest-first.
+    ///
+    /// - Remark: HTTP `GET /v1/tenants/{tenantId}/events`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/events/get(listOperatorEvents)`.
+    public func listOperatorEvents(
+        path: Operations.ListOperatorEvents.Input.Path,
+        query: Operations.ListOperatorEvents.Input.Query = .init(),
+        headers: Operations.ListOperatorEvents.Input.Headers
+    ) async throws -> Operations.ListOperatorEvents.Output {
+        try await listOperatorEvents(Operations.ListOperatorEvents.Input(
+            path: path,
+            query: query,
+            headers: headers
+        ))
+    }
+    /// List operator alerts
+    ///
+    /// Returns tenant-scoped alerts; default state is open.
+    ///
+    /// - Remark: HTTP `GET /v1/tenants/{tenantId}/alerts`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/alerts/get(listOperatorAlerts)`.
+    public func listOperatorAlerts(
+        path: Operations.ListOperatorAlerts.Input.Path,
+        query: Operations.ListOperatorAlerts.Input.Query = .init(),
+        headers: Operations.ListOperatorAlerts.Input.Headers
+    ) async throws -> Operations.ListOperatorAlerts.Output {
+        try await listOperatorAlerts(Operations.ListOperatorAlerts.Input(
+            path: path,
+            query: query,
+            headers: headers
+        ))
+    }
+    /// List operator portfolio tenants
+    ///
+    /// Returns all tenant memberships available to the authenticated portfolio operator key.
+    ///
+    /// - Remark: HTTP `GET /v1/operator/portfolio/tenants`.
+    /// - Remark: Generated from `#/paths//v1/operator/portfolio/tenants/get(listOperatorPortfolioTenants)`.
+    public func listOperatorPortfolioTenants(headers: Operations.ListOperatorPortfolioTenants.Input.Headers) async throws -> Operations.ListOperatorPortfolioTenants.Output {
+        try await listOperatorPortfolioTenants(Operations.ListOperatorPortfolioTenants.Input(headers: headers))
+    }
+    /// List review queue across operator portfolio
+    ///
+    /// Returns review queue items filtered by state, tenant, and timestamp.
+    ///
+    /// - Remark: HTTP `GET /v1/operator/reviews/queue`.
+    /// - Remark: Generated from `#/paths//v1/operator/reviews/queue/get(listOperatorReviewQueue)`.
+    public func listOperatorReviewQueue(
+        query: Operations.ListOperatorReviewQueue.Input.Query = .init(),
+        headers: Operations.ListOperatorReviewQueue.Input.Headers
+    ) async throws -> Operations.ListOperatorReviewQueue.Output {
+        try await listOperatorReviewQueue(Operations.ListOperatorReviewQueue.Input(
+            query: query,
+            headers: headers
+        ))
+    }
+    /// List approval items across operator portfolio
+    ///
+    /// Returns approval cards for awaiting_approval, approved, or rejected state.
+    ///
+    /// - Remark: HTTP `GET /v1/operator/approvals`.
+    /// - Remark: Generated from `#/paths//v1/operator/approvals/get(listOperatorApprovals)`.
+    public func listOperatorApprovals(
+        query: Operations.ListOperatorApprovals.Input.Query = .init(),
+        headers: Operations.ListOperatorApprovals.Input.Headers
+    ) async throws -> Operations.ListOperatorApprovals.Output {
+        try await listOperatorApprovals(Operations.ListOperatorApprovals.Input(
+            query: query,
+            headers: headers
+        ))
+    }
+    /// Get approval item detail
+    ///
+    /// Returns full draft/edit context and run counts for one approval item.
+    ///
+    /// - Remark: HTTP `GET /v1/operator/approvals/{approvalId}`.
+    /// - Remark: Generated from `#/paths//v1/operator/approvals/{approvalId}/get(getOperatorApproval)`.
+    public func getOperatorApproval(
+        path: Operations.GetOperatorApproval.Input.Path,
+        headers: Operations.GetOperatorApproval.Input.Headers
+    ) async throws -> Operations.GetOperatorApproval.Output {
+        try await getOperatorApproval(Operations.GetOperatorApproval.Input(
+            path: path,
+            headers: headers
+        ))
+    }
+    /// Patch draft fields for an approval item
+    ///
+    /// Applies operator edits to subject, body, segment, and send window before approval.
+    ///
+    /// - Remark: HTTP `PATCH /v1/operator/approvals/{approvalId}/draft`.
+    /// - Remark: Generated from `#/paths//v1/operator/approvals/{approvalId}/draft/patch(patchOperatorApprovalDraft)`.
+    public func patchOperatorApprovalDraft(
+        path: Operations.PatchOperatorApprovalDraft.Input.Path,
+        headers: Operations.PatchOperatorApprovalDraft.Input.Headers,
+        body: Operations.PatchOperatorApprovalDraft.Input.Body
+    ) async throws -> Operations.PatchOperatorApprovalDraft.Output {
+        try await patchOperatorApprovalDraft(Operations.PatchOperatorApprovalDraft.Input(
+            path: path,
             headers: headers,
             body: body
         ))
     }
-    /// Placeholder tenant listing endpoint
+    /// Approve a reactivation run
     ///
-    /// - Remark: HTTP `GET /v1/tenants`.
-    /// - Remark: Generated from `#/paths//v1/tenants/get(listTenants)`.
-    public func listTenants(headers: Operations.ListTenants.Input.Headers) async throws -> Operations.ListTenants.Output {
-        try await listTenants(Operations.ListTenants.Input(headers: headers))
+    /// Atomically approves a run and transitions paused messages into queued state.
+    ///
+    /// - Remark: HTTP `POST /v1/operator/approvals/{approvalId}/approve`.
+    /// - Remark: Generated from `#/paths//v1/operator/approvals/{approvalId}/approve/post(approveOperatorApproval)`.
+    public func approveOperatorApproval(
+        path: Operations.ApproveOperatorApproval.Input.Path,
+        headers: Operations.ApproveOperatorApproval.Input.Headers
+    ) async throws -> Operations.ApproveOperatorApproval.Output {
+        try await approveOperatorApproval(Operations.ApproveOperatorApproval.Input(
+            path: path,
+            headers: headers
+        ))
+    }
+    /// Reject a reactivation run
+    ///
+    /// Rejects an approval item and keeps the run paused/closed with audit metadata.
+    ///
+    /// - Remark: HTTP `POST /v1/operator/approvals/{approvalId}/reject`.
+    /// - Remark: Generated from `#/paths//v1/operator/approvals/{approvalId}/reject/post(rejectOperatorApproval)`.
+    public func rejectOperatorApproval(
+        path: Operations.RejectOperatorApproval.Input.Path,
+        headers: Operations.RejectOperatorApproval.Input.Headers,
+        body: Operations.RejectOperatorApproval.Input.Body? = nil
+    ) async throws -> Operations.RejectOperatorApproval.Output {
+        try await rejectOperatorApproval(Operations.RejectOperatorApproval.Input(
+            path: path,
+            headers: headers,
+            body: body
+        ))
+    }
+    /// Manual reactivation run retrigger
+    ///
+    /// Request a manual retrigger for review-driven reactivation workflow.
+    ///
+    /// - Remark: HTTP `POST /v1/operator/reviews/{reviewId}/reactivation-runs`.
+    /// - Remark: Generated from `#/paths//v1/operator/reviews/{reviewId}/reactivation-runs/post(retriggerReviewReactivationRun)`.
+    public func retriggerReviewReactivationRun(
+        path: Operations.RetriggerReviewReactivationRun.Input.Path,
+        headers: Operations.RetriggerReviewReactivationRun.Input.Headers,
+        body: Operations.RetriggerReviewReactivationRun.Input.Body? = nil
+    ) async throws -> Operations.RetriggerReviewReactivationRun.Output {
+        try await retriggerReviewReactivationRun(Operations.RetriggerReviewReactivationRun.Input(
+            path: path,
+            headers: headers,
+            body: body
+        ))
     }
     /// Upload customer CSV import
     ///
@@ -322,6 +563,19 @@ extension APIProtocol {
         try await listCustomers(Operations.ListCustomers.Input(
             path: path,
             query: query,
+            headers: headers
+        ))
+    }
+    /// List tenant customer segment counts
+    ///
+    /// - Remark: HTTP `GET /v1/tenants/{tenantId}/customers/segments`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/customers/segments/get(listCustomerSegments)`.
+    public func listCustomerSegments(
+        path: Operations.ListCustomerSegments.Input.Path,
+        headers: Operations.ListCustomerSegments.Input.Headers
+    ) async throws -> Operations.ListCustomerSegments.Output {
+        try await listCustomerSegments(Operations.ListCustomerSegments.Input(
+            path: path,
             headers: headers
         ))
     }
@@ -428,6 +682,49 @@ extension APIProtocol {
             body: body
         ))
     }
+    /// List recent revenue imports for tenant
+    ///
+    /// - Remark: HTTP `GET /v1/tenants/{tenantId}/revenue/imports`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/revenue/imports/get(listRevenueImports)`.
+    public func listRevenueImports(
+        path: Operations.ListRevenueImports.Input.Path,
+        query: Operations.ListRevenueImports.Input.Query = .init(),
+        headers: Operations.ListRevenueImports.Input.Headers
+    ) async throws -> Operations.ListRevenueImports.Output {
+        try await listRevenueImports(Operations.ListRevenueImports.Input(
+            path: path,
+            query: query,
+            headers: headers
+        ))
+    }
+    /// Upload revenue CSV import
+    ///
+    /// - Remark: HTTP `POST /v1/tenants/{tenantId}/revenue/imports`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/revenue/imports/post(createRevenueImport)`.
+    public func createRevenueImport(
+        path: Operations.CreateRevenueImport.Input.Path,
+        headers: Operations.CreateRevenueImport.Input.Headers,
+        body: Operations.CreateRevenueImport.Input.Body
+    ) async throws -> Operations.CreateRevenueImport.Output {
+        try await createRevenueImport(Operations.CreateRevenueImport.Input(
+            path: path,
+            headers: headers,
+            body: body
+        ))
+    }
+    /// Get revenue import status
+    ///
+    /// - Remark: HTTP `GET /v1/revenue-imports/{revenueImportId}`.
+    /// - Remark: Generated from `#/paths//v1/revenue-imports/{revenueImportId}/get(getRevenueImportStatus)`.
+    public func getRevenueImportStatus(
+        path: Operations.GetRevenueImportStatus.Input.Path,
+        headers: Operations.GetRevenueImportStatus.Input.Headers
+    ) async throws -> Operations.GetRevenueImportStatus.Output {
+        try await getRevenueImportStatus(Operations.GetRevenueImportStatus.Input(
+            path: path,
+            headers: headers
+        ))
+    }
     /// Revenue proof summary (attribution rollup)
     ///
     /// Returns an attribution rollup using a conservative model (initially LAST_TOUCH).
@@ -446,6 +743,67 @@ extension APIProtocol {
             query: query,
             headers: headers
         ))
+    }
+    /// List campaign runs for tenant
+    ///
+    /// - Remark: HTTP `GET /v1/tenants/{tenantId}/campaign-runs`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/campaign-runs/get(listCampaignRuns)`.
+    public func listCampaignRuns(
+        path: Operations.ListCampaignRuns.Input.Path,
+        query: Operations.ListCampaignRuns.Input.Query = .init(),
+        headers: Operations.ListCampaignRuns.Input.Headers
+    ) async throws -> Operations.ListCampaignRuns.Output {
+        try await listCampaignRuns(Operations.ListCampaignRuns.Input(
+            path: path,
+            query: query,
+            headers: headers
+        ))
+    }
+    /// Get campaign run detail
+    ///
+    /// - Remark: HTTP `GET /v1/tenants/{tenantId}/campaign-runs/{runId}`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/campaign-runs/{runId}/get(getCampaignRun)`.
+    public func getCampaignRun(
+        path: Operations.GetCampaignRun.Input.Path,
+        headers: Operations.GetCampaignRun.Input.Headers
+    ) async throws -> Operations.GetCampaignRun.Output {
+        try await getCampaignRun(Operations.GetCampaignRun.Input(
+            path: path,
+            headers: headers
+        ))
+    }
+    /// Pause a campaign run
+    ///
+    /// - Remark: HTTP `POST /v1/tenants/{tenantId}/campaign-runs/{runId}/pause`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/campaign-runs/{runId}/pause/post(pauseCampaignRun)`.
+    public func pauseCampaignRun(
+        path: Operations.PauseCampaignRun.Input.Path,
+        headers: Operations.PauseCampaignRun.Input.Headers
+    ) async throws -> Operations.PauseCampaignRun.Output {
+        try await pauseCampaignRun(Operations.PauseCampaignRun.Input(
+            path: path,
+            headers: headers
+        ))
+    }
+    /// Resume a paused campaign run
+    ///
+    /// - Remark: HTTP `POST /v1/tenants/{tenantId}/campaign-runs/{runId}/resume`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/campaign-runs/{runId}/resume/post(resumeCampaignRun)`.
+    public func resumeCampaignRun(
+        path: Operations.ResumeCampaignRun.Input.Path,
+        headers: Operations.ResumeCampaignRun.Input.Headers
+    ) async throws -> Operations.ResumeCampaignRun.Output {
+        try await resumeCampaignRun(Operations.ResumeCampaignRun.Input(
+            path: path,
+            headers: headers
+        ))
+    }
+    /// Redirect tracked short link and record click telemetry
+    ///
+    /// - Remark: HTTP `GET /v1/links/{code}`.
+    /// - Remark: Generated from `#/paths//v1/links/{code}/get(redirectTrackedLink)`.
+    public func redirectTrackedLink(path: Operations.RedirectTrackedLink.Input.Path) async throws -> Operations.RedirectTrackedLink.Output {
+        try await redirectTrackedLink(Operations.RedirectTrackedLink.Input(path: path))
     }
     /// Receive Postmark webhook events
     ///
@@ -557,6 +915,62 @@ extension APIProtocol {
             headers: headers
         ))
     }
+    /// Monthly report PDF export
+    ///
+    /// - Remark: HTTP `GET /v1/tenants/{tenantId}/reports/monthly/pdf`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/reports/monthly/pdf/get(getMonthlyReportPdf)`.
+    public func getMonthlyReportPdf(
+        path: Operations.GetMonthlyReportPdf.Input.Path,
+        query: Operations.GetMonthlyReportPdf.Input.Query = .init(),
+        headers: Operations.GetMonthlyReportPdf.Input.Headers
+    ) async throws -> Operations.GetMonthlyReportPdf.Output {
+        try await getMonthlyReportPdf(Operations.GetMonthlyReportPdf.Input(
+            path: path,
+            query: query,
+            headers: headers
+        ))
+    }
+    /// Download monthly report CSV
+    ///
+    /// - Remark: HTTP `GET /v1/tenants/{tenantId}/reports/monthly/export.csv`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/reports/monthly/export.csv/get(getMonthlyReportCsv)`.
+    public func getMonthlyReportCsv(
+        path: Operations.GetMonthlyReportCsv.Input.Path,
+        query: Operations.GetMonthlyReportCsv.Input.Query = .init(),
+        headers: Operations.GetMonthlyReportCsv.Input.Headers
+    ) async throws -> Operations.GetMonthlyReportCsv.Output {
+        try await getMonthlyReportCsv(Operations.GetMonthlyReportCsv.Input(
+            path: path,
+            query: query,
+            headers: headers
+        ))
+    }
+    /// Run operator smoke checks
+    ///
+    /// - Remark: HTTP `POST /v1/tenants/{tenantId}/operator/smoke`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/operator/smoke/post(runOperatorSmoke)`.
+    public func runOperatorSmoke(
+        path: Operations.RunOperatorSmoke.Input.Path,
+        headers: Operations.RunOperatorSmoke.Input.Headers
+    ) async throws -> Operations.RunOperatorSmoke.Output {
+        try await runOperatorSmoke(Operations.RunOperatorSmoke.Input(
+            path: path,
+            headers: headers
+        ))
+    }
+    /// Rotate tenant operator key
+    ///
+    /// - Remark: HTTP `POST /v1/tenants/{tenantId}/operator/keys/rotate`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/operator/keys/rotate/post(rotateOperatorKey)`.
+    public func rotateOperatorKey(
+        path: Operations.RotateOperatorKey.Input.Path,
+        headers: Operations.RotateOperatorKey.Input.Headers
+    ) async throws -> Operations.RotateOperatorKey.Output {
+        try await rotateOperatorKey(Operations.RotateOperatorKey.Input(
+            path: path,
+            headers: headers
+        ))
+    }
 }
 
 /// Server URLs defined in the OpenAPI document.
@@ -590,117 +1004,246 @@ public enum Components {
             public var service: Swift.String
             /// - Remark: Generated from `#/components/schemas/HealthResponse/version`.
             public var version: Swift.String
+            /// - Remark: Generated from `#/components/schemas/HealthResponse/checks`.
+            public struct ChecksPayload: Codable, Hashable, Sendable {
+                /// - Remark: Generated from `#/components/schemas/HealthResponse/checks/db`.
+                public var db: Swift.Bool?
+                /// - Remark: Generated from `#/components/schemas/HealthResponse/checks/redis`.
+                public var redis: Swift.Bool?
+                /// - Remark: Generated from `#/components/schemas/HealthResponse/checks/worker_heartbeat`.
+                public var workerHeartbeat: Swift.Bool?
+                /// - Remark: Generated from `#/components/schemas/HealthResponse/checks/last_worker_activity_at`.
+                public var lastWorkerActivityAt: Foundation.Date?
+                /// Creates a new `ChecksPayload`.
+                ///
+                /// - Parameters:
+                ///   - db:
+                ///   - redis:
+                ///   - workerHeartbeat:
+                ///   - lastWorkerActivityAt:
+                public init(
+                    db: Swift.Bool? = nil,
+                    redis: Swift.Bool? = nil,
+                    workerHeartbeat: Swift.Bool? = nil,
+                    lastWorkerActivityAt: Foundation.Date? = nil
+                ) {
+                    self.db = db
+                    self.redis = redis
+                    self.workerHeartbeat = workerHeartbeat
+                    self.lastWorkerActivityAt = lastWorkerActivityAt
+                }
+                public enum CodingKeys: String, CodingKey {
+                    case db
+                    case redis
+                    case workerHeartbeat = "worker_heartbeat"
+                    case lastWorkerActivityAt = "last_worker_activity_at"
+                }
+            }
+            /// - Remark: Generated from `#/components/schemas/HealthResponse/checks`.
+            public var checks: Components.Schemas.HealthResponse.ChecksPayload?
             /// Creates a new `HealthResponse`.
             ///
             /// - Parameters:
             ///   - ok:
             ///   - service:
             ///   - version:
+            ///   - checks:
             public init(
                 ok: Swift.Bool,
                 service: Swift.String,
-                version: Swift.String
+                version: Swift.String,
+                checks: Components.Schemas.HealthResponse.ChecksPayload? = nil
             ) {
                 self.ok = ok
                 self.service = service
                 self.version = version
+                self.checks = checks
             }
             public enum CodingKeys: String, CodingKey {
                 case ok
                 case service
                 case version
+                case checks
             }
         }
-        /// - Remark: Generated from `#/components/schemas/LoginRequest`.
-        public struct LoginRequest: Codable, Hashable, Sendable {
-            /// - Remark: Generated from `#/components/schemas/LoginRequest/email`.
-            public var email: Swift.String
-            /// - Remark: Generated from `#/components/schemas/LoginRequest/password`.
-            public var password: Swift.String
-            /// Creates a new `LoginRequest`.
+        /// - Remark: Generated from `#/components/schemas/BootstrapStatusCheck`.
+        public struct BootstrapStatusCheck: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/BootstrapStatusCheck/required`.
+            public var required: Swift.Bool
+            /// - Remark: Generated from `#/components/schemas/BootstrapStatusCheck/ready`.
+            public var ready: Swift.Bool
+            /// - Remark: Generated from `#/components/schemas/BootstrapStatusCheck/mode`.
+            @frozen public enum ModePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case shadow = "shadow"
+                case live = "live"
+            }
+            /// - Remark: Generated from `#/components/schemas/BootstrapStatusCheck/mode`.
+            public var mode: Components.Schemas.BootstrapStatusCheck.ModePayload?
+            /// - Remark: Generated from `#/components/schemas/BootstrapStatusCheck/message`.
+            public var message: Swift.String
+            /// Creates a new `BootstrapStatusCheck`.
             ///
             /// - Parameters:
-            ///   - email:
-            ///   - password:
+            ///   - required:
+            ///   - ready:
+            ///   - mode:
+            ///   - message:
             public init(
-                email: Swift.String,
-                password: Swift.String
+                required: Swift.Bool,
+                ready: Swift.Bool,
+                mode: Components.Schemas.BootstrapStatusCheck.ModePayload? = nil,
+                message: Swift.String
             ) {
-                self.email = email
-                self.password = password
+                self.required = required
+                self.ready = ready
+                self.mode = mode
+                self.message = message
             }
             public enum CodingKeys: String, CodingKey {
-                case email
-                case password
+                case required
+                case ready
+                case mode
+                case message
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/BootstrapStatusChecks`.
+        public struct BootstrapStatusChecks: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/BootstrapStatusChecks/operator_auth`.
+            public var operatorAuth: Components.Schemas.BootstrapStatusCheck
+            /// - Remark: Generated from `#/components/schemas/BootstrapStatusChecks/gbp_integration`.
+            public var gbpIntegration: Components.Schemas.BootstrapStatusCheck
+            /// - Remark: Generated from `#/components/schemas/BootstrapStatusChecks/postmark_webhook`.
+            public var postmarkWebhook: Components.Schemas.BootstrapStatusCheck
+            /// - Remark: Generated from `#/components/schemas/BootstrapStatusChecks/review_scheduler`.
+            public var reviewScheduler: Components.Schemas.BootstrapStatusCheck
+            /// - Remark: Generated from `#/components/schemas/BootstrapStatusChecks/send_mode`.
+            public var sendMode: Components.Schemas.BootstrapStatusCheck
+            /// Creates a new `BootstrapStatusChecks`.
+            ///
+            /// - Parameters:
+            ///   - operatorAuth:
+            ///   - gbpIntegration:
+            ///   - postmarkWebhook:
+            ///   - reviewScheduler:
+            ///   - sendMode:
+            public init(
+                operatorAuth: Components.Schemas.BootstrapStatusCheck,
+                gbpIntegration: Components.Schemas.BootstrapStatusCheck,
+                postmarkWebhook: Components.Schemas.BootstrapStatusCheck,
+                reviewScheduler: Components.Schemas.BootstrapStatusCheck,
+                sendMode: Components.Schemas.BootstrapStatusCheck
+            ) {
+                self.operatorAuth = operatorAuth
+                self.gbpIntegration = gbpIntegration
+                self.postmarkWebhook = postmarkWebhook
+                self.reviewScheduler = reviewScheduler
+                self.sendMode = sendMode
+            }
+            public enum CodingKeys: String, CodingKey {
+                case operatorAuth = "operator_auth"
+                case gbpIntegration = "gbp_integration"
+                case postmarkWebhook = "postmark_webhook"
+                case reviewScheduler = "review_scheduler"
+                case sendMode = "send_mode"
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/BootstrapStatusResponse`.
+        public struct BootstrapStatusResponse: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/BootstrapStatusResponse/tenant_id`.
+            public var tenantId: Swift.String
+            /// - Remark: Generated from `#/components/schemas/BootstrapStatusResponse/overall_ready`.
+            public var overallReady: Swift.Bool
+            /// - Remark: Generated from `#/components/schemas/BootstrapStatusResponse/checks`.
+            public var checks: Components.Schemas.BootstrapStatusChecks
+            /// - Remark: Generated from `#/components/schemas/BootstrapStatusResponse/missing`.
+            public var missing: [Swift.String]
+            /// Creates a new `BootstrapStatusResponse`.
+            ///
+            /// - Parameters:
+            ///   - tenantId:
+            ///   - overallReady:
+            ///   - checks:
+            ///   - missing:
+            public init(
+                tenantId: Swift.String,
+                overallReady: Swift.Bool,
+                checks: Components.Schemas.BootstrapStatusChecks,
+                missing: [Swift.String]
+            ) {
+                self.tenantId = tenantId
+                self.overallReady = overallReady
+                self.checks = checks
+                self.missing = missing
+            }
+            public enum CodingKeys: String, CodingKey {
+                case tenantId = "tenant_id"
+                case overallReady = "overall_ready"
+                case checks
+                case missing
             }
         }
         /// - Remark: Generated from `#/components/schemas/ErrorResponse`.
         public struct ErrorResponse: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/ErrorResponse/statusCode`.
+            public var statusCode: Swift.Int
+            /// - Remark: Generated from `#/components/schemas/ErrorResponse/message`.
+            @frozen public enum MessagePayload: Codable, Hashable, Sendable {
+                /// - Remark: Generated from `#/components/schemas/ErrorResponse/message/case1`.
+                case case1(Swift.String)
+                /// - Remark: Generated from `#/components/schemas/ErrorResponse/message/case2`.
+                case case2([Swift.String])
+                public init(from decoder: any Decoder) throws {
+                    var errors: [any Error] = []
+                    do {
+                        self = .case1(try decoder.decodeFromSingleValueContainer())
+                        return
+                    } catch {
+                        errors.append(error)
+                    }
+                    do {
+                        self = .case2(try decoder.decodeFromSingleValueContainer())
+                        return
+                    } catch {
+                        errors.append(error)
+                    }
+                    throw Swift.DecodingError.failedToDecodeOneOfSchema(
+                        type: Self.self,
+                        codingPath: decoder.codingPath,
+                        errors: errors
+                    )
+                }
+                public func encode(to encoder: any Encoder) throws {
+                    switch self {
+                    case let .case1(value):
+                        try encoder.encodeToSingleValueContainer(value)
+                    case let .case2(value):
+                        try encoder.encodeToSingleValueContainer(value)
+                    }
+                }
+            }
+            /// - Remark: Generated from `#/components/schemas/ErrorResponse/message`.
+            public var message: Components.Schemas.ErrorResponse.MessagePayload
             /// - Remark: Generated from `#/components/schemas/ErrorResponse/error`.
             public var error: Swift.String
-            /// - Remark: Generated from `#/components/schemas/ErrorResponse/message`.
-            public var message: Swift.String
             /// Creates a new `ErrorResponse`.
             ///
             /// - Parameters:
-            ///   - error:
+            ///   - statusCode:
             ///   - message:
+            ///   - error:
             public init(
-                error: Swift.String,
-                message: Swift.String
+                statusCode: Swift.Int,
+                message: Components.Schemas.ErrorResponse.MessagePayload,
+                error: Swift.String
             ) {
-                self.error = error
+                self.statusCode = statusCode
                 self.message = message
+                self.error = error
             }
             public enum CodingKeys: String, CodingKey {
-                case error
+                case statusCode
                 case message
-            }
-        }
-        /// - Remark: Generated from `#/components/schemas/NotImplementedError`.
-        public struct NotImplementedError: Codable, Hashable, Sendable {
-            /// - Remark: Generated from `#/components/schemas/NotImplementedError/value1`.
-            public var value1: Components.Schemas.ErrorResponse
-            /// - Remark: Generated from `#/components/schemas/NotImplementedError/value2`.
-            public struct Value2Payload: Codable, Hashable, Sendable {
-                /// - Remark: Generated from `#/components/schemas/NotImplementedError/value2/statusCode`.
-                @frozen public enum StatusCodePayload: Int, Codable, Hashable, Sendable, CaseIterable {
-                    case _501 = 501
-                }
-                /// - Remark: Generated from `#/components/schemas/NotImplementedError/value2/statusCode`.
-                public var statusCode: Components.Schemas.NotImplementedError.Value2Payload.StatusCodePayload?
-                /// Creates a new `Value2Payload`.
-                ///
-                /// - Parameters:
-                ///   - statusCode:
-                public init(statusCode: Components.Schemas.NotImplementedError.Value2Payload.StatusCodePayload? = nil) {
-                    self.statusCode = statusCode
-                }
-                public enum CodingKeys: String, CodingKey {
-                    case statusCode
-                }
-            }
-            /// - Remark: Generated from `#/components/schemas/NotImplementedError/value2`.
-            public var value2: Components.Schemas.NotImplementedError.Value2Payload
-            /// Creates a new `NotImplementedError`.
-            ///
-            /// - Parameters:
-            ///   - value1:
-            ///   - value2:
-            public init(
-                value1: Components.Schemas.ErrorResponse,
-                value2: Components.Schemas.NotImplementedError.Value2Payload
-            ) {
-                self.value1 = value1
-                self.value2 = value2
-            }
-            public init(from decoder: any Decoder) throws {
-                self.value1 = try .init(from: decoder)
-                self.value2 = try .init(from: decoder)
-            }
-            public func encode(to encoder: any Encoder) throws {
-                try self.value1.encode(to: encoder)
-                try self.value2.encode(to: encoder)
+                case error
             }
         }
         /// - Remark: Generated from `#/components/schemas/CreateImportResponse`.
@@ -904,6 +1447,234 @@ public enum Components {
                 try self.value2.encode(to: encoder)
             }
         }
+        /// - Remark: Generated from `#/components/schemas/RevenueImportStatus`.
+        @frozen public enum RevenueImportStatus: String, Codable, Hashable, Sendable, CaseIterable {
+            case queued = "queued"
+            case running = "running"
+            case succeeded = "succeeded"
+            case failed = "failed"
+        }
+        /// - Remark: Generated from `#/components/schemas/RevenueImportError`.
+        public struct RevenueImportError: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/RevenueImportError/rowNum`.
+            public var rowNum: Swift.Int?
+            /// - Remark: Generated from `#/components/schemas/RevenueImportError/code`.
+            public var code: Swift.String
+            /// - Remark: Generated from `#/components/schemas/RevenueImportError/message`.
+            public var message: Swift.String
+            /// Creates a new `RevenueImportError`.
+            ///
+            /// - Parameters:
+            ///   - rowNum:
+            ///   - code:
+            ///   - message:
+            public init(
+                rowNum: Swift.Int? = nil,
+                code: Swift.String,
+                message: Swift.String
+            ) {
+                self.rowNum = rowNum
+                self.code = code
+                self.message = message
+            }
+            public enum CodingKeys: String, CodingKey {
+                case rowNum
+                case code
+                case message
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/CreateRevenueImportResponse`.
+        public struct CreateRevenueImportResponse: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/CreateRevenueImportResponse/revenueImportId`.
+            public var revenueImportId: Swift.String
+            /// - Remark: Generated from `#/components/schemas/CreateRevenueImportResponse/status`.
+            public var status: Components.Schemas.RevenueImportStatus
+            /// Creates a new `CreateRevenueImportResponse`.
+            ///
+            /// - Parameters:
+            ///   - revenueImportId:
+            ///   - status:
+            public init(
+                revenueImportId: Swift.String,
+                status: Components.Schemas.RevenueImportStatus
+            ) {
+                self.revenueImportId = revenueImportId
+                self.status = status
+            }
+            public enum CodingKeys: String, CodingKey {
+                case revenueImportId
+                case status
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/RevenueImportListItem`.
+        public struct RevenueImportListItem: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/RevenueImportListItem/revenueImportId`.
+            public var revenueImportId: Swift.String
+            /// - Remark: Generated from `#/components/schemas/RevenueImportListItem/tenantId`.
+            public var tenantId: Swift.String
+            /// - Remark: Generated from `#/components/schemas/RevenueImportListItem/status`.
+            public var status: Components.Schemas.RevenueImportStatus
+            /// - Remark: Generated from `#/components/schemas/RevenueImportListItem/totalRows`.
+            public var totalRows: Swift.Int
+            /// - Remark: Generated from `#/components/schemas/RevenueImportListItem/processedRows`.
+            public var processedRows: Swift.Int
+            /// - Remark: Generated from `#/components/schemas/RevenueImportListItem/succeededRows`.
+            public var succeededRows: Swift.Int
+            /// - Remark: Generated from `#/components/schemas/RevenueImportListItem/failedRows`.
+            public var failedRows: Swift.Int
+            /// - Remark: Generated from `#/components/schemas/RevenueImportListItem/duplicateRows`.
+            public var duplicateRows: Swift.Int
+            /// - Remark: Generated from `#/components/schemas/RevenueImportListItem/createdAt`.
+            public var createdAt: Foundation.Date
+            /// - Remark: Generated from `#/components/schemas/RevenueImportListItem/finishedAt`.
+            public var finishedAt: Foundation.Date?
+            /// Creates a new `RevenueImportListItem`.
+            ///
+            /// - Parameters:
+            ///   - revenueImportId:
+            ///   - tenantId:
+            ///   - status:
+            ///   - totalRows:
+            ///   - processedRows:
+            ///   - succeededRows:
+            ///   - failedRows:
+            ///   - duplicateRows:
+            ///   - createdAt:
+            ///   - finishedAt:
+            public init(
+                revenueImportId: Swift.String,
+                tenantId: Swift.String,
+                status: Components.Schemas.RevenueImportStatus,
+                totalRows: Swift.Int,
+                processedRows: Swift.Int,
+                succeededRows: Swift.Int,
+                failedRows: Swift.Int,
+                duplicateRows: Swift.Int,
+                createdAt: Foundation.Date,
+                finishedAt: Foundation.Date? = nil
+            ) {
+                self.revenueImportId = revenueImportId
+                self.tenantId = tenantId
+                self.status = status
+                self.totalRows = totalRows
+                self.processedRows = processedRows
+                self.succeededRows = succeededRows
+                self.failedRows = failedRows
+                self.duplicateRows = duplicateRows
+                self.createdAt = createdAt
+                self.finishedAt = finishedAt
+            }
+            public enum CodingKeys: String, CodingKey {
+                case revenueImportId
+                case tenantId
+                case status
+                case totalRows
+                case processedRows
+                case succeededRows
+                case failedRows
+                case duplicateRows
+                case createdAt
+                case finishedAt
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/RevenueImportListResponse`.
+        public struct RevenueImportListResponse: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/RevenueImportListResponse/items`.
+            public var items: [Components.Schemas.RevenueImportListItem]
+            /// Creates a new `RevenueImportListResponse`.
+            ///
+            /// - Parameters:
+            ///   - items:
+            public init(items: [Components.Schemas.RevenueImportListItem]) {
+                self.items = items
+            }
+            public enum CodingKeys: String, CodingKey {
+                case items
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/RevenueImportStatusResponse`.
+        public struct RevenueImportStatusResponse: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/RevenueImportStatusResponse/revenueImportId`.
+            public var revenueImportId: Swift.String
+            /// - Remark: Generated from `#/components/schemas/RevenueImportStatusResponse/importId`.
+            public var importId: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/RevenueImportStatusResponse/tenantId`.
+            public var tenantId: Swift.String
+            /// - Remark: Generated from `#/components/schemas/RevenueImportStatusResponse/status`.
+            public var status: Components.Schemas.RevenueImportStatus
+            /// - Remark: Generated from `#/components/schemas/RevenueImportStatusResponse/totalRows`.
+            public var totalRows: Swift.Int
+            /// - Remark: Generated from `#/components/schemas/RevenueImportStatusResponse/processedRows`.
+            public var processedRows: Swift.Int
+            /// - Remark: Generated from `#/components/schemas/RevenueImportStatusResponse/succeededRows`.
+            public var succeededRows: Swift.Int
+            /// - Remark: Generated from `#/components/schemas/RevenueImportStatusResponse/failedRows`.
+            public var failedRows: Swift.Int
+            /// - Remark: Generated from `#/components/schemas/RevenueImportStatusResponse/duplicateRows`.
+            public var duplicateRows: Swift.Int
+            /// - Remark: Generated from `#/components/schemas/RevenueImportStatusResponse/errors`.
+            public var errors: [Components.Schemas.RevenueImportError]?
+            /// - Remark: Generated from `#/components/schemas/RevenueImportStatusResponse/createdAt`.
+            public var createdAt: Foundation.Date?
+            /// - Remark: Generated from `#/components/schemas/RevenueImportStatusResponse/finishedAt`.
+            public var finishedAt: Foundation.Date?
+            /// Creates a new `RevenueImportStatusResponse`.
+            ///
+            /// - Parameters:
+            ///   - revenueImportId:
+            ///   - importId:
+            ///   - tenantId:
+            ///   - status:
+            ///   - totalRows:
+            ///   - processedRows:
+            ///   - succeededRows:
+            ///   - failedRows:
+            ///   - duplicateRows:
+            ///   - errors:
+            ///   - createdAt:
+            ///   - finishedAt:
+            public init(
+                revenueImportId: Swift.String,
+                importId: Swift.String? = nil,
+                tenantId: Swift.String,
+                status: Components.Schemas.RevenueImportStatus,
+                totalRows: Swift.Int,
+                processedRows: Swift.Int,
+                succeededRows: Swift.Int,
+                failedRows: Swift.Int,
+                duplicateRows: Swift.Int,
+                errors: [Components.Schemas.RevenueImportError]? = nil,
+                createdAt: Foundation.Date? = nil,
+                finishedAt: Foundation.Date? = nil
+            ) {
+                self.revenueImportId = revenueImportId
+                self.importId = importId
+                self.tenantId = tenantId
+                self.status = status
+                self.totalRows = totalRows
+                self.processedRows = processedRows
+                self.succeededRows = succeededRows
+                self.failedRows = failedRows
+                self.duplicateRows = duplicateRows
+                self.errors = errors
+                self.createdAt = createdAt
+                self.finishedAt = finishedAt
+            }
+            public enum CodingKeys: String, CodingKey {
+                case revenueImportId
+                case importId
+                case tenantId
+                case status
+                case totalRows
+                case processedRows
+                case succeededRows
+                case failedRows
+                case duplicateRows
+                case errors
+                case createdAt
+                case finishedAt
+            }
+        }
         /// - Remark: Generated from `#/components/schemas/CustomerSegment`.
         @frozen public enum CustomerSegment: String, Codable, Hashable, Sendable, CaseIterable {
             case _090 = "0_90"
@@ -990,6 +1761,58 @@ public enum Components {
             public enum CodingKeys: String, CodingKey {
                 case items
                 case nextCursor
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/CustomerSegmentCount`.
+        public struct CustomerSegmentCount: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/CustomerSegmentCount/segment`.
+            public var segment: Components.Schemas.CustomerSegment
+            /// - Remark: Generated from `#/components/schemas/CustomerSegmentCount/count`.
+            public var count: Swift.Int
+            /// Creates a new `CustomerSegmentCount`.
+            ///
+            /// - Parameters:
+            ///   - segment:
+            ///   - count:
+            public init(
+                segment: Components.Schemas.CustomerSegment,
+                count: Swift.Int
+            ) {
+                self.segment = segment
+                self.count = count
+            }
+            public enum CodingKeys: String, CodingKey {
+                case segment
+                case count
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/CustomerSegmentsResponse`.
+        public struct CustomerSegmentsResponse: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/CustomerSegmentsResponse/tenantId`.
+            public var tenantId: Swift.String
+            /// - Remark: Generated from `#/components/schemas/CustomerSegmentsResponse/total`.
+            public var total: Swift.Int
+            /// - Remark: Generated from `#/components/schemas/CustomerSegmentsResponse/items`.
+            public var items: [Components.Schemas.CustomerSegmentCount]
+            /// Creates a new `CustomerSegmentsResponse`.
+            ///
+            /// - Parameters:
+            ///   - tenantId:
+            ///   - total:
+            ///   - items:
+            public init(
+                tenantId: Swift.String,
+                total: Swift.Int,
+                items: [Components.Schemas.CustomerSegmentCount]
+            ) {
+                self.tenantId = tenantId
+                self.total = total
+                self.items = items
+            }
+            public enum CodingKeys: String, CodingKey {
+                case tenantId
+                case total
+                case items
             }
         }
         /// - Remark: Generated from `#/components/schemas/SetGbpIntegrationRequest`.
@@ -2747,6 +3570,558 @@ public enum Components {
                 case items
             }
         }
+        /// - Remark: Generated from `#/components/schemas/OperatorReviewQueueItem`.
+        public struct OperatorReviewQueueItem: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/OperatorReviewQueueItem/id`.
+            public var id: Swift.String
+            /// - Remark: Generated from `#/components/schemas/OperatorReviewQueueItem/tenant_id`.
+            public var tenantId: Swift.String
+            /// - Remark: Generated from `#/components/schemas/OperatorReviewQueueItem/review_id`.
+            public var reviewId: Swift.String
+            /// - Remark: Generated from `#/components/schemas/OperatorReviewQueueItem/trigger_review_id`.
+            public var triggerReviewId: Swift.String
+            /// - Remark: Generated from `#/components/schemas/OperatorReviewQueueItem/campaign_run_id`.
+            public var campaignRunId: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/OperatorReviewQueueItem/approval_id`.
+            public var approvalId: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/OperatorReviewQueueItem/state`.
+            @frozen public enum StatePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case new = "new"
+                case classified = "classified"
+                case awaitingApproval = "awaiting_approval"
+                case scheduled = "scheduled"
+                case sent = "sent"
+            }
+            /// - Remark: Generated from `#/components/schemas/OperatorReviewQueueItem/state`.
+            public var state: Components.Schemas.OperatorReviewQueueItem.StatePayload
+            /// - Remark: Generated from `#/components/schemas/OperatorReviewQueueItem/rating`.
+            public var rating: Swift.Int?
+            /// - Remark: Generated from `#/components/schemas/OperatorReviewQueueItem/service_mentioned`.
+            public var serviceMentioned: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/OperatorReviewQueueItem/key_benefit`.
+            public var keyBenefit: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/OperatorReviewQueueItem/confidence`.
+            public var confidence: Swift.Double
+            /// - Remark: Generated from `#/components/schemas/OperatorReviewQueueItem/created_at`.
+            public var createdAt: Foundation.Date
+            /// - Remark: Generated from `#/components/schemas/OperatorReviewQueueItem/updated_at`.
+            public var updatedAt: Foundation.Date
+            /// - Remark: Generated from `#/components/schemas/OperatorReviewQueueItem/classified_at`.
+            public var classifiedAt: Foundation.Date?
+            /// - Remark: Generated from `#/components/schemas/OperatorReviewQueueItem/awaiting_approval_at`.
+            public var awaitingApprovalAt: Foundation.Date?
+            /// - Remark: Generated from `#/components/schemas/OperatorReviewQueueItem/scheduled_at`.
+            public var scheduledAt: Foundation.Date?
+            /// - Remark: Generated from `#/components/schemas/OperatorReviewQueueItem/sent_at`.
+            public var sentAt: Foundation.Date?
+            /// Creates a new `OperatorReviewQueueItem`.
+            ///
+            /// - Parameters:
+            ///   - id:
+            ///   - tenantId:
+            ///   - reviewId:
+            ///   - triggerReviewId:
+            ///   - campaignRunId:
+            ///   - approvalId:
+            ///   - state:
+            ///   - rating:
+            ///   - serviceMentioned:
+            ///   - keyBenefit:
+            ///   - confidence:
+            ///   - createdAt:
+            ///   - updatedAt:
+            ///   - classifiedAt:
+            ///   - awaitingApprovalAt:
+            ///   - scheduledAt:
+            ///   - sentAt:
+            public init(
+                id: Swift.String,
+                tenantId: Swift.String,
+                reviewId: Swift.String,
+                triggerReviewId: Swift.String,
+                campaignRunId: Swift.String? = nil,
+                approvalId: Swift.String? = nil,
+                state: Components.Schemas.OperatorReviewQueueItem.StatePayload,
+                rating: Swift.Int? = nil,
+                serviceMentioned: Swift.String? = nil,
+                keyBenefit: Swift.String? = nil,
+                confidence: Swift.Double,
+                createdAt: Foundation.Date,
+                updatedAt: Foundation.Date,
+                classifiedAt: Foundation.Date? = nil,
+                awaitingApprovalAt: Foundation.Date? = nil,
+                scheduledAt: Foundation.Date? = nil,
+                sentAt: Foundation.Date? = nil
+            ) {
+                self.id = id
+                self.tenantId = tenantId
+                self.reviewId = reviewId
+                self.triggerReviewId = triggerReviewId
+                self.campaignRunId = campaignRunId
+                self.approvalId = approvalId
+                self.state = state
+                self.rating = rating
+                self.serviceMentioned = serviceMentioned
+                self.keyBenefit = keyBenefit
+                self.confidence = confidence
+                self.createdAt = createdAt
+                self.updatedAt = updatedAt
+                self.classifiedAt = classifiedAt
+                self.awaitingApprovalAt = awaitingApprovalAt
+                self.scheduledAt = scheduledAt
+                self.sentAt = sentAt
+            }
+            public enum CodingKeys: String, CodingKey {
+                case id
+                case tenantId = "tenant_id"
+                case reviewId = "review_id"
+                case triggerReviewId = "trigger_review_id"
+                case campaignRunId = "campaign_run_id"
+                case approvalId = "approval_id"
+                case state
+                case rating
+                case serviceMentioned = "service_mentioned"
+                case keyBenefit = "key_benefit"
+                case confidence
+                case createdAt = "created_at"
+                case updatedAt = "updated_at"
+                case classifiedAt = "classified_at"
+                case awaitingApprovalAt = "awaiting_approval_at"
+                case scheduledAt = "scheduled_at"
+                case sentAt = "sent_at"
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/OperatorReviewQueueResponse`.
+        public struct OperatorReviewQueueResponse: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/OperatorReviewQueueResponse/items`.
+            public var items: [Components.Schemas.OperatorReviewQueueItem]
+            /// Creates a new `OperatorReviewQueueResponse`.
+            ///
+            /// - Parameters:
+            ///   - items:
+            public init(items: [Components.Schemas.OperatorReviewQueueItem]) {
+                self.items = items
+            }
+            public enum CodingKeys: String, CodingKey {
+                case items
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/OperatorApprovalSummary`.
+        public struct OperatorApprovalSummary: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/OperatorApprovalSummary/id`.
+            public var id: Swift.String
+            /// - Remark: Generated from `#/components/schemas/OperatorApprovalSummary/tenant_id`.
+            public var tenantId: Swift.String
+            /// - Remark: Generated from `#/components/schemas/OperatorApprovalSummary/campaign_run_id`.
+            public var campaignRunId: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/OperatorApprovalSummary/trigger_review_id`.
+            public var triggerReviewId: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/OperatorApprovalSummary/state`.
+            @frozen public enum StatePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case awaitingApproval = "awaiting_approval"
+                case approved = "approved"
+                case rejected = "rejected"
+            }
+            /// - Remark: Generated from `#/components/schemas/OperatorApprovalSummary/state`.
+            public var state: Components.Schemas.OperatorApprovalSummary.StatePayload
+            /// - Remark: Generated from `#/components/schemas/OperatorApprovalSummary/subject`.
+            public var subject: Swift.String
+            /// - Remark: Generated from `#/components/schemas/OperatorApprovalSummary/body`.
+            public var body: Swift.String
+            /// - Remark: Generated from `#/components/schemas/OperatorApprovalSummary/segment`.
+            @frozen public enum SegmentPayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case lastSeen90365 = "last_seen_90_365"
+                case volume = "volume"
+                case gentle = "gentle"
+            }
+            /// - Remark: Generated from `#/components/schemas/OperatorApprovalSummary/segment`.
+            public var segment: Components.Schemas.OperatorApprovalSummary.SegmentPayload
+            /// - Remark: Generated from `#/components/schemas/OperatorApprovalSummary/send_window_at`.
+            public var sendWindowAt: Foundation.Date?
+            /// - Remark: Generated from `#/components/schemas/OperatorApprovalSummary/created_at`.
+            public var createdAt: Foundation.Date
+            /// - Remark: Generated from `#/components/schemas/OperatorApprovalSummary/updated_at`.
+            public var updatedAt: Foundation.Date
+            /// Creates a new `OperatorApprovalSummary`.
+            ///
+            /// - Parameters:
+            ///   - id:
+            ///   - tenantId:
+            ///   - campaignRunId:
+            ///   - triggerReviewId:
+            ///   - state:
+            ///   - subject:
+            ///   - body:
+            ///   - segment:
+            ///   - sendWindowAt:
+            ///   - createdAt:
+            ///   - updatedAt:
+            public init(
+                id: Swift.String,
+                tenantId: Swift.String,
+                campaignRunId: Swift.String? = nil,
+                triggerReviewId: Swift.String? = nil,
+                state: Components.Schemas.OperatorApprovalSummary.StatePayload,
+                subject: Swift.String,
+                body: Swift.String,
+                segment: Components.Schemas.OperatorApprovalSummary.SegmentPayload,
+                sendWindowAt: Foundation.Date? = nil,
+                createdAt: Foundation.Date,
+                updatedAt: Foundation.Date
+            ) {
+                self.id = id
+                self.tenantId = tenantId
+                self.campaignRunId = campaignRunId
+                self.triggerReviewId = triggerReviewId
+                self.state = state
+                self.subject = subject
+                self.body = body
+                self.segment = segment
+                self.sendWindowAt = sendWindowAt
+                self.createdAt = createdAt
+                self.updatedAt = updatedAt
+            }
+            public enum CodingKeys: String, CodingKey {
+                case id
+                case tenantId = "tenant_id"
+                case campaignRunId = "campaign_run_id"
+                case triggerReviewId = "trigger_review_id"
+                case state
+                case subject
+                case body
+                case segment
+                case sendWindowAt = "send_window_at"
+                case createdAt = "created_at"
+                case updatedAt = "updated_at"
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/OperatorApprovalListResponse`.
+        public struct OperatorApprovalListResponse: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/OperatorApprovalListResponse/items`.
+            public var items: [Components.Schemas.OperatorApprovalSummary]
+            /// Creates a new `OperatorApprovalListResponse`.
+            ///
+            /// - Parameters:
+            ///   - items:
+            public init(items: [Components.Schemas.OperatorApprovalSummary]) {
+                self.items = items
+            }
+            public enum CodingKeys: String, CodingKey {
+                case items
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/OperatorApprovalDraft`.
+        public struct OperatorApprovalDraft: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/OperatorApprovalDraft/subject`.
+            public var subject: Swift.String
+            /// - Remark: Generated from `#/components/schemas/OperatorApprovalDraft/body`.
+            public var body: Swift.String
+            /// - Remark: Generated from `#/components/schemas/OperatorApprovalDraft/segment`.
+            @frozen public enum SegmentPayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case lastSeen90365 = "last_seen_90_365"
+                case volume = "volume"
+                case gentle = "gentle"
+            }
+            /// - Remark: Generated from `#/components/schemas/OperatorApprovalDraft/segment`.
+            public var segment: Components.Schemas.OperatorApprovalDraft.SegmentPayload
+            /// - Remark: Generated from `#/components/schemas/OperatorApprovalDraft/send_window_at`.
+            public var sendWindowAt: Foundation.Date?
+            /// Creates a new `OperatorApprovalDraft`.
+            ///
+            /// - Parameters:
+            ///   - subject:
+            ///   - body:
+            ///   - segment:
+            ///   - sendWindowAt:
+            public init(
+                subject: Swift.String,
+                body: Swift.String,
+                segment: Components.Schemas.OperatorApprovalDraft.SegmentPayload,
+                sendWindowAt: Foundation.Date? = nil
+            ) {
+                self.subject = subject
+                self.body = body
+                self.segment = segment
+                self.sendWindowAt = sendWindowAt
+            }
+            public enum CodingKeys: String, CodingKey {
+                case subject
+                case body
+                case segment
+                case sendWindowAt = "send_window_at"
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/OperatorApprovalCounts`.
+        public struct OperatorApprovalCounts: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/OperatorApprovalCounts/queued`.
+            public var queued: Swift.Int
+            /// - Remark: Generated from `#/components/schemas/OperatorApprovalCounts/paused`.
+            public var paused: Swift.Int
+            /// - Remark: Generated from `#/components/schemas/OperatorApprovalCounts/sent`.
+            public var sent: Swift.Int
+            /// - Remark: Generated from `#/components/schemas/OperatorApprovalCounts/failed`.
+            public var failed: Swift.Int
+            /// - Remark: Generated from `#/components/schemas/OperatorApprovalCounts/total`.
+            public var total: Swift.Int
+            /// Creates a new `OperatorApprovalCounts`.
+            ///
+            /// - Parameters:
+            ///   - queued:
+            ///   - paused:
+            ///   - sent:
+            ///   - failed:
+            ///   - total:
+            public init(
+                queued: Swift.Int,
+                paused: Swift.Int,
+                sent: Swift.Int,
+                failed: Swift.Int,
+                total: Swift.Int
+            ) {
+                self.queued = queued
+                self.paused = paused
+                self.sent = sent
+                self.failed = failed
+                self.total = total
+            }
+            public enum CodingKeys: String, CodingKey {
+                case queued
+                case paused
+                case sent
+                case failed
+                case total
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/OperatorApprovalDetail`.
+        public struct OperatorApprovalDetail: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/OperatorApprovalDetail/id`.
+            public var id: Swift.String
+            /// - Remark: Generated from `#/components/schemas/OperatorApprovalDetail/tenant_id`.
+            public var tenantId: Swift.String
+            /// - Remark: Generated from `#/components/schemas/OperatorApprovalDetail/campaign_run_id`.
+            public var campaignRunId: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/OperatorApprovalDetail/trigger_review_id`.
+            public var triggerReviewId: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/OperatorApprovalDetail/state`.
+            @frozen public enum StatePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case awaitingApproval = "awaiting_approval"
+                case approved = "approved"
+                case rejected = "rejected"
+            }
+            /// - Remark: Generated from `#/components/schemas/OperatorApprovalDetail/state`.
+            public var state: Components.Schemas.OperatorApprovalDetail.StatePayload
+            /// - Remark: Generated from `#/components/schemas/OperatorApprovalDetail/required_role`.
+            public var requiredRole: Swift.String
+            /// - Remark: Generated from `#/components/schemas/OperatorApprovalDetail/draft`.
+            public var draft: Components.Schemas.OperatorApprovalDraft
+            /// - Remark: Generated from `#/components/schemas/OperatorApprovalDetail/counts`.
+            public var counts: Components.Schemas.OperatorApprovalCounts
+            /// - Remark: Generated from `#/components/schemas/OperatorApprovalDetail/created_at`.
+            public var createdAt: Foundation.Date
+            /// - Remark: Generated from `#/components/schemas/OperatorApprovalDetail/updated_at`.
+            public var updatedAt: Foundation.Date
+            /// - Remark: Generated from `#/components/schemas/OperatorApprovalDetail/approved_at`.
+            public var approvedAt: Foundation.Date?
+            /// - Remark: Generated from `#/components/schemas/OperatorApprovalDetail/rejected_at`.
+            public var rejectedAt: Foundation.Date?
+            /// Creates a new `OperatorApprovalDetail`.
+            ///
+            /// - Parameters:
+            ///   - id:
+            ///   - tenantId:
+            ///   - campaignRunId:
+            ///   - triggerReviewId:
+            ///   - state:
+            ///   - requiredRole:
+            ///   - draft:
+            ///   - counts:
+            ///   - createdAt:
+            ///   - updatedAt:
+            ///   - approvedAt:
+            ///   - rejectedAt:
+            public init(
+                id: Swift.String,
+                tenantId: Swift.String,
+                campaignRunId: Swift.String? = nil,
+                triggerReviewId: Swift.String? = nil,
+                state: Components.Schemas.OperatorApprovalDetail.StatePayload,
+                requiredRole: Swift.String,
+                draft: Components.Schemas.OperatorApprovalDraft,
+                counts: Components.Schemas.OperatorApprovalCounts,
+                createdAt: Foundation.Date,
+                updatedAt: Foundation.Date,
+                approvedAt: Foundation.Date? = nil,
+                rejectedAt: Foundation.Date? = nil
+            ) {
+                self.id = id
+                self.tenantId = tenantId
+                self.campaignRunId = campaignRunId
+                self.triggerReviewId = triggerReviewId
+                self.state = state
+                self.requiredRole = requiredRole
+                self.draft = draft
+                self.counts = counts
+                self.createdAt = createdAt
+                self.updatedAt = updatedAt
+                self.approvedAt = approvedAt
+                self.rejectedAt = rejectedAt
+            }
+            public enum CodingKeys: String, CodingKey {
+                case id
+                case tenantId = "tenant_id"
+                case campaignRunId = "campaign_run_id"
+                case triggerReviewId = "trigger_review_id"
+                case state
+                case requiredRole = "required_role"
+                case draft
+                case counts
+                case createdAt = "created_at"
+                case updatedAt = "updated_at"
+                case approvedAt = "approved_at"
+                case rejectedAt = "rejected_at"
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/OperatorApprovalDraftPatchRequest`.
+        public struct OperatorApprovalDraftPatchRequest: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/OperatorApprovalDraftPatchRequest/subject`.
+            public var subject: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/OperatorApprovalDraftPatchRequest/body`.
+            public var body: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/OperatorApprovalDraftPatchRequest/segment`.
+            @frozen public enum SegmentPayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case lastSeen90365 = "last_seen_90_365"
+                case volume = "volume"
+                case gentle = "gentle"
+            }
+            /// - Remark: Generated from `#/components/schemas/OperatorApprovalDraftPatchRequest/segment`.
+            public var segment: Components.Schemas.OperatorApprovalDraftPatchRequest.SegmentPayload?
+            /// - Remark: Generated from `#/components/schemas/OperatorApprovalDraftPatchRequest/send_window_at`.
+            public var sendWindowAt: Foundation.Date?
+            /// Creates a new `OperatorApprovalDraftPatchRequest`.
+            ///
+            /// - Parameters:
+            ///   - subject:
+            ///   - body:
+            ///   - segment:
+            ///   - sendWindowAt:
+            public init(
+                subject: Swift.String? = nil,
+                body: Swift.String? = nil,
+                segment: Components.Schemas.OperatorApprovalDraftPatchRequest.SegmentPayload? = nil,
+                sendWindowAt: Foundation.Date? = nil
+            ) {
+                self.subject = subject
+                self.body = body
+                self.segment = segment
+                self.sendWindowAt = sendWindowAt
+            }
+            public enum CodingKeys: String, CodingKey {
+                case subject
+                case body
+                case segment
+                case sendWindowAt = "send_window_at"
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/OperatorApprovalMutationResponse`.
+        public struct OperatorApprovalMutationResponse: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/OperatorApprovalMutationResponse/ok`.
+            public var ok: Swift.Bool
+            /// - Remark: Generated from `#/components/schemas/OperatorApprovalMutationResponse/approval_id`.
+            public var approvalId: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/OperatorApprovalMutationResponse/campaign_run_id`.
+            public var campaignRunId: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/OperatorApprovalMutationResponse/queued_count`.
+            public var queuedCount: Swift.Int?
+            /// - Remark: Generated from `#/components/schemas/OperatorApprovalMutationResponse/rejected_at`.
+            public var rejectedAt: Foundation.Date?
+            /// Creates a new `OperatorApprovalMutationResponse`.
+            ///
+            /// - Parameters:
+            ///   - ok:
+            ///   - approvalId:
+            ///   - campaignRunId:
+            ///   - queuedCount:
+            ///   - rejectedAt:
+            public init(
+                ok: Swift.Bool,
+                approvalId: Swift.String? = nil,
+                campaignRunId: Swift.String? = nil,
+                queuedCount: Swift.Int? = nil,
+                rejectedAt: Foundation.Date? = nil
+            ) {
+                self.ok = ok
+                self.approvalId = approvalId
+                self.campaignRunId = campaignRunId
+                self.queuedCount = queuedCount
+                self.rejectedAt = rejectedAt
+            }
+            public enum CodingKeys: String, CodingKey {
+                case ok
+                case approvalId = "approval_id"
+                case campaignRunId = "campaign_run_id"
+                case queuedCount = "queued_count"
+                case rejectedAt = "rejected_at"
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/OperatorRetriggerResponse`.
+        public struct OperatorRetriggerResponse: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/OperatorRetriggerResponse/ok`.
+            public var ok: Swift.Bool
+            /// - Remark: Generated from `#/components/schemas/OperatorRetriggerResponse/existing`.
+            public var existing: Swift.Bool
+            /// - Remark: Generated from `#/components/schemas/OperatorRetriggerResponse/queue_item_id`.
+            public var queueItemId: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/OperatorRetriggerResponse/campaign_run_id`.
+            public var campaignRunId: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/OperatorRetriggerResponse/state`.
+            public var state: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/OperatorRetriggerResponse/review_id`.
+            public var reviewId: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/OperatorRetriggerResponse/tenant_id`.
+            public var tenantId: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/OperatorRetriggerResponse/note`.
+            public var note: Swift.String?
+            /// Creates a new `OperatorRetriggerResponse`.
+            ///
+            /// - Parameters:
+            ///   - ok:
+            ///   - existing:
+            ///   - queueItemId:
+            ///   - campaignRunId:
+            ///   - state:
+            ///   - reviewId:
+            ///   - tenantId:
+            ///   - note:
+            public init(
+                ok: Swift.Bool,
+                existing: Swift.Bool,
+                queueItemId: Swift.String? = nil,
+                campaignRunId: Swift.String? = nil,
+                state: Swift.String? = nil,
+                reviewId: Swift.String? = nil,
+                tenantId: Swift.String? = nil,
+                note: Swift.String? = nil
+            ) {
+                self.ok = ok
+                self.existing = existing
+                self.queueItemId = queueItemId
+                self.campaignRunId = campaignRunId
+                self.state = state
+                self.reviewId = reviewId
+                self.tenantId = tenantId
+                self.note = note
+            }
+            public enum CodingKeys: String, CodingKey {
+                case ok
+                case existing
+                case queueItemId = "queue_item_id"
+                case campaignRunId = "campaign_run_id"
+                case state
+                case reviewId = "review_id"
+                case tenantId = "tenant_id"
+                case note
+            }
+        }
         /// - Remark: Generated from `#/components/schemas/OperatorTenantDetail`.
         public struct OperatorTenantDetail: Codable, Hashable, Sendable {
             /// - Remark: Generated from `#/components/schemas/OperatorTenantDetail/value1`.
@@ -2974,6 +4349,367 @@ public enum Components {
                 case result
                 case alertId = "alert_id"
                 case resolvedAt = "resolved_at"
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/CampaignRunStatus`.
+        @frozen public enum CampaignRunStatus: String, Codable, Hashable, Sendable, CaseIterable {
+            case queued = "QUEUED"
+            case running = "RUNNING"
+            case paused = "PAUSED"
+            case completed = "COMPLETED"
+            case failed = "FAILED"
+        }
+        /// - Remark: Generated from `#/components/schemas/CampaignRunSummary`.
+        public struct CampaignRunSummary: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/CampaignRunSummary/id`.
+            public var id: Swift.String
+            /// - Remark: Generated from `#/components/schemas/CampaignRunSummary/status`.
+            public var status: Components.Schemas.CampaignRunStatus
+            /// - Remark: Generated from `#/components/schemas/CampaignRunSummary/segment_mode`.
+            @frozen public enum SegmentModePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case _default = "default"
+                case volume = "volume"
+                case gentle = "gentle"
+            }
+            /// - Remark: Generated from `#/components/schemas/CampaignRunSummary/segment_mode`.
+            public var segmentMode: Components.Schemas.CampaignRunSummary.SegmentModePayload
+            /// - Remark: Generated from `#/components/schemas/CampaignRunSummary/send_window_at`.
+            public var sendWindowAt: Foundation.Date
+            /// - Remark: Generated from `#/components/schemas/CampaignRunSummary/recipients_total`.
+            public var recipientsTotal: Swift.Int
+            /// - Remark: Generated from `#/components/schemas/CampaignRunSummary/messages_queued`.
+            public var messagesQueued: Swift.Int
+            /// - Remark: Generated from `#/components/schemas/CampaignRunSummary/messages_sent`.
+            public var messagesSent: Swift.Int
+            /// - Remark: Generated from `#/components/schemas/CampaignRunSummary/messages_failed`.
+            public var messagesFailed: Swift.Int
+            /// - Remark: Generated from `#/components/schemas/CampaignRunSummary/last_error_code`.
+            public var lastErrorCode: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/CampaignRunSummary/last_error_message`.
+            public var lastErrorMessage: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/CampaignRunSummary/started_at`.
+            public var startedAt: Foundation.Date?
+            /// - Remark: Generated from `#/components/schemas/CampaignRunSummary/finished_at`.
+            public var finishedAt: Foundation.Date?
+            /// - Remark: Generated from `#/components/schemas/CampaignRunSummary/created_at`.
+            public var createdAt: Foundation.Date
+            /// - Remark: Generated from `#/components/schemas/CampaignRunSummary/updated_at`.
+            public var updatedAt: Foundation.Date
+            /// - Remark: Generated from `#/components/schemas/CampaignRunSummary/campaign`.
+            public struct CampaignPayload: Codable, Hashable, Sendable {
+                /// - Remark: Generated from `#/components/schemas/CampaignRunSummary/campaign/id`.
+                public var id: Swift.String
+                /// - Remark: Generated from `#/components/schemas/CampaignRunSummary/campaign/campaignKey`.
+                public var campaignKey: Swift.String
+                /// - Remark: Generated from `#/components/schemas/CampaignRunSummary/campaign/name`.
+                public var name: Swift.String
+                /// Creates a new `CampaignPayload`.
+                ///
+                /// - Parameters:
+                ///   - id:
+                ///   - campaignKey:
+                ///   - name:
+                public init(
+                    id: Swift.String,
+                    campaignKey: Swift.String,
+                    name: Swift.String
+                ) {
+                    self.id = id
+                    self.campaignKey = campaignKey
+                    self.name = name
+                }
+                public enum CodingKeys: String, CodingKey {
+                    case id
+                    case campaignKey
+                    case name
+                }
+            }
+            /// - Remark: Generated from `#/components/schemas/CampaignRunSummary/campaign`.
+            public var campaign: Components.Schemas.CampaignRunSummary.CampaignPayload?
+            /// - Remark: Generated from `#/components/schemas/CampaignRunSummary/trigger_review`.
+            public struct TriggerReviewPayload: Codable, Hashable, Sendable {
+                /// - Remark: Generated from `#/components/schemas/CampaignRunSummary/trigger_review/id`.
+                public var id: Swift.String
+                /// - Remark: Generated from `#/components/schemas/CampaignRunSummary/trigger_review/rating`.
+                public var rating: Swift.Int?
+                /// - Remark: Generated from `#/components/schemas/CampaignRunSummary/trigger_review/reviewed_at`.
+                public var reviewedAt: Foundation.Date?
+                /// - Remark: Generated from `#/components/schemas/CampaignRunSummary/trigger_review/created_at`.
+                public var createdAt: Foundation.Date
+                /// Creates a new `TriggerReviewPayload`.
+                ///
+                /// - Parameters:
+                ///   - id:
+                ///   - rating:
+                ///   - reviewedAt:
+                ///   - createdAt:
+                public init(
+                    id: Swift.String,
+                    rating: Swift.Int? = nil,
+                    reviewedAt: Foundation.Date? = nil,
+                    createdAt: Foundation.Date
+                ) {
+                    self.id = id
+                    self.rating = rating
+                    self.reviewedAt = reviewedAt
+                    self.createdAt = createdAt
+                }
+                public enum CodingKeys: String, CodingKey {
+                    case id
+                    case rating
+                    case reviewedAt = "reviewed_at"
+                    case createdAt = "created_at"
+                }
+            }
+            /// - Remark: Generated from `#/components/schemas/CampaignRunSummary/trigger_review`.
+            public var triggerReview: Components.Schemas.CampaignRunSummary.TriggerReviewPayload?
+            /// Creates a new `CampaignRunSummary`.
+            ///
+            /// - Parameters:
+            ///   - id:
+            ///   - status:
+            ///   - segmentMode:
+            ///   - sendWindowAt:
+            ///   - recipientsTotal:
+            ///   - messagesQueued:
+            ///   - messagesSent:
+            ///   - messagesFailed:
+            ///   - lastErrorCode:
+            ///   - lastErrorMessage:
+            ///   - startedAt:
+            ///   - finishedAt:
+            ///   - createdAt:
+            ///   - updatedAt:
+            ///   - campaign:
+            ///   - triggerReview:
+            public init(
+                id: Swift.String,
+                status: Components.Schemas.CampaignRunStatus,
+                segmentMode: Components.Schemas.CampaignRunSummary.SegmentModePayload,
+                sendWindowAt: Foundation.Date,
+                recipientsTotal: Swift.Int,
+                messagesQueued: Swift.Int,
+                messagesSent: Swift.Int,
+                messagesFailed: Swift.Int,
+                lastErrorCode: Swift.String? = nil,
+                lastErrorMessage: Swift.String? = nil,
+                startedAt: Foundation.Date? = nil,
+                finishedAt: Foundation.Date? = nil,
+                createdAt: Foundation.Date,
+                updatedAt: Foundation.Date,
+                campaign: Components.Schemas.CampaignRunSummary.CampaignPayload? = nil,
+                triggerReview: Components.Schemas.CampaignRunSummary.TriggerReviewPayload? = nil
+            ) {
+                self.id = id
+                self.status = status
+                self.segmentMode = segmentMode
+                self.sendWindowAt = sendWindowAt
+                self.recipientsTotal = recipientsTotal
+                self.messagesQueued = messagesQueued
+                self.messagesSent = messagesSent
+                self.messagesFailed = messagesFailed
+                self.lastErrorCode = lastErrorCode
+                self.lastErrorMessage = lastErrorMessage
+                self.startedAt = startedAt
+                self.finishedAt = finishedAt
+                self.createdAt = createdAt
+                self.updatedAt = updatedAt
+                self.campaign = campaign
+                self.triggerReview = triggerReview
+            }
+            public enum CodingKeys: String, CodingKey {
+                case id
+                case status
+                case segmentMode = "segment_mode"
+                case sendWindowAt = "send_window_at"
+                case recipientsTotal = "recipients_total"
+                case messagesQueued = "messages_queued"
+                case messagesSent = "messages_sent"
+                case messagesFailed = "messages_failed"
+                case lastErrorCode = "last_error_code"
+                case lastErrorMessage = "last_error_message"
+                case startedAt = "started_at"
+                case finishedAt = "finished_at"
+                case createdAt = "created_at"
+                case updatedAt = "updated_at"
+                case campaign
+                case triggerReview = "trigger_review"
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/CampaignRunDetail`.
+        public struct CampaignRunDetail: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/CampaignRunDetail/value1`.
+            public var value1: Components.Schemas.CampaignRunSummary
+            /// - Remark: Generated from `#/components/schemas/CampaignRunDetail/value2`.
+            public struct Value2Payload: Codable, Hashable, Sendable {
+                /// - Remark: Generated from `#/components/schemas/CampaignRunDetail/value2/breakdown`.
+                public struct BreakdownPayload: Codable, Hashable, Sendable {
+                    /// - Remark: Generated from `#/components/schemas/CampaignRunDetail/value2/breakdown/queued`.
+                    public var queued: Swift.Int
+                    /// - Remark: Generated from `#/components/schemas/CampaignRunDetail/value2/breakdown/paused`.
+                    public var paused: Swift.Int
+                    /// - Remark: Generated from `#/components/schemas/CampaignRunDetail/value2/breakdown/sent`.
+                    public var sent: Swift.Int
+                    /// - Remark: Generated from `#/components/schemas/CampaignRunDetail/value2/breakdown/failed`.
+                    public var failed: Swift.Int
+                    /// Creates a new `BreakdownPayload`.
+                    ///
+                    /// - Parameters:
+                    ///   - queued:
+                    ///   - paused:
+                    ///   - sent:
+                    ///   - failed:
+                    public init(
+                        queued: Swift.Int,
+                        paused: Swift.Int,
+                        sent: Swift.Int,
+                        failed: Swift.Int
+                    ) {
+                        self.queued = queued
+                        self.paused = paused
+                        self.sent = sent
+                        self.failed = failed
+                    }
+                    public enum CodingKeys: String, CodingKey {
+                        case queued
+                        case paused
+                        case sent
+                        case failed
+                    }
+                }
+                /// - Remark: Generated from `#/components/schemas/CampaignRunDetail/value2/breakdown`.
+                public var breakdown: Components.Schemas.CampaignRunDetail.Value2Payload.BreakdownPayload
+                /// Creates a new `Value2Payload`.
+                ///
+                /// - Parameters:
+                ///   - breakdown:
+                public init(breakdown: Components.Schemas.CampaignRunDetail.Value2Payload.BreakdownPayload) {
+                    self.breakdown = breakdown
+                }
+                public enum CodingKeys: String, CodingKey {
+                    case breakdown
+                }
+            }
+            /// - Remark: Generated from `#/components/schemas/CampaignRunDetail/value2`.
+            public var value2: Components.Schemas.CampaignRunDetail.Value2Payload
+            /// Creates a new `CampaignRunDetail`.
+            ///
+            /// - Parameters:
+            ///   - value1:
+            ///   - value2:
+            public init(
+                value1: Components.Schemas.CampaignRunSummary,
+                value2: Components.Schemas.CampaignRunDetail.Value2Payload
+            ) {
+                self.value1 = value1
+                self.value2 = value2
+            }
+            public init(from decoder: any Decoder) throws {
+                self.value1 = try .init(from: decoder)
+                self.value2 = try .init(from: decoder)
+            }
+            public func encode(to encoder: any Encoder) throws {
+                try self.value1.encode(to: encoder)
+                try self.value2.encode(to: encoder)
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/OperatorSmokeCheck`.
+        public struct OperatorSmokeCheck: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/OperatorSmokeCheck/name`.
+            public var name: Swift.String
+            /// - Remark: Generated from `#/components/schemas/OperatorSmokeCheck/path`.
+            public var path: Swift.String
+            /// - Remark: Generated from `#/components/schemas/OperatorSmokeCheck/passed`.
+            public var passed: Swift.Bool
+            /// - Remark: Generated from `#/components/schemas/OperatorSmokeCheck/status`.
+            public var status: Swift.Int
+            /// - Remark: Generated from `#/components/schemas/OperatorSmokeCheck/reason`.
+            public var reason: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/OperatorSmokeCheck/failing_header`.
+            public var failingHeader: Swift.String?
+            /// Creates a new `OperatorSmokeCheck`.
+            ///
+            /// - Parameters:
+            ///   - name:
+            ///   - path:
+            ///   - passed:
+            ///   - status:
+            ///   - reason:
+            ///   - failingHeader:
+            public init(
+                name: Swift.String,
+                path: Swift.String,
+                passed: Swift.Bool,
+                status: Swift.Int,
+                reason: Swift.String? = nil,
+                failingHeader: Swift.String? = nil
+            ) {
+                self.name = name
+                self.path = path
+                self.passed = passed
+                self.status = status
+                self.reason = reason
+                self.failingHeader = failingHeader
+            }
+            public enum CodingKeys: String, CodingKey {
+                case name
+                case path
+                case passed
+                case status
+                case reason
+                case failingHeader = "failing_header"
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/OperatorSmokeResponse`.
+        public struct OperatorSmokeResponse: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/OperatorSmokeResponse/tenant_id`.
+            public var tenantId: Swift.String
+            /// - Remark: Generated from `#/components/schemas/OperatorSmokeResponse/overall_passed`.
+            public var overallPassed: Swift.Bool
+            /// - Remark: Generated from `#/components/schemas/OperatorSmokeResponse/checks`.
+            public var checks: [Components.Schemas.OperatorSmokeCheck]
+            /// Creates a new `OperatorSmokeResponse`.
+            ///
+            /// - Parameters:
+            ///   - tenantId:
+            ///   - overallPassed:
+            ///   - checks:
+            public init(
+                tenantId: Swift.String,
+                overallPassed: Swift.Bool,
+                checks: [Components.Schemas.OperatorSmokeCheck]
+            ) {
+                self.tenantId = tenantId
+                self.overallPassed = overallPassed
+                self.checks = checks
+            }
+            public enum CodingKeys: String, CodingKey {
+                case tenantId = "tenant_id"
+                case overallPassed = "overall_passed"
+                case checks
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/RotateOperatorKeyResponse`.
+        public struct RotateOperatorKeyResponse: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/RotateOperatorKeyResponse/tenant_id`.
+            public var tenantId: Swift.String
+            /// - Remark: Generated from `#/components/schemas/RotateOperatorKeyResponse/operator_key`.
+            public var operatorKey: Swift.String
+            /// Creates a new `RotateOperatorKeyResponse`.
+            ///
+            /// - Parameters:
+            ///   - tenantId:
+            ///   - operatorKey:
+            public init(
+                tenantId: Swift.String,
+                operatorKey: Swift.String
+            ) {
+                self.tenantId = tenantId
+                self.operatorKey = operatorKey
+            }
+            public enum CodingKeys: String, CodingKey {
+                case tenantId = "tenant_id"
+                case operatorKey = "operator_key"
             }
         }
         /// - Remark: Generated from `#/components/schemas/OperatorKPI`.
@@ -3277,6 +5013,65 @@ public enum Components {
                 case aggressiveBookings = "aggressive_bookings"
             }
         }
+        /// - Remark: Generated from `#/components/schemas/MonthlyReportMetrics`.
+        public struct MonthlyReportMetrics: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/MonthlyReportMetrics/new_5star_reviews`.
+            public var new5starReviews: Swift.Int
+            /// - Remark: Generated from `#/components/schemas/MonthlyReportMetrics/reactivation_emails_sent`.
+            public var reactivationEmailsSent: Swift.Int
+            /// - Remark: Generated from `#/components/schemas/MonthlyReportMetrics/open_count`.
+            public var openCount: Swift.Int
+            /// - Remark: Generated from `#/components/schemas/MonthlyReportMetrics/click_count`.
+            public var clickCount: Swift.Int
+            /// - Remark: Generated from `#/components/schemas/MonthlyReportMetrics/open_rate`.
+            public var openRate: Swift.Double
+            /// - Remark: Generated from `#/components/schemas/MonthlyReportMetrics/click_rate`.
+            public var clickRate: Swift.Double
+            /// - Remark: Generated from `#/components/schemas/MonthlyReportMetrics/estimated_bookings_driven`.
+            public var estimatedBookingsDriven: Swift.Int
+            /// - Remark: Generated from `#/components/schemas/MonthlyReportMetrics/estimated_revenue_impact_cents`.
+            public var estimatedRevenueImpactCents: Swift.Int
+            /// Creates a new `MonthlyReportMetrics`.
+            ///
+            /// - Parameters:
+            ///   - new5starReviews:
+            ///   - reactivationEmailsSent:
+            ///   - openCount:
+            ///   - clickCount:
+            ///   - openRate:
+            ///   - clickRate:
+            ///   - estimatedBookingsDriven:
+            ///   - estimatedRevenueImpactCents:
+            public init(
+                new5starReviews: Swift.Int,
+                reactivationEmailsSent: Swift.Int,
+                openCount: Swift.Int,
+                clickCount: Swift.Int,
+                openRate: Swift.Double,
+                clickRate: Swift.Double,
+                estimatedBookingsDriven: Swift.Int,
+                estimatedRevenueImpactCents: Swift.Int
+            ) {
+                self.new5starReviews = new5starReviews
+                self.reactivationEmailsSent = reactivationEmailsSent
+                self.openCount = openCount
+                self.clickCount = clickCount
+                self.openRate = openRate
+                self.clickRate = clickRate
+                self.estimatedBookingsDriven = estimatedBookingsDriven
+                self.estimatedRevenueImpactCents = estimatedRevenueImpactCents
+            }
+            public enum CodingKeys: String, CodingKey {
+                case new5starReviews = "new_5star_reviews"
+                case reactivationEmailsSent = "reactivation_emails_sent"
+                case openCount = "open_count"
+                case clickCount = "click_count"
+                case openRate = "open_rate"
+                case clickRate = "click_rate"
+                case estimatedBookingsDriven = "estimated_bookings_driven"
+                case estimatedRevenueImpactCents = "estimated_revenue_impact_cents"
+            }
+        }
         /// - Remark: Generated from `#/components/schemas/MonthlyReportTotals`.
         public struct MonthlyReportTotals: Codable, Hashable, Sendable {
             /// - Remark: Generated from `#/components/schemas/MonthlyReportTotals/revenue_cents`.
@@ -3289,6 +5084,14 @@ public enum Components {
             public var sentCount: Swift.Int
             /// - Remark: Generated from `#/components/schemas/MonthlyReportTotals/click_count`.
             public var clickCount: Swift.Int
+            /// - Remark: Generated from `#/components/schemas/MonthlyReportTotals/run_count`.
+            public var runCount: Swift.Int
+            /// - Remark: Generated from `#/components/schemas/MonthlyReportTotals/run_messages_sent`.
+            public var runMessagesSent: Swift.Int
+            /// - Remark: Generated from `#/components/schemas/MonthlyReportTotals/run_messages_failed`.
+            public var runMessagesFailed: Swift.Int
+            /// - Remark: Generated from `#/components/schemas/MonthlyReportTotals/run_messages_queued`.
+            public var runMessagesQueued: Swift.Int
             /// Creates a new `MonthlyReportTotals`.
             ///
             /// - Parameters:
@@ -3297,18 +5100,30 @@ public enum Components {
             ///   - bookingsCount:
             ///   - sentCount:
             ///   - clickCount:
+            ///   - runCount:
+            ///   - runMessagesSent:
+            ///   - runMessagesFailed:
+            ///   - runMessagesQueued:
             public init(
                 revenueCents: Swift.Int,
                 attributedCents: Swift.Int,
                 bookingsCount: Swift.Int,
                 sentCount: Swift.Int,
-                clickCount: Swift.Int
+                clickCount: Swift.Int,
+                runCount: Swift.Int,
+                runMessagesSent: Swift.Int,
+                runMessagesFailed: Swift.Int,
+                runMessagesQueued: Swift.Int
             ) {
                 self.revenueCents = revenueCents
                 self.attributedCents = attributedCents
                 self.bookingsCount = bookingsCount
                 self.sentCount = sentCount
                 self.clickCount = clickCount
+                self.runCount = runCount
+                self.runMessagesSent = runMessagesSent
+                self.runMessagesFailed = runMessagesFailed
+                self.runMessagesQueued = runMessagesQueued
             }
             public enum CodingKeys: String, CodingKey {
                 case revenueCents = "revenue_cents"
@@ -3316,6 +5131,10 @@ public enum Components {
                 case bookingsCount = "bookings_count"
                 case sentCount = "sent_count"
                 case clickCount = "click_count"
+                case runCount = "run_count"
+                case runMessagesSent = "run_messages_sent"
+                case runMessagesFailed = "run_messages_failed"
+                case runMessagesQueued = "run_messages_queued"
             }
         }
         /// - Remark: Generated from `#/components/schemas/MonthlyReportBenefit`.
@@ -3349,6 +5168,8 @@ public enum Components {
             public var month: Swift.String
             /// - Remark: Generated from `#/components/schemas/MonthlyReportPayload/generated_at`.
             public var generatedAt: Foundation.Date
+            /// - Remark: Generated from `#/components/schemas/MonthlyReportPayload/metrics`.
+            public var metrics: Components.Schemas.MonthlyReportMetrics
             /// - Remark: Generated from `#/components/schemas/MonthlyReportPayload/totals`.
             public var totals: Components.Schemas.MonthlyReportTotals
             /// - Remark: Generated from `#/components/schemas/MonthlyReportPayload/estimates`.
@@ -3363,6 +5184,7 @@ public enum Components {
             ///   - tenantId:
             ///   - month:
             ///   - generatedAt:
+            ///   - metrics:
             ///   - totals:
             ///   - estimates:
             ///   - praisedBenefits:
@@ -3371,6 +5193,7 @@ public enum Components {
                 tenantId: Swift.String,
                 month: Swift.String,
                 generatedAt: Foundation.Date,
+                metrics: Components.Schemas.MonthlyReportMetrics,
                 totals: Components.Schemas.MonthlyReportTotals,
                 estimates: Components.Schemas.MonthlyReportEstimate,
                 praisedBenefits: [Components.Schemas.MonthlyReportBenefit],
@@ -3379,6 +5202,7 @@ public enum Components {
                 self.tenantId = tenantId
                 self.month = month
                 self.generatedAt = generatedAt
+                self.metrics = metrics
                 self.totals = totals
                 self.estimates = estimates
                 self.praisedBenefits = praisedBenefits
@@ -3388,6 +5212,7 @@ public enum Components {
                 case tenantId = "tenant_id"
                 case month
                 case generatedAt = "generated_at"
+                case metrics
                 case totals
                 case estimates
                 case praisedBenefits = "praised_benefits"
@@ -3397,12 +5222,18 @@ public enum Components {
     }
     /// Types generated from the `#/components/parameters` section of the OpenAPI document.
     public enum Parameters {
+        /// Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+        ///
         /// - Remark: Generated from `#/components/parameters/TenantHeader`.
         public typealias TenantHeader = Swift.String
+        /// Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
+        ///
         /// - Remark: Generated from `#/components/parameters/OperatorKeyHeader`.
         public typealias OperatorKeyHeader = Swift.String
         /// - Remark: Generated from `#/components/parameters/TenantIdPath`.
         public typealias TenantIdPath = Swift.String
+        /// - Remark: Generated from `#/components/parameters/RunIdPath`.
+        public typealias RunIdPath = Swift.String
         /// Required idempotency key for create operations. Must be stable across retries.
         ///
         ///
@@ -3501,6 +5332,34 @@ public enum Components {
                 self.body = body
             }
         }
+        public struct NotFound: Sendable, Hashable {
+            /// - Remark: Generated from `#/components/responses/NotFound/content`.
+            @frozen public enum Body: Sendable, Hashable {
+                /// - Remark: Generated from `#/components/responses/NotFound/content/application\/json`.
+                case json(Components.Schemas.ErrorResponse)
+                /// The associated value of the enum case if `self` is `.json`.
+                ///
+                /// - Throws: An error if `self` is not `.json`.
+                /// - SeeAlso: `.json`.
+                public var json: Components.Schemas.ErrorResponse {
+                    get throws {
+                        switch self {
+                        case let .json(body):
+                            return body
+                        }
+                    }
+                }
+            }
+            /// Received HTTP response body
+            public var body: Components.Responses.NotFound.Body
+            /// Creates a new `NotFound`.
+            ///
+            /// - Parameters:
+            ///   - body: Received HTTP response body
+            public init(body: Components.Responses.NotFound.Body) {
+                self.body = body
+            }
+        }
         public struct Conflict: Sendable, Hashable {
             /// - Remark: Generated from `#/components/responses/Conflict/content`.
             @frozen public enum Body: Sendable, Hashable {
@@ -3565,6 +5424,8 @@ public enum Components {
 /// API operations, with input and output types, generated from `#/paths` in the OpenAPI document.
 public enum Operations {
     /// Health check endpoint
+    ///
+    /// Returns a minimal health payload used by the operator shell and smoke tooling.
     ///
     /// - Remark: HTTP `GET /health`.
     /// - Remark: Generated from `#/paths//health/get(getHealth)`.
@@ -3674,27 +5535,821 @@ public enum Operations {
             }
         }
     }
+    /// Get tenant bootstrap readiness status
+    ///
+    /// Returns bootstrap readiness checks for the tenant identified by the operator headers.
+    ///
+    /// - Remark: HTTP `GET /v1/bootstrap/status`.
+    /// - Remark: Generated from `#/paths//v1/bootstrap/status/get(getBootstrapStatus)`.
+    public enum GetBootstrapStatus {
+        public static let id: Swift.String = "getBootstrapStatus"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/v1/bootstrap/status/GET/header`.
+            public struct Headers: Sendable, Hashable {
+                /// Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///
+                /// - Remark: Generated from `#/paths/v1/bootstrap/status/GET/header/x-tenant-id`.
+                public var xTenantId: Components.Parameters.TenantHeader
+                /// Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
+                ///
+                /// - Remark: Generated from `#/paths/v1/bootstrap/status/GET/header/X-Operator-Key`.
+                public var xOperatorKey: Components.Parameters.OperatorKeyHeader
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.GetBootstrapStatus.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - xTenantId: Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///   - xOperatorKey: Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
+                ///   - accept:
+                public init(
+                    xTenantId: Components.Parameters.TenantHeader,
+                    xOperatorKey: Components.Parameters.OperatorKeyHeader,
+                    accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.GetBootstrapStatus.AcceptableContentType>] = .defaultValues()
+                ) {
+                    self.xTenantId = xTenantId
+                    self.xOperatorKey = xOperatorKey
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.GetBootstrapStatus.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - headers:
+            public init(headers: Operations.GetBootstrapStatus.Input.Headers) {
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/bootstrap/status/GET/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/v1/bootstrap/status/GET/responses/200/content/application\/json`.
+                    case json(Components.Schemas.BootstrapStatusResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.BootstrapStatusResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.GetBootstrapStatus.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.GetBootstrapStatus.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// Bootstrap readiness response
+            ///
+            /// - Remark: Generated from `#/paths//v1/bootstrap/status/get(getBootstrapStatus)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.GetBootstrapStatus.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.GetBootstrapStatus.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// List operator-visible tenants for the scoped tenant operator key
+    ///
+    /// Returns the tenant summary available to a tenant-scoped operator key. Tier-1 keeps this tenant-scoped rather than portfolio-wide.
+    ///
+    /// - Remark: HTTP `GET /v1/tenants`.
+    /// - Remark: Generated from `#/paths//v1/tenants/get(listOperatorTenants)`.
+    public enum ListOperatorTenants {
+        public static let id: Swift.String = "listOperatorTenants"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/v1/tenants/GET/header`.
+            public struct Headers: Sendable, Hashable {
+                /// Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///
+                /// - Remark: Generated from `#/paths/v1/tenants/GET/header/x-tenant-id`.
+                public var xTenantId: Components.Parameters.TenantHeader
+                /// Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
+                ///
+                /// - Remark: Generated from `#/paths/v1/tenants/GET/header/X-Operator-Key`.
+                public var xOperatorKey: Components.Parameters.OperatorKeyHeader
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.ListOperatorTenants.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - xTenantId: Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///   - xOperatorKey: Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
+                ///   - accept:
+                public init(
+                    xTenantId: Components.Parameters.TenantHeader,
+                    xOperatorKey: Components.Parameters.OperatorKeyHeader,
+                    accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.ListOperatorTenants.AcceptableContentType>] = .defaultValues()
+                ) {
+                    self.xTenantId = xTenantId
+                    self.xOperatorKey = xOperatorKey
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.ListOperatorTenants.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - headers:
+            public init(headers: Operations.ListOperatorTenants.Input.Headers) {
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/tenants/GET/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/v1/tenants/GET/responses/200/content/application\/json`.
+                    case json(Components.Schemas.OperatorTenantListResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.OperatorTenantListResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.ListOperatorTenants.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.ListOperatorTenants.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// Tenant list
+            ///
+            /// - Remark: Generated from `#/paths//v1/tenants/get(listOperatorTenants)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.ListOperatorTenants.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.ListOperatorTenants.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Unauthorized
+            ///
+            /// - Remark: Generated from `#/paths//v1/tenants/get(listOperatorTenants)/responses/401`.
+            ///
+            /// HTTP response code: `401 unauthorized`.
+            case unauthorized(Components.Responses.Unauthorized)
+            /// The associated value of the enum case if `self` is `.unauthorized`.
+            ///
+            /// - Throws: An error if `self` is not `.unauthorized`.
+            /// - SeeAlso: `.unauthorized`.
+            public var unauthorized: Components.Responses.Unauthorized {
+                get throws {
+                    switch self {
+                    case let .unauthorized(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "unauthorized",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Forbidden
+            ///
+            /// - Remark: Generated from `#/paths//v1/tenants/get(listOperatorTenants)/responses/403`.
+            ///
+            /// HTTP response code: `403 forbidden`.
+            case forbidden(Components.Responses.Forbidden)
+            /// The associated value of the enum case if `self` is `.forbidden`.
+            ///
+            /// - Throws: An error if `self` is not `.forbidden`.
+            /// - SeeAlso: `.forbidden`.
+            public var forbidden: Components.Responses.Forbidden {
+                get throws {
+                    switch self {
+                    case let .forbidden(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "forbidden",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// Get operator-visible tenant detail
+    ///
+    /// Returns tenant detail for the route tenant after tenant-header and tenant-path matching succeeds.
+    ///
+    /// - Remark: HTTP `GET /v1/tenants/{tenantId}`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/get(getOperatorTenant)`.
+    public enum GetOperatorTenant {
+        public static let id: Swift.String = "getOperatorTenant"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/GET/path`.
+            public struct Path: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/GET/path/tenantId`.
+                public var tenantId: Components.Parameters.TenantIdPath
+                /// Creates a new `Path`.
+                ///
+                /// - Parameters:
+                ///   - tenantId:
+                public init(tenantId: Components.Parameters.TenantIdPath) {
+                    self.tenantId = tenantId
+                }
+            }
+            public var path: Operations.GetOperatorTenant.Input.Path
+            /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/GET/header`.
+            public struct Headers: Sendable, Hashable {
+                /// Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/GET/header/x-tenant-id`.
+                public var xTenantId: Components.Parameters.TenantHeader
+                /// Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
+                ///
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/GET/header/X-Operator-Key`.
+                public var xOperatorKey: Components.Parameters.OperatorKeyHeader
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.GetOperatorTenant.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - xTenantId: Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///   - xOperatorKey: Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
+                ///   - accept:
+                public init(
+                    xTenantId: Components.Parameters.TenantHeader,
+                    xOperatorKey: Components.Parameters.OperatorKeyHeader,
+                    accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.GetOperatorTenant.AcceptableContentType>] = .defaultValues()
+                ) {
+                    self.xTenantId = xTenantId
+                    self.xOperatorKey = xOperatorKey
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.GetOperatorTenant.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - path:
+            ///   - headers:
+            public init(
+                path: Operations.GetOperatorTenant.Input.Path,
+                headers: Operations.GetOperatorTenant.Input.Headers
+            ) {
+                self.path = path
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/GET/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/GET/responses/200/content/application\/json`.
+                    case json(Components.Schemas.OperatorTenantDetail)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.OperatorTenantDetail {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.GetOperatorTenant.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.GetOperatorTenant.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// Tenant detail
+            ///
+            /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/get(getOperatorTenant)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.GetOperatorTenant.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.GetOperatorTenant.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Unauthorized
+            ///
+            /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/get(getOperatorTenant)/responses/401`.
+            ///
+            /// HTTP response code: `401 unauthorized`.
+            case unauthorized(Components.Responses.Unauthorized)
+            /// The associated value of the enum case if `self` is `.unauthorized`.
+            ///
+            /// - Throws: An error if `self` is not `.unauthorized`.
+            /// - SeeAlso: `.unauthorized`.
+            public var unauthorized: Components.Responses.Unauthorized {
+                get throws {
+                    switch self {
+                    case let .unauthorized(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "unauthorized",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Forbidden
+            ///
+            /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/get(getOperatorTenant)/responses/403`.
+            ///
+            /// HTTP response code: `403 forbidden`.
+            case forbidden(Components.Responses.Forbidden)
+            /// The associated value of the enum case if `self` is `.forbidden`.
+            ///
+            /// - Throws: An error if `self` is not `.forbidden`.
+            /// - SeeAlso: `.forbidden`.
+            public var forbidden: Components.Responses.Forbidden {
+                get throws {
+                    switch self {
+                    case let .forbidden(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "forbidden",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Not found
+            ///
+            /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/get(getOperatorTenant)/responses/404`.
+            ///
+            /// HTTP response code: `404 notFound`.
+            case notFound(Components.Responses.NotFound)
+            /// The associated value of the enum case if `self` is `.notFound`.
+            ///
+            /// - Throws: An error if `self` is not `.notFound`.
+            /// - SeeAlso: `.notFound`.
+            public var notFound: Components.Responses.NotFound {
+                get throws {
+                    switch self {
+                    case let .notFound(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "notFound",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// Get operator-visible tenant metrics
+    ///
+    /// Returns tenant metrics series for the selected range after tenant-header and tenant-path matching succeeds.
+    ///
+    /// - Remark: HTTP `GET /v1/tenants/{tenantId}/metrics`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/metrics/get(getOperatorTenantMetrics)`.
+    public enum GetOperatorTenantMetrics {
+        public static let id: Swift.String = "getOperatorTenantMetrics"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/metrics/GET/path`.
+            public struct Path: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/metrics/GET/path/tenantId`.
+                public var tenantId: Components.Parameters.TenantIdPath
+                /// Creates a new `Path`.
+                ///
+                /// - Parameters:
+                ///   - tenantId:
+                public init(tenantId: Components.Parameters.TenantIdPath) {
+                    self.tenantId = tenantId
+                }
+            }
+            public var path: Operations.GetOperatorTenantMetrics.Input.Path
+            /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/metrics/GET/query`.
+            public struct Query: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/metrics/GET/query/range`.
+                @frozen public enum RangePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                    case _30d = "30d"
+                    case _90d = "90d"
+                    case ytd = "ytd"
+                }
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/metrics/GET/query/range`.
+                public var range: Operations.GetOperatorTenantMetrics.Input.Query.RangePayload
+                /// Creates a new `Query`.
+                ///
+                /// - Parameters:
+                ///   - range:
+                public init(range: Operations.GetOperatorTenantMetrics.Input.Query.RangePayload) {
+                    self.range = range
+                }
+            }
+            public var query: Operations.GetOperatorTenantMetrics.Input.Query
+            /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/metrics/GET/header`.
+            public struct Headers: Sendable, Hashable {
+                /// Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/metrics/GET/header/x-tenant-id`.
+                public var xTenantId: Components.Parameters.TenantHeader
+                /// Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
+                ///
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/metrics/GET/header/X-Operator-Key`.
+                public var xOperatorKey: Components.Parameters.OperatorKeyHeader
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.GetOperatorTenantMetrics.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - xTenantId: Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///   - xOperatorKey: Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
+                ///   - accept:
+                public init(
+                    xTenantId: Components.Parameters.TenantHeader,
+                    xOperatorKey: Components.Parameters.OperatorKeyHeader,
+                    accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.GetOperatorTenantMetrics.AcceptableContentType>] = .defaultValues()
+                ) {
+                    self.xTenantId = xTenantId
+                    self.xOperatorKey = xOperatorKey
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.GetOperatorTenantMetrics.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - path:
+            ///   - query:
+            ///   - headers:
+            public init(
+                path: Operations.GetOperatorTenantMetrics.Input.Path,
+                query: Operations.GetOperatorTenantMetrics.Input.Query,
+                headers: Operations.GetOperatorTenantMetrics.Input.Headers
+            ) {
+                self.path = path
+                self.query = query
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/metrics/GET/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/metrics/GET/responses/200/content/application\/json`.
+                    case json(Components.Schemas.OperatorTenantMetricsResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.OperatorTenantMetricsResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.GetOperatorTenantMetrics.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.GetOperatorTenantMetrics.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// Tenant metrics
+            ///
+            /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/metrics/get(getOperatorTenantMetrics)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.GetOperatorTenantMetrics.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.GetOperatorTenantMetrics.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Bad request
+            ///
+            /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/metrics/get(getOperatorTenantMetrics)/responses/400`.
+            ///
+            /// HTTP response code: `400 badRequest`.
+            case badRequest(Components.Responses.BadRequest)
+            /// The associated value of the enum case if `self` is `.badRequest`.
+            ///
+            /// - Throws: An error if `self` is not `.badRequest`.
+            /// - SeeAlso: `.badRequest`.
+            public var badRequest: Components.Responses.BadRequest {
+                get throws {
+                    switch self {
+                    case let .badRequest(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "badRequest",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Unauthorized
+            ///
+            /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/metrics/get(getOperatorTenantMetrics)/responses/401`.
+            ///
+            /// HTTP response code: `401 unauthorized`.
+            case unauthorized(Components.Responses.Unauthorized)
+            /// The associated value of the enum case if `self` is `.unauthorized`.
+            ///
+            /// - Throws: An error if `self` is not `.unauthorized`.
+            /// - SeeAlso: `.unauthorized`.
+            public var unauthorized: Components.Responses.Unauthorized {
+                get throws {
+                    switch self {
+                    case let .unauthorized(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "unauthorized",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Forbidden
+            ///
+            /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/metrics/get(getOperatorTenantMetrics)/responses/403`.
+            ///
+            /// HTTP response code: `403 forbidden`.
+            case forbidden(Components.Responses.Forbidden)
+            /// The associated value of the enum case if `self` is `.forbidden`.
+            ///
+            /// - Throws: An error if `self` is not `.forbidden`.
+            /// - SeeAlso: `.forbidden`.
+            public var forbidden: Components.Responses.Forbidden {
+                get throws {
+                    switch self {
+                    case let .forbidden(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "forbidden",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Not found
+            ///
+            /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/metrics/get(getOperatorTenantMetrics)/responses/404`.
+            ///
+            /// HTTP response code: `404 notFound`.
+            case notFound(Components.Responses.NotFound)
+            /// The associated value of the enum case if `self` is `.notFound`.
+            ///
+            /// - Throws: An error if `self` is not `.notFound`.
+            /// - SeeAlso: `.notFound`.
+            public var notFound: Components.Responses.NotFound {
+                get throws {
+                    switch self {
+                    case let .notFound(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "notFound",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
     /// Operator dashboard summary
     ///
     /// Returns top-level KPI summary and dashboard widget counts for the scoped tenant.
     ///
-    /// - Remark: HTTP `GET /dashboard/summary`.
-    /// - Remark: Generated from `#/paths//dashboard/summary/get(getDashboardSummary)`.
+    /// - Remark: HTTP `GET /v1/tenants/{tenantId}/dashboard/summary`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/dashboard/summary/get(getDashboardSummary)`.
     public enum GetDashboardSummary {
         public static let id: Swift.String = "getDashboardSummary"
         public struct Input: Sendable, Hashable {
-            /// - Remark: Generated from `#/paths/dashboard/summary/GET/header`.
+            /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/dashboard/summary/GET/path`.
+            public struct Path: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/dashboard/summary/GET/path/tenantId`.
+                public var tenantId: Components.Parameters.TenantIdPath
+                /// Creates a new `Path`.
+                ///
+                /// - Parameters:
+                ///   - tenantId:
+                public init(tenantId: Components.Parameters.TenantIdPath) {
+                    self.tenantId = tenantId
+                }
+            }
+            public var path: Operations.GetDashboardSummary.Input.Path
+            /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/dashboard/summary/GET/header`.
             public struct Headers: Sendable, Hashable {
-                /// - Remark: Generated from `#/paths/dashboard/summary/GET/header/x-tenant-id`.
+                /// Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/dashboard/summary/GET/header/x-tenant-id`.
                 public var xTenantId: Components.Parameters.TenantHeader
-                /// - Remark: Generated from `#/paths/dashboard/summary/GET/header/X-Operator-Key`.
+                /// Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
+                ///
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/dashboard/summary/GET/header/X-Operator-Key`.
                 public var xOperatorKey: Components.Parameters.OperatorKeyHeader
                 public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.GetDashboardSummary.AcceptableContentType>]
                 /// Creates a new `Headers`.
                 ///
                 /// - Parameters:
-                ///   - xTenantId:
-                ///   - xOperatorKey:
+                ///   - xTenantId: Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///   - xOperatorKey: Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
                 ///   - accept:
                 public init(
                     xTenantId: Components.Parameters.TenantHeader,
@@ -3710,16 +6365,21 @@ public enum Operations {
             /// Creates a new `Input`.
             ///
             /// - Parameters:
+            ///   - path:
             ///   - headers:
-            public init(headers: Operations.GetDashboardSummary.Input.Headers) {
+            public init(
+                path: Operations.GetDashboardSummary.Input.Path,
+                headers: Operations.GetDashboardSummary.Input.Headers
+            ) {
+                self.path = path
                 self.headers = headers
             }
         }
         @frozen public enum Output: Sendable, Hashable {
             public struct Ok: Sendable, Hashable {
-                /// - Remark: Generated from `#/paths/dashboard/summary/GET/responses/200/content`.
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/dashboard/summary/GET/responses/200/content`.
                 @frozen public enum Body: Sendable, Hashable {
-                    /// - Remark: Generated from `#/paths/dashboard/summary/GET/responses/200/content/application\/json`.
+                    /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/dashboard/summary/GET/responses/200/content/application\/json`.
                     case json(Components.Schemas.DashboardSummaryResponse)
                     /// The associated value of the enum case if `self` is `.json`.
                     ///
@@ -3746,7 +6406,7 @@ public enum Operations {
             }
             /// Dashboard summary
             ///
-            /// - Remark: Generated from `#/paths//dashboard/summary/get(getDashboardSummary)/responses/200`.
+            /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/dashboard/summary/get(getDashboardSummary)/responses/200`.
             ///
             /// HTTP response code: `200 ok`.
             case ok(Operations.GetDashboardSummary.Output.Ok)
@@ -3762,6 +6422,52 @@ public enum Operations {
                     default:
                         try throwUnexpectedResponseStatus(
                             expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Unauthorized
+            ///
+            /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/dashboard/summary/get(getDashboardSummary)/responses/401`.
+            ///
+            /// HTTP response code: `401 unauthorized`.
+            case unauthorized(Components.Responses.Unauthorized)
+            /// The associated value of the enum case if `self` is `.unauthorized`.
+            ///
+            /// - Throws: An error if `self` is not `.unauthorized`.
+            /// - SeeAlso: `.unauthorized`.
+            public var unauthorized: Components.Responses.Unauthorized {
+                get throws {
+                    switch self {
+                    case let .unauthorized(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "unauthorized",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Forbidden
+            ///
+            /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/dashboard/summary/get(getDashboardSummary)/responses/403`.
+            ///
+            /// HTTP response code: `403 forbidden`.
+            case forbidden(Components.Responses.Forbidden)
+            /// The associated value of the enum case if `self` is `.forbidden`.
+            ///
+            /// - Throws: An error if `self` is not `.forbidden`.
+            /// - SeeAlso: `.forbidden`.
+            public var forbidden: Components.Responses.Forbidden {
+                get throws {
+                    switch self {
+                    case let .forbidden(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "forbidden",
                             response: self
                         )
                     }
@@ -3802,14 +6508,27 @@ public enum Operations {
     ///
     /// Returns tenant-scoped event feed items ordered newest-first.
     ///
-    /// - Remark: HTTP `GET /events`.
-    /// - Remark: Generated from `#/paths//events/get(listOperatorEvents)`.
+    /// - Remark: HTTP `GET /v1/tenants/{tenantId}/events`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/events/get(listOperatorEvents)`.
     public enum ListOperatorEvents {
         public static let id: Swift.String = "listOperatorEvents"
         public struct Input: Sendable, Hashable {
-            /// - Remark: Generated from `#/paths/events/GET/query`.
+            /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/events/GET/path`.
+            public struct Path: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/events/GET/path/tenantId`.
+                public var tenantId: Components.Parameters.TenantIdPath
+                /// Creates a new `Path`.
+                ///
+                /// - Parameters:
+                ///   - tenantId:
+                public init(tenantId: Components.Parameters.TenantIdPath) {
+                    self.tenantId = tenantId
+                }
+            }
+            public var path: Operations.ListOperatorEvents.Input.Path
+            /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/events/GET/query`.
             public struct Query: Sendable, Hashable {
-                /// - Remark: Generated from `#/paths/events/GET/query/since`.
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/events/GET/query/since`.
                 public var since: Foundation.Date?
                 /// Creates a new `Query`.
                 ///
@@ -3820,18 +6539,22 @@ public enum Operations {
                 }
             }
             public var query: Operations.ListOperatorEvents.Input.Query
-            /// - Remark: Generated from `#/paths/events/GET/header`.
+            /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/events/GET/header`.
             public struct Headers: Sendable, Hashable {
-                /// - Remark: Generated from `#/paths/events/GET/header/x-tenant-id`.
+                /// Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/events/GET/header/x-tenant-id`.
                 public var xTenantId: Components.Parameters.TenantHeader
-                /// - Remark: Generated from `#/paths/events/GET/header/X-Operator-Key`.
+                /// Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
+                ///
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/events/GET/header/X-Operator-Key`.
                 public var xOperatorKey: Components.Parameters.OperatorKeyHeader
                 public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.ListOperatorEvents.AcceptableContentType>]
                 /// Creates a new `Headers`.
                 ///
                 /// - Parameters:
-                ///   - xTenantId:
-                ///   - xOperatorKey:
+                ///   - xTenantId: Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///   - xOperatorKey: Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
                 ///   - accept:
                 public init(
                     xTenantId: Components.Parameters.TenantHeader,
@@ -3847,21 +6570,24 @@ public enum Operations {
             /// Creates a new `Input`.
             ///
             /// - Parameters:
+            ///   - path:
             ///   - query:
             ///   - headers:
             public init(
+                path: Operations.ListOperatorEvents.Input.Path,
                 query: Operations.ListOperatorEvents.Input.Query = .init(),
                 headers: Operations.ListOperatorEvents.Input.Headers
             ) {
+                self.path = path
                 self.query = query
                 self.headers = headers
             }
         }
         @frozen public enum Output: Sendable, Hashable {
             public struct Ok: Sendable, Hashable {
-                /// - Remark: Generated from `#/paths/events/GET/responses/200/content`.
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/events/GET/responses/200/content`.
                 @frozen public enum Body: Sendable, Hashable {
-                    /// - Remark: Generated from `#/paths/events/GET/responses/200/content/application\/json`.
+                    /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/events/GET/responses/200/content/application\/json`.
                     case json(Components.Schemas.OperatorEventsResponse)
                     /// The associated value of the enum case if `self` is `.json`.
                     ///
@@ -3888,7 +6614,7 @@ public enum Operations {
             }
             /// Event list
             ///
-            /// - Remark: Generated from `#/paths//events/get(listOperatorEvents)/responses/200`.
+            /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/events/get(listOperatorEvents)/responses/200`.
             ///
             /// HTTP response code: `200 ok`.
             case ok(Operations.ListOperatorEvents.Output.Ok)
@@ -3904,6 +6630,52 @@ public enum Operations {
                     default:
                         try throwUnexpectedResponseStatus(
                             expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Unauthorized
+            ///
+            /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/events/get(listOperatorEvents)/responses/401`.
+            ///
+            /// HTTP response code: `401 unauthorized`.
+            case unauthorized(Components.Responses.Unauthorized)
+            /// The associated value of the enum case if `self` is `.unauthorized`.
+            ///
+            /// - Throws: An error if `self` is not `.unauthorized`.
+            /// - SeeAlso: `.unauthorized`.
+            public var unauthorized: Components.Responses.Unauthorized {
+                get throws {
+                    switch self {
+                    case let .unauthorized(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "unauthorized",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Forbidden
+            ///
+            /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/events/get(listOperatorEvents)/responses/403`.
+            ///
+            /// HTTP response code: `403 forbidden`.
+            case forbidden(Components.Responses.Forbidden)
+            /// The associated value of the enum case if `self` is `.forbidden`.
+            ///
+            /// - Throws: An error if `self` is not `.forbidden`.
+            /// - SeeAlso: `.forbidden`.
+            public var forbidden: Components.Responses.Forbidden {
+                get throws {
+                    switch self {
+                    case let .forbidden(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "forbidden",
                             response: self
                         )
                     }
@@ -3944,19 +6716,32 @@ public enum Operations {
     ///
     /// Returns tenant-scoped alerts; default state is open.
     ///
-    /// - Remark: HTTP `GET /alerts`.
-    /// - Remark: Generated from `#/paths//alerts/get(listOperatorAlerts)`.
+    /// - Remark: HTTP `GET /v1/tenants/{tenantId}/alerts`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/alerts/get(listOperatorAlerts)`.
     public enum ListOperatorAlerts {
         public static let id: Swift.String = "listOperatorAlerts"
         public struct Input: Sendable, Hashable {
-            /// - Remark: Generated from `#/paths/alerts/GET/query`.
+            /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/alerts/GET/path`.
+            public struct Path: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/alerts/GET/path/tenantId`.
+                public var tenantId: Components.Parameters.TenantIdPath
+                /// Creates a new `Path`.
+                ///
+                /// - Parameters:
+                ///   - tenantId:
+                public init(tenantId: Components.Parameters.TenantIdPath) {
+                    self.tenantId = tenantId
+                }
+            }
+            public var path: Operations.ListOperatorAlerts.Input.Path
+            /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/alerts/GET/query`.
             public struct Query: Sendable, Hashable {
-                /// - Remark: Generated from `#/paths/alerts/GET/query/state`.
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/alerts/GET/query/state`.
                 @frozen public enum StatePayload: String, Codable, Hashable, Sendable, CaseIterable {
                     case open = "open"
                     case all = "all"
                 }
-                /// - Remark: Generated from `#/paths/alerts/GET/query/state`.
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/alerts/GET/query/state`.
                 public var state: Operations.ListOperatorAlerts.Input.Query.StatePayload?
                 /// Creates a new `Query`.
                 ///
@@ -3967,18 +6752,22 @@ public enum Operations {
                 }
             }
             public var query: Operations.ListOperatorAlerts.Input.Query
-            /// - Remark: Generated from `#/paths/alerts/GET/header`.
+            /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/alerts/GET/header`.
             public struct Headers: Sendable, Hashable {
-                /// - Remark: Generated from `#/paths/alerts/GET/header/x-tenant-id`.
+                /// Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/alerts/GET/header/x-tenant-id`.
                 public var xTenantId: Components.Parameters.TenantHeader
-                /// - Remark: Generated from `#/paths/alerts/GET/header/X-Operator-Key`.
+                /// Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
+                ///
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/alerts/GET/header/X-Operator-Key`.
                 public var xOperatorKey: Components.Parameters.OperatorKeyHeader
                 public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.ListOperatorAlerts.AcceptableContentType>]
                 /// Creates a new `Headers`.
                 ///
                 /// - Parameters:
-                ///   - xTenantId:
-                ///   - xOperatorKey:
+                ///   - xTenantId: Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///   - xOperatorKey: Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
                 ///   - accept:
                 public init(
                     xTenantId: Components.Parameters.TenantHeader,
@@ -3994,21 +6783,24 @@ public enum Operations {
             /// Creates a new `Input`.
             ///
             /// - Parameters:
+            ///   - path:
             ///   - query:
             ///   - headers:
             public init(
+                path: Operations.ListOperatorAlerts.Input.Path,
                 query: Operations.ListOperatorAlerts.Input.Query = .init(),
                 headers: Operations.ListOperatorAlerts.Input.Headers
             ) {
+                self.path = path
                 self.query = query
                 self.headers = headers
             }
         }
         @frozen public enum Output: Sendable, Hashable {
             public struct Ok: Sendable, Hashable {
-                /// - Remark: Generated from `#/paths/alerts/GET/responses/200/content`.
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/alerts/GET/responses/200/content`.
                 @frozen public enum Body: Sendable, Hashable {
-                    /// - Remark: Generated from `#/paths/alerts/GET/responses/200/content/application\/json`.
+                    /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/alerts/GET/responses/200/content/application\/json`.
                     case json(Components.Schemas.OperatorAlertsResponse)
                     /// The associated value of the enum case if `self` is `.json`.
                     ///
@@ -4035,7 +6827,7 @@ public enum Operations {
             }
             /// Alert list
             ///
-            /// - Remark: Generated from `#/paths//alerts/get(listOperatorAlerts)/responses/200`.
+            /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/alerts/get(listOperatorAlerts)/responses/200`.
             ///
             /// HTTP response code: `200 ok`.
             case ok(Operations.ListOperatorAlerts.Output.Ok)
@@ -4056,6 +6848,52 @@ public enum Operations {
                     }
                 }
             }
+            /// Unauthorized
+            ///
+            /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/alerts/get(listOperatorAlerts)/responses/401`.
+            ///
+            /// HTTP response code: `401 unauthorized`.
+            case unauthorized(Components.Responses.Unauthorized)
+            /// The associated value of the enum case if `self` is `.unauthorized`.
+            ///
+            /// - Throws: An error if `self` is not `.unauthorized`.
+            /// - SeeAlso: `.unauthorized`.
+            public var unauthorized: Components.Responses.Unauthorized {
+                get throws {
+                    switch self {
+                    case let .unauthorized(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "unauthorized",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Forbidden
+            ///
+            /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/alerts/get(listOperatorAlerts)/responses/403`.
+            ///
+            /// HTTP response code: `403 forbidden`.
+            case forbidden(Components.Responses.Forbidden)
+            /// The associated value of the enum case if `self` is `.forbidden`.
+            ///
+            /// - Throws: An error if `self` is not `.forbidden`.
+            /// - SeeAlso: `.forbidden`.
+            public var forbidden: Components.Responses.Forbidden {
+                get throws {
+                    switch self {
+                    case let .forbidden(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "forbidden",
+                            response: self
+                        )
+                    }
+                }
+            }
             /// Undocumented response.
             ///
             /// A response with a code that is not documented in the OpenAPI document.
@@ -4087,52 +6925,49 @@ public enum Operations {
             }
         }
     }
-    /// List operator-visible tenants
+    /// List operator portfolio tenants
     ///
-    /// Returns tenant list for the current operator scope.
+    /// Returns all tenant memberships available to the authenticated portfolio operator key.
     ///
-    /// - Remark: HTTP `GET /tenants`.
-    /// - Remark: Generated from `#/paths//tenants/get(listOperatorTenants)`.
-    public enum ListOperatorTenants {
-        public static let id: Swift.String = "listOperatorTenants"
+    /// - Remark: HTTP `GET /v1/operator/portfolio/tenants`.
+    /// - Remark: Generated from `#/paths//v1/operator/portfolio/tenants/get(listOperatorPortfolioTenants)`.
+    public enum ListOperatorPortfolioTenants {
+        public static let id: Swift.String = "listOperatorPortfolioTenants"
         public struct Input: Sendable, Hashable {
-            /// - Remark: Generated from `#/paths/tenants/GET/header`.
+            /// - Remark: Generated from `#/paths/v1/operator/portfolio/tenants/GET/header`.
             public struct Headers: Sendable, Hashable {
-                /// - Remark: Generated from `#/paths/tenants/GET/header/x-tenant-id`.
-                public var xTenantId: Components.Parameters.TenantHeader
-                /// - Remark: Generated from `#/paths/tenants/GET/header/X-Operator-Key`.
+                /// Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
+                ///
+                /// - Remark: Generated from `#/paths/v1/operator/portfolio/tenants/GET/header/X-Operator-Key`.
                 public var xOperatorKey: Components.Parameters.OperatorKeyHeader
-                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.ListOperatorTenants.AcceptableContentType>]
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.ListOperatorPortfolioTenants.AcceptableContentType>]
                 /// Creates a new `Headers`.
                 ///
                 /// - Parameters:
-                ///   - xTenantId:
-                ///   - xOperatorKey:
+                ///   - xOperatorKey: Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
                 ///   - accept:
                 public init(
-                    xTenantId: Components.Parameters.TenantHeader,
                     xOperatorKey: Components.Parameters.OperatorKeyHeader,
-                    accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.ListOperatorTenants.AcceptableContentType>] = .defaultValues()
+                    accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.ListOperatorPortfolioTenants.AcceptableContentType>] = .defaultValues()
                 ) {
-                    self.xTenantId = xTenantId
                     self.xOperatorKey = xOperatorKey
                     self.accept = accept
                 }
             }
-            public var headers: Operations.ListOperatorTenants.Input.Headers
+            public var headers: Operations.ListOperatorPortfolioTenants.Input.Headers
             /// Creates a new `Input`.
             ///
             /// - Parameters:
             ///   - headers:
-            public init(headers: Operations.ListOperatorTenants.Input.Headers) {
+            public init(headers: Operations.ListOperatorPortfolioTenants.Input.Headers) {
                 self.headers = headers
             }
         }
         @frozen public enum Output: Sendable, Hashable {
             public struct Ok: Sendable, Hashable {
-                /// - Remark: Generated from `#/paths/tenants/GET/responses/200/content`.
+                /// - Remark: Generated from `#/paths/v1/operator/portfolio/tenants/GET/responses/200/content`.
                 @frozen public enum Body: Sendable, Hashable {
-                    /// - Remark: Generated from `#/paths/tenants/GET/responses/200/content/application\/json`.
+                    /// - Remark: Generated from `#/paths/v1/operator/portfolio/tenants/GET/responses/200/content/application\/json`.
                     case json(Components.Schemas.OperatorTenantListResponse)
                     /// The associated value of the enum case if `self` is `.json`.
                     ///
@@ -4148,26 +6983,26 @@ public enum Operations {
                     }
                 }
                 /// Received HTTP response body
-                public var body: Operations.ListOperatorTenants.Output.Ok.Body
+                public var body: Operations.ListOperatorPortfolioTenants.Output.Ok.Body
                 /// Creates a new `Ok`.
                 ///
                 /// - Parameters:
                 ///   - body: Received HTTP response body
-                public init(body: Operations.ListOperatorTenants.Output.Ok.Body) {
+                public init(body: Operations.ListOperatorPortfolioTenants.Output.Ok.Body) {
                     self.body = body
                 }
             }
-            /// Tenant list
+            /// Portfolio tenant list
             ///
-            /// - Remark: Generated from `#/paths//tenants/get(listOperatorTenants)/responses/200`.
+            /// - Remark: Generated from `#/paths//v1/operator/portfolio/tenants/get(listOperatorPortfolioTenants)/responses/200`.
             ///
             /// HTTP response code: `200 ok`.
-            case ok(Operations.ListOperatorTenants.Output.Ok)
+            case ok(Operations.ListOperatorPortfolioTenants.Output.Ok)
             /// The associated value of the enum case if `self` is `.ok`.
             ///
             /// - Throws: An error if `self` is not `.ok`.
             /// - SeeAlso: `.ok`.
-            public var ok: Operations.ListOperatorTenants.Output.Ok {
+            public var ok: Operations.ListOperatorPortfolioTenants.Output.Ok {
                 get throws {
                     switch self {
                     case let .ok(response):
@@ -4211,240 +7046,94 @@ public enum Operations {
             }
         }
     }
-    /// Get operator tenant detail
+    /// List review queue across operator portfolio
     ///
-    /// Returns detail for a tenant scoped by tenant header and path.
+    /// Returns review queue items filtered by state, tenant, and timestamp.
     ///
-    /// - Remark: HTTP `GET /tenants/{tenantId}`.
-    /// - Remark: Generated from `#/paths//tenants/{tenantId}/get(getOperatorTenant)`.
-    public enum GetOperatorTenant {
-        public static let id: Swift.String = "getOperatorTenant"
+    /// - Remark: HTTP `GET /v1/operator/reviews/queue`.
+    /// - Remark: Generated from `#/paths//v1/operator/reviews/queue/get(listOperatorReviewQueue)`.
+    public enum ListOperatorReviewQueue {
+        public static let id: Swift.String = "listOperatorReviewQueue"
         public struct Input: Sendable, Hashable {
-            /// - Remark: Generated from `#/paths/tenants/{tenantId}/GET/path`.
-            public struct Path: Sendable, Hashable {
-                /// - Remark: Generated from `#/paths/tenants/{tenantId}/GET/path/tenantId`.
-                public var tenantId: Components.Parameters.TenantIdPath
-                /// Creates a new `Path`.
-                ///
-                /// - Parameters:
-                ///   - tenantId:
-                public init(tenantId: Components.Parameters.TenantIdPath) {
-                    self.tenantId = tenantId
-                }
-            }
-            public var path: Operations.GetOperatorTenant.Input.Path
-            /// - Remark: Generated from `#/paths/tenants/{tenantId}/GET/header`.
-            public struct Headers: Sendable, Hashable {
-                /// - Remark: Generated from `#/paths/tenants/{tenantId}/GET/header/x-tenant-id`.
-                public var xTenantId: Components.Parameters.TenantHeader
-                /// - Remark: Generated from `#/paths/tenants/{tenantId}/GET/header/X-Operator-Key`.
-                public var xOperatorKey: Components.Parameters.OperatorKeyHeader
-                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.GetOperatorTenant.AcceptableContentType>]
-                /// Creates a new `Headers`.
-                ///
-                /// - Parameters:
-                ///   - xTenantId:
-                ///   - xOperatorKey:
-                ///   - accept:
-                public init(
-                    xTenantId: Components.Parameters.TenantHeader,
-                    xOperatorKey: Components.Parameters.OperatorKeyHeader,
-                    accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.GetOperatorTenant.AcceptableContentType>] = .defaultValues()
-                ) {
-                    self.xTenantId = xTenantId
-                    self.xOperatorKey = xOperatorKey
-                    self.accept = accept
-                }
-            }
-            public var headers: Operations.GetOperatorTenant.Input.Headers
-            /// Creates a new `Input`.
-            ///
-            /// - Parameters:
-            ///   - path:
-            ///   - headers:
-            public init(
-                path: Operations.GetOperatorTenant.Input.Path,
-                headers: Operations.GetOperatorTenant.Input.Headers
-            ) {
-                self.path = path
-                self.headers = headers
-            }
-        }
-        @frozen public enum Output: Sendable, Hashable {
-            public struct Ok: Sendable, Hashable {
-                /// - Remark: Generated from `#/paths/tenants/{tenantId}/GET/responses/200/content`.
-                @frozen public enum Body: Sendable, Hashable {
-                    /// - Remark: Generated from `#/paths/tenants/{tenantId}/GET/responses/200/content/application\/json`.
-                    case json(Components.Schemas.OperatorTenantDetail)
-                    /// The associated value of the enum case if `self` is `.json`.
-                    ///
-                    /// - Throws: An error if `self` is not `.json`.
-                    /// - SeeAlso: `.json`.
-                    public var json: Components.Schemas.OperatorTenantDetail {
-                        get throws {
-                            switch self {
-                            case let .json(body):
-                                return body
-                            }
-                        }
-                    }
-                }
-                /// Received HTTP response body
-                public var body: Operations.GetOperatorTenant.Output.Ok.Body
-                /// Creates a new `Ok`.
-                ///
-                /// - Parameters:
-                ///   - body: Received HTTP response body
-                public init(body: Operations.GetOperatorTenant.Output.Ok.Body) {
-                    self.body = body
-                }
-            }
-            /// Tenant detail
-            ///
-            /// - Remark: Generated from `#/paths//tenants/{tenantId}/get(getOperatorTenant)/responses/200`.
-            ///
-            /// HTTP response code: `200 ok`.
-            case ok(Operations.GetOperatorTenant.Output.Ok)
-            /// The associated value of the enum case if `self` is `.ok`.
-            ///
-            /// - Throws: An error if `self` is not `.ok`.
-            /// - SeeAlso: `.ok`.
-            public var ok: Operations.GetOperatorTenant.Output.Ok {
-                get throws {
-                    switch self {
-                    case let .ok(response):
-                        return response
-                    default:
-                        try throwUnexpectedResponseStatus(
-                            expectedStatus: "ok",
-                            response: self
-                        )
-                    }
-                }
-            }
-            /// Undocumented response.
-            ///
-            /// A response with a code that is not documented in the OpenAPI document.
-            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
-        }
-        @frozen public enum AcceptableContentType: AcceptableProtocol {
-            case json
-            case other(Swift.String)
-            public init?(rawValue: Swift.String) {
-                switch rawValue.lowercased() {
-                case "application/json":
-                    self = .json
-                default:
-                    self = .other(rawValue)
-                }
-            }
-            public var rawValue: Swift.String {
-                switch self {
-                case let .other(string):
-                    return string
-                case .json:
-                    return "application/json"
-                }
-            }
-            public static var allCases: [Self] {
-                [
-                    .json
-                ]
-            }
-        }
-    }
-    /// Get operator tenant metrics time series
-    ///
-    /// Returns tenant metrics series for dashboard ranges.
-    ///
-    /// - Remark: HTTP `GET /tenants/{tenantId}/metrics`.
-    /// - Remark: Generated from `#/paths//tenants/{tenantId}/metrics/get(getOperatorTenantMetrics)`.
-    public enum GetOperatorTenantMetrics {
-        public static let id: Swift.String = "getOperatorTenantMetrics"
-        public struct Input: Sendable, Hashable {
-            /// - Remark: Generated from `#/paths/tenants/{tenantId}/metrics/GET/path`.
-            public struct Path: Sendable, Hashable {
-                /// - Remark: Generated from `#/paths/tenants/{tenantId}/metrics/GET/path/tenantId`.
-                public var tenantId: Components.Parameters.TenantIdPath
-                /// Creates a new `Path`.
-                ///
-                /// - Parameters:
-                ///   - tenantId:
-                public init(tenantId: Components.Parameters.TenantIdPath) {
-                    self.tenantId = tenantId
-                }
-            }
-            public var path: Operations.GetOperatorTenantMetrics.Input.Path
-            /// - Remark: Generated from `#/paths/tenants/{tenantId}/metrics/GET/query`.
+            /// - Remark: Generated from `#/paths/v1/operator/reviews/queue/GET/query`.
             public struct Query: Sendable, Hashable {
-                /// - Remark: Generated from `#/paths/tenants/{tenantId}/metrics/GET/query/range`.
-                @frozen public enum RangePayload: String, Codable, Hashable, Sendable, CaseIterable {
-                    case _30d = "30d"
-                    case _90d = "90d"
-                    case ytd = "ytd"
+                /// - Remark: Generated from `#/paths/v1/operator/reviews/queue/GET/query/state`.
+                @frozen public enum StatePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                    case new = "new"
+                    case classified = "classified"
+                    case awaitingApproval = "awaiting_approval"
+                    case scheduled = "scheduled"
+                    case sent = "sent"
+                    case all = "all"
                 }
-                /// - Remark: Generated from `#/paths/tenants/{tenantId}/metrics/GET/query/range`.
-                public var range: Operations.GetOperatorTenantMetrics.Input.Query.RangePayload
+                /// - Remark: Generated from `#/paths/v1/operator/reviews/queue/GET/query/state`.
+                public var state: Operations.ListOperatorReviewQueue.Input.Query.StatePayload?
+                /// - Remark: Generated from `#/paths/v1/operator/reviews/queue/GET/query/since`.
+                public var since: Foundation.Date?
+                /// - Remark: Generated from `#/paths/v1/operator/reviews/queue/GET/query/tenant_id`.
+                public var tenantId: Swift.String?
                 /// Creates a new `Query`.
                 ///
                 /// - Parameters:
-                ///   - range:
-                public init(range: Operations.GetOperatorTenantMetrics.Input.Query.RangePayload) {
-                    self.range = range
+                ///   - state:
+                ///   - since:
+                ///   - tenantId:
+                public init(
+                    state: Operations.ListOperatorReviewQueue.Input.Query.StatePayload? = nil,
+                    since: Foundation.Date? = nil,
+                    tenantId: Swift.String? = nil
+                ) {
+                    self.state = state
+                    self.since = since
+                    self.tenantId = tenantId
                 }
             }
-            public var query: Operations.GetOperatorTenantMetrics.Input.Query
-            /// - Remark: Generated from `#/paths/tenants/{tenantId}/metrics/GET/header`.
+            public var query: Operations.ListOperatorReviewQueue.Input.Query
+            /// - Remark: Generated from `#/paths/v1/operator/reviews/queue/GET/header`.
             public struct Headers: Sendable, Hashable {
-                /// - Remark: Generated from `#/paths/tenants/{tenantId}/metrics/GET/header/x-tenant-id`.
-                public var xTenantId: Components.Parameters.TenantHeader
-                /// - Remark: Generated from `#/paths/tenants/{tenantId}/metrics/GET/header/X-Operator-Key`.
+                /// Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
+                ///
+                /// - Remark: Generated from `#/paths/v1/operator/reviews/queue/GET/header/X-Operator-Key`.
                 public var xOperatorKey: Components.Parameters.OperatorKeyHeader
-                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.GetOperatorTenantMetrics.AcceptableContentType>]
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.ListOperatorReviewQueue.AcceptableContentType>]
                 /// Creates a new `Headers`.
                 ///
                 /// - Parameters:
-                ///   - xTenantId:
-                ///   - xOperatorKey:
+                ///   - xOperatorKey: Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
                 ///   - accept:
                 public init(
-                    xTenantId: Components.Parameters.TenantHeader,
                     xOperatorKey: Components.Parameters.OperatorKeyHeader,
-                    accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.GetOperatorTenantMetrics.AcceptableContentType>] = .defaultValues()
+                    accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.ListOperatorReviewQueue.AcceptableContentType>] = .defaultValues()
                 ) {
-                    self.xTenantId = xTenantId
                     self.xOperatorKey = xOperatorKey
                     self.accept = accept
                 }
             }
-            public var headers: Operations.GetOperatorTenantMetrics.Input.Headers
+            public var headers: Operations.ListOperatorReviewQueue.Input.Headers
             /// Creates a new `Input`.
             ///
             /// - Parameters:
-            ///   - path:
             ///   - query:
             ///   - headers:
             public init(
-                path: Operations.GetOperatorTenantMetrics.Input.Path,
-                query: Operations.GetOperatorTenantMetrics.Input.Query,
-                headers: Operations.GetOperatorTenantMetrics.Input.Headers
+                query: Operations.ListOperatorReviewQueue.Input.Query = .init(),
+                headers: Operations.ListOperatorReviewQueue.Input.Headers
             ) {
-                self.path = path
                 self.query = query
                 self.headers = headers
             }
         }
         @frozen public enum Output: Sendable, Hashable {
             public struct Ok: Sendable, Hashable {
-                /// - Remark: Generated from `#/paths/tenants/{tenantId}/metrics/GET/responses/200/content`.
+                /// - Remark: Generated from `#/paths/v1/operator/reviews/queue/GET/responses/200/content`.
                 @frozen public enum Body: Sendable, Hashable {
-                    /// - Remark: Generated from `#/paths/tenants/{tenantId}/metrics/GET/responses/200/content/application\/json`.
-                    case json(Components.Schemas.OperatorTenantMetricsResponse)
+                    /// - Remark: Generated from `#/paths/v1/operator/reviews/queue/GET/responses/200/content/application\/json`.
+                    case json(Components.Schemas.OperatorReviewQueueResponse)
                     /// The associated value of the enum case if `self` is `.json`.
                     ///
                     /// - Throws: An error if `self` is not `.json`.
                     /// - SeeAlso: `.json`.
-                    public var json: Components.Schemas.OperatorTenantMetricsResponse {
+                    public var json: Components.Schemas.OperatorReviewQueueResponse {
                         get throws {
                             switch self {
                             case let .json(body):
@@ -4454,26 +7143,26 @@ public enum Operations {
                     }
                 }
                 /// Received HTTP response body
-                public var body: Operations.GetOperatorTenantMetrics.Output.Ok.Body
+                public var body: Operations.ListOperatorReviewQueue.Output.Ok.Body
                 /// Creates a new `Ok`.
                 ///
                 /// - Parameters:
                 ///   - body: Received HTTP response body
-                public init(body: Operations.GetOperatorTenantMetrics.Output.Ok.Body) {
+                public init(body: Operations.ListOperatorReviewQueue.Output.Ok.Body) {
                     self.body = body
                 }
             }
-            /// Tenant metrics
+            /// Review queue list
             ///
-            /// - Remark: Generated from `#/paths//tenants/{tenantId}/metrics/get(getOperatorTenantMetrics)/responses/200`.
+            /// - Remark: Generated from `#/paths//v1/operator/reviews/queue/get(listOperatorReviewQueue)/responses/200`.
             ///
             /// HTTP response code: `200 ok`.
-            case ok(Operations.GetOperatorTenantMetrics.Output.Ok)
+            case ok(Operations.ListOperatorReviewQueue.Output.Ok)
             /// The associated value of the enum case if `self` is `.ok`.
             ///
             /// - Throws: An error if `self` is not `.ok`.
             /// - SeeAlso: `.ok`.
-            public var ok: Operations.GetOperatorTenantMetrics.Output.Ok {
+            public var ok: Operations.ListOperatorReviewQueue.Output.Ok {
                 get throws {
                     switch self {
                     case let .ok(response):
@@ -4517,55 +7206,87 @@ public enum Operations {
             }
         }
     }
-    /// Placeholder login endpoint
+    /// List approval items across operator portfolio
     ///
-    /// - Remark: HTTP `POST /v1/auth/login`.
-    /// - Remark: Generated from `#/paths//v1/auth/login/post(authLogin)`.
-    public enum AuthLogin {
-        public static let id: Swift.String = "authLogin"
+    /// Returns approval cards for awaiting_approval, approved, or rejected state.
+    ///
+    /// - Remark: HTTP `GET /v1/operator/approvals`.
+    /// - Remark: Generated from `#/paths//v1/operator/approvals/get(listOperatorApprovals)`.
+    public enum ListOperatorApprovals {
+        public static let id: Swift.String = "listOperatorApprovals"
         public struct Input: Sendable, Hashable {
-            /// - Remark: Generated from `#/paths/v1/auth/login/POST/header`.
+            /// - Remark: Generated from `#/paths/v1/operator/approvals/GET/query`.
+            public struct Query: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/operator/approvals/GET/query/state`.
+                @frozen public enum StatePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                    case awaitingApproval = "awaiting_approval"
+                    case approved = "approved"
+                    case rejected = "rejected"
+                    case all = "all"
+                }
+                /// - Remark: Generated from `#/paths/v1/operator/approvals/GET/query/state`.
+                public var state: Operations.ListOperatorApprovals.Input.Query.StatePayload?
+                /// - Remark: Generated from `#/paths/v1/operator/approvals/GET/query/tenant_id`.
+                public var tenantId: Swift.String?
+                /// Creates a new `Query`.
+                ///
+                /// - Parameters:
+                ///   - state:
+                ///   - tenantId:
+                public init(
+                    state: Operations.ListOperatorApprovals.Input.Query.StatePayload? = nil,
+                    tenantId: Swift.String? = nil
+                ) {
+                    self.state = state
+                    self.tenantId = tenantId
+                }
+            }
+            public var query: Operations.ListOperatorApprovals.Input.Query
+            /// - Remark: Generated from `#/paths/v1/operator/approvals/GET/header`.
             public struct Headers: Sendable, Hashable {
-                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.AuthLogin.AcceptableContentType>]
+                /// Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
+                ///
+                /// - Remark: Generated from `#/paths/v1/operator/approvals/GET/header/X-Operator-Key`.
+                public var xOperatorKey: Components.Parameters.OperatorKeyHeader
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.ListOperatorApprovals.AcceptableContentType>]
                 /// Creates a new `Headers`.
                 ///
                 /// - Parameters:
+                ///   - xOperatorKey: Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
                 ///   - accept:
-                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.AuthLogin.AcceptableContentType>] = .defaultValues()) {
+                public init(
+                    xOperatorKey: Components.Parameters.OperatorKeyHeader,
+                    accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.ListOperatorApprovals.AcceptableContentType>] = .defaultValues()
+                ) {
+                    self.xOperatorKey = xOperatorKey
                     self.accept = accept
                 }
             }
-            public var headers: Operations.AuthLogin.Input.Headers
-            /// - Remark: Generated from `#/paths/v1/auth/login/POST/requestBody`.
-            @frozen public enum Body: Sendable, Hashable {
-                /// - Remark: Generated from `#/paths/v1/auth/login/POST/requestBody/content/application\/json`.
-                case json(Components.Schemas.LoginRequest)
-            }
-            public var body: Operations.AuthLogin.Input.Body
+            public var headers: Operations.ListOperatorApprovals.Input.Headers
             /// Creates a new `Input`.
             ///
             /// - Parameters:
+            ///   - query:
             ///   - headers:
-            ///   - body:
             public init(
-                headers: Operations.AuthLogin.Input.Headers = .init(),
-                body: Operations.AuthLogin.Input.Body
+                query: Operations.ListOperatorApprovals.Input.Query = .init(),
+                headers: Operations.ListOperatorApprovals.Input.Headers
             ) {
+                self.query = query
                 self.headers = headers
-                self.body = body
             }
         }
         @frozen public enum Output: Sendable, Hashable {
-            public struct NotImplemented: Sendable, Hashable {
-                /// - Remark: Generated from `#/paths/v1/auth/login/POST/responses/501/content`.
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/operator/approvals/GET/responses/200/content`.
                 @frozen public enum Body: Sendable, Hashable {
-                    /// - Remark: Generated from `#/paths/v1/auth/login/POST/responses/501/content/application\/json`.
-                    case json(Components.Schemas.NotImplementedError)
+                    /// - Remark: Generated from `#/paths/v1/operator/approvals/GET/responses/200/content/application\/json`.
+                    case json(Components.Schemas.OperatorApprovalListResponse)
                     /// The associated value of the enum case if `self` is `.json`.
                     ///
                     /// - Throws: An error if `self` is not `.json`.
                     /// - SeeAlso: `.json`.
-                    public var json: Components.Schemas.NotImplementedError {
+                    public var json: Components.Schemas.OperatorApprovalListResponse {
                         get throws {
                             switch self {
                             case let .json(body):
@@ -4575,33 +7296,33 @@ public enum Operations {
                     }
                 }
                 /// Received HTTP response body
-                public var body: Operations.AuthLogin.Output.NotImplemented.Body
-                /// Creates a new `NotImplemented`.
+                public var body: Operations.ListOperatorApprovals.Output.Ok.Body
+                /// Creates a new `Ok`.
                 ///
                 /// - Parameters:
                 ///   - body: Received HTTP response body
-                public init(body: Operations.AuthLogin.Output.NotImplemented.Body) {
+                public init(body: Operations.ListOperatorApprovals.Output.Ok.Body) {
                     self.body = body
                 }
             }
-            /// Not implemented
+            /// Approval list
             ///
-            /// - Remark: Generated from `#/paths//v1/auth/login/post(authLogin)/responses/501`.
+            /// - Remark: Generated from `#/paths//v1/operator/approvals/get(listOperatorApprovals)/responses/200`.
             ///
-            /// HTTP response code: `501 notImplemented`.
-            case notImplemented(Operations.AuthLogin.Output.NotImplemented)
-            /// The associated value of the enum case if `self` is `.notImplemented`.
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.ListOperatorApprovals.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
             ///
-            /// - Throws: An error if `self` is not `.notImplemented`.
-            /// - SeeAlso: `.notImplemented`.
-            public var notImplemented: Operations.AuthLogin.Output.NotImplemented {
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.ListOperatorApprovals.Output.Ok {
                 get throws {
                     switch self {
-                    case let .notImplemented(response):
+                    case let .ok(response):
                         return response
                     default:
                         try throwUnexpectedResponseStatus(
-                            expectedStatus: "notImplemented",
+                            expectedStatus: "ok",
                             response: self
                         )
                     }
@@ -4638,51 +7359,73 @@ public enum Operations {
             }
         }
     }
-    /// Placeholder tenant listing endpoint
+    /// Get approval item detail
     ///
-    /// - Remark: HTTP `GET /v1/tenants`.
-    /// - Remark: Generated from `#/paths//v1/tenants/get(listTenants)`.
-    public enum ListTenants {
-        public static let id: Swift.String = "listTenants"
+    /// Returns full draft/edit context and run counts for one approval item.
+    ///
+    /// - Remark: HTTP `GET /v1/operator/approvals/{approvalId}`.
+    /// - Remark: Generated from `#/paths//v1/operator/approvals/{approvalId}/get(getOperatorApproval)`.
+    public enum GetOperatorApproval {
+        public static let id: Swift.String = "getOperatorApproval"
         public struct Input: Sendable, Hashable {
-            /// - Remark: Generated from `#/paths/v1/tenants/GET/header`.
+            /// - Remark: Generated from `#/paths/v1/operator/approvals/{approvalId}/GET/path`.
+            public struct Path: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/operator/approvals/{approvalId}/GET/path/approvalId`.
+                public var approvalId: Swift.String
+                /// Creates a new `Path`.
+                ///
+                /// - Parameters:
+                ///   - approvalId:
+                public init(approvalId: Swift.String) {
+                    self.approvalId = approvalId
+                }
+            }
+            public var path: Operations.GetOperatorApproval.Input.Path
+            /// - Remark: Generated from `#/paths/v1/operator/approvals/{approvalId}/GET/header`.
             public struct Headers: Sendable, Hashable {
-                /// - Remark: Generated from `#/paths/v1/tenants/GET/header/x-tenant-id`.
-                public var xTenantId: Components.Parameters.TenantHeader
-                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.ListTenants.AcceptableContentType>]
+                /// Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
+                ///
+                /// - Remark: Generated from `#/paths/v1/operator/approvals/{approvalId}/GET/header/X-Operator-Key`.
+                public var xOperatorKey: Components.Parameters.OperatorKeyHeader
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.GetOperatorApproval.AcceptableContentType>]
                 /// Creates a new `Headers`.
                 ///
                 /// - Parameters:
-                ///   - xTenantId:
+                ///   - xOperatorKey: Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
                 ///   - accept:
                 public init(
-                    xTenantId: Components.Parameters.TenantHeader,
-                    accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.ListTenants.AcceptableContentType>] = .defaultValues()
+                    xOperatorKey: Components.Parameters.OperatorKeyHeader,
+                    accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.GetOperatorApproval.AcceptableContentType>] = .defaultValues()
                 ) {
-                    self.xTenantId = xTenantId
+                    self.xOperatorKey = xOperatorKey
                     self.accept = accept
                 }
             }
-            public var headers: Operations.ListTenants.Input.Headers
+            public var headers: Operations.GetOperatorApproval.Input.Headers
             /// Creates a new `Input`.
             ///
             /// - Parameters:
+            ///   - path:
             ///   - headers:
-            public init(headers: Operations.ListTenants.Input.Headers) {
+            public init(
+                path: Operations.GetOperatorApproval.Input.Path,
+                headers: Operations.GetOperatorApproval.Input.Headers
+            ) {
+                self.path = path
                 self.headers = headers
             }
         }
         @frozen public enum Output: Sendable, Hashable {
-            public struct NotImplemented: Sendable, Hashable {
-                /// - Remark: Generated from `#/paths/v1/tenants/GET/responses/501/content`.
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/operator/approvals/{approvalId}/GET/responses/200/content`.
                 @frozen public enum Body: Sendable, Hashable {
-                    /// - Remark: Generated from `#/paths/v1/tenants/GET/responses/501/content/application\/json`.
-                    case json(Components.Schemas.NotImplementedError)
+                    /// - Remark: Generated from `#/paths/v1/operator/approvals/{approvalId}/GET/responses/200/content/application\/json`.
+                    case json(Components.Schemas.OperatorApprovalDetail)
                     /// The associated value of the enum case if `self` is `.json`.
                     ///
                     /// - Throws: An error if `self` is not `.json`.
                     /// - SeeAlso: `.json`.
-                    public var json: Components.Schemas.NotImplementedError {
+                    public var json: Components.Schemas.OperatorApprovalDetail {
                         get throws {
                             switch self {
                             case let .json(body):
@@ -4692,33 +7435,646 @@ public enum Operations {
                     }
                 }
                 /// Received HTTP response body
-                public var body: Operations.ListTenants.Output.NotImplemented.Body
-                /// Creates a new `NotImplemented`.
+                public var body: Operations.GetOperatorApproval.Output.Ok.Body
+                /// Creates a new `Ok`.
                 ///
                 /// - Parameters:
                 ///   - body: Received HTTP response body
-                public init(body: Operations.ListTenants.Output.NotImplemented.Body) {
+                public init(body: Operations.GetOperatorApproval.Output.Ok.Body) {
                     self.body = body
                 }
             }
-            /// Not implemented
+            /// Approval detail
             ///
-            /// - Remark: Generated from `#/paths//v1/tenants/get(listTenants)/responses/501`.
+            /// - Remark: Generated from `#/paths//v1/operator/approvals/{approvalId}/get(getOperatorApproval)/responses/200`.
             ///
-            /// HTTP response code: `501 notImplemented`.
-            case notImplemented(Operations.ListTenants.Output.NotImplemented)
-            /// The associated value of the enum case if `self` is `.notImplemented`.
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.GetOperatorApproval.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
             ///
-            /// - Throws: An error if `self` is not `.notImplemented`.
-            /// - SeeAlso: `.notImplemented`.
-            public var notImplemented: Operations.ListTenants.Output.NotImplemented {
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.GetOperatorApproval.Output.Ok {
                 get throws {
                     switch self {
-                    case let .notImplemented(response):
+                    case let .ok(response):
                         return response
                     default:
                         try throwUnexpectedResponseStatus(
-                            expectedStatus: "notImplemented",
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// Patch draft fields for an approval item
+    ///
+    /// Applies operator edits to subject, body, segment, and send window before approval.
+    ///
+    /// - Remark: HTTP `PATCH /v1/operator/approvals/{approvalId}/draft`.
+    /// - Remark: Generated from `#/paths//v1/operator/approvals/{approvalId}/draft/patch(patchOperatorApprovalDraft)`.
+    public enum PatchOperatorApprovalDraft {
+        public static let id: Swift.String = "patchOperatorApprovalDraft"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/v1/operator/approvals/{approvalId}/draft/PATCH/path`.
+            public struct Path: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/operator/approvals/{approvalId}/draft/PATCH/path/approvalId`.
+                public var approvalId: Swift.String
+                /// Creates a new `Path`.
+                ///
+                /// - Parameters:
+                ///   - approvalId:
+                public init(approvalId: Swift.String) {
+                    self.approvalId = approvalId
+                }
+            }
+            public var path: Operations.PatchOperatorApprovalDraft.Input.Path
+            /// - Remark: Generated from `#/paths/v1/operator/approvals/{approvalId}/draft/PATCH/header`.
+            public struct Headers: Sendable, Hashable {
+                /// Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
+                ///
+                /// - Remark: Generated from `#/paths/v1/operator/approvals/{approvalId}/draft/PATCH/header/X-Operator-Key`.
+                public var xOperatorKey: Components.Parameters.OperatorKeyHeader
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.PatchOperatorApprovalDraft.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - xOperatorKey: Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
+                ///   - accept:
+                public init(
+                    xOperatorKey: Components.Parameters.OperatorKeyHeader,
+                    accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.PatchOperatorApprovalDraft.AcceptableContentType>] = .defaultValues()
+                ) {
+                    self.xOperatorKey = xOperatorKey
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.PatchOperatorApprovalDraft.Input.Headers
+            /// - Remark: Generated from `#/paths/v1/operator/approvals/{approvalId}/draft/PATCH/requestBody`.
+            @frozen public enum Body: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/operator/approvals/{approvalId}/draft/PATCH/requestBody/content/application\/json`.
+                case json(Components.Schemas.OperatorApprovalDraftPatchRequest)
+            }
+            public var body: Operations.PatchOperatorApprovalDraft.Input.Body
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - path:
+            ///   - headers:
+            ///   - body:
+            public init(
+                path: Operations.PatchOperatorApprovalDraft.Input.Path,
+                headers: Operations.PatchOperatorApprovalDraft.Input.Headers,
+                body: Operations.PatchOperatorApprovalDraft.Input.Body
+            ) {
+                self.path = path
+                self.headers = headers
+                self.body = body
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/operator/approvals/{approvalId}/draft/PATCH/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/v1/operator/approvals/{approvalId}/draft/PATCH/responses/200/content/application\/json`.
+                    case json(Components.Schemas.OperatorApprovalDetail)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.OperatorApprovalDetail {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.PatchOperatorApprovalDraft.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.PatchOperatorApprovalDraft.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// Updated approval detail
+            ///
+            /// - Remark: Generated from `#/paths//v1/operator/approvals/{approvalId}/draft/patch(patchOperatorApprovalDraft)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.PatchOperatorApprovalDraft.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.PatchOperatorApprovalDraft.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// Approve a reactivation run
+    ///
+    /// Atomically approves a run and transitions paused messages into queued state.
+    ///
+    /// - Remark: HTTP `POST /v1/operator/approvals/{approvalId}/approve`.
+    /// - Remark: Generated from `#/paths//v1/operator/approvals/{approvalId}/approve/post(approveOperatorApproval)`.
+    public enum ApproveOperatorApproval {
+        public static let id: Swift.String = "approveOperatorApproval"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/v1/operator/approvals/{approvalId}/approve/POST/path`.
+            public struct Path: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/operator/approvals/{approvalId}/approve/POST/path/approvalId`.
+                public var approvalId: Swift.String
+                /// Creates a new `Path`.
+                ///
+                /// - Parameters:
+                ///   - approvalId:
+                public init(approvalId: Swift.String) {
+                    self.approvalId = approvalId
+                }
+            }
+            public var path: Operations.ApproveOperatorApproval.Input.Path
+            /// - Remark: Generated from `#/paths/v1/operator/approvals/{approvalId}/approve/POST/header`.
+            public struct Headers: Sendable, Hashable {
+                /// Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
+                ///
+                /// - Remark: Generated from `#/paths/v1/operator/approvals/{approvalId}/approve/POST/header/X-Operator-Key`.
+                public var xOperatorKey: Components.Parameters.OperatorKeyHeader
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.ApproveOperatorApproval.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - xOperatorKey: Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
+                ///   - accept:
+                public init(
+                    xOperatorKey: Components.Parameters.OperatorKeyHeader,
+                    accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.ApproveOperatorApproval.AcceptableContentType>] = .defaultValues()
+                ) {
+                    self.xOperatorKey = xOperatorKey
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.ApproveOperatorApproval.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - path:
+            ///   - headers:
+            public init(
+                path: Operations.ApproveOperatorApproval.Input.Path,
+                headers: Operations.ApproveOperatorApproval.Input.Headers
+            ) {
+                self.path = path
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/operator/approvals/{approvalId}/approve/POST/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/v1/operator/approvals/{approvalId}/approve/POST/responses/200/content/application\/json`.
+                    case json(Components.Schemas.OperatorApprovalMutationResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.OperatorApprovalMutationResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.ApproveOperatorApproval.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.ApproveOperatorApproval.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// Approval success response
+            ///
+            /// - Remark: Generated from `#/paths//v1/operator/approvals/{approvalId}/approve/post(approveOperatorApproval)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.ApproveOperatorApproval.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.ApproveOperatorApproval.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// Reject a reactivation run
+    ///
+    /// Rejects an approval item and keeps the run paused/closed with audit metadata.
+    ///
+    /// - Remark: HTTP `POST /v1/operator/approvals/{approvalId}/reject`.
+    /// - Remark: Generated from `#/paths//v1/operator/approvals/{approvalId}/reject/post(rejectOperatorApproval)`.
+    public enum RejectOperatorApproval {
+        public static let id: Swift.String = "rejectOperatorApproval"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/v1/operator/approvals/{approvalId}/reject/POST/path`.
+            public struct Path: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/operator/approvals/{approvalId}/reject/POST/path/approvalId`.
+                public var approvalId: Swift.String
+                /// Creates a new `Path`.
+                ///
+                /// - Parameters:
+                ///   - approvalId:
+                public init(approvalId: Swift.String) {
+                    self.approvalId = approvalId
+                }
+            }
+            public var path: Operations.RejectOperatorApproval.Input.Path
+            /// - Remark: Generated from `#/paths/v1/operator/approvals/{approvalId}/reject/POST/header`.
+            public struct Headers: Sendable, Hashable {
+                /// Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
+                ///
+                /// - Remark: Generated from `#/paths/v1/operator/approvals/{approvalId}/reject/POST/header/X-Operator-Key`.
+                public var xOperatorKey: Components.Parameters.OperatorKeyHeader
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.RejectOperatorApproval.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - xOperatorKey: Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
+                ///   - accept:
+                public init(
+                    xOperatorKey: Components.Parameters.OperatorKeyHeader,
+                    accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.RejectOperatorApproval.AcceptableContentType>] = .defaultValues()
+                ) {
+                    self.xOperatorKey = xOperatorKey
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.RejectOperatorApproval.Input.Headers
+            /// - Remark: Generated from `#/paths/v1/operator/approvals/{approvalId}/reject/POST/requestBody`.
+            @frozen public enum Body: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/operator/approvals/{approvalId}/reject/POST/requestBody/json`.
+                public struct JsonPayload: Codable, Hashable, Sendable {
+                    /// - Remark: Generated from `#/paths/v1/operator/approvals/{approvalId}/reject/POST/requestBody/json/reason`.
+                    public var reason: Swift.String?
+                    /// Creates a new `JsonPayload`.
+                    ///
+                    /// - Parameters:
+                    ///   - reason:
+                    public init(reason: Swift.String? = nil) {
+                        self.reason = reason
+                    }
+                    public enum CodingKeys: String, CodingKey {
+                        case reason
+                    }
+                }
+                /// - Remark: Generated from `#/paths/v1/operator/approvals/{approvalId}/reject/POST/requestBody/content/application\/json`.
+                case json(Operations.RejectOperatorApproval.Input.Body.JsonPayload)
+            }
+            public var body: Operations.RejectOperatorApproval.Input.Body?
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - path:
+            ///   - headers:
+            ///   - body:
+            public init(
+                path: Operations.RejectOperatorApproval.Input.Path,
+                headers: Operations.RejectOperatorApproval.Input.Headers,
+                body: Operations.RejectOperatorApproval.Input.Body? = nil
+            ) {
+                self.path = path
+                self.headers = headers
+                self.body = body
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/operator/approvals/{approvalId}/reject/POST/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/v1/operator/approvals/{approvalId}/reject/POST/responses/200/content/application\/json`.
+                    case json(Components.Schemas.OperatorApprovalMutationResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.OperatorApprovalMutationResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.RejectOperatorApproval.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.RejectOperatorApproval.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// Rejection success response
+            ///
+            /// - Remark: Generated from `#/paths//v1/operator/approvals/{approvalId}/reject/post(rejectOperatorApproval)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.RejectOperatorApproval.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.RejectOperatorApproval.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// Manual reactivation run retrigger
+    ///
+    /// Request a manual retrigger for review-driven reactivation workflow.
+    ///
+    /// - Remark: HTTP `POST /v1/operator/reviews/{reviewId}/reactivation-runs`.
+    /// - Remark: Generated from `#/paths//v1/operator/reviews/{reviewId}/reactivation-runs/post(retriggerReviewReactivationRun)`.
+    public enum RetriggerReviewReactivationRun {
+        public static let id: Swift.String = "retriggerReviewReactivationRun"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/v1/operator/reviews/{reviewId}/reactivation-runs/POST/path`.
+            public struct Path: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/operator/reviews/{reviewId}/reactivation-runs/POST/path/reviewId`.
+                public var reviewId: Swift.String
+                /// Creates a new `Path`.
+                ///
+                /// - Parameters:
+                ///   - reviewId:
+                public init(reviewId: Swift.String) {
+                    self.reviewId = reviewId
+                }
+            }
+            public var path: Operations.RetriggerReviewReactivationRun.Input.Path
+            /// - Remark: Generated from `#/paths/v1/operator/reviews/{reviewId}/reactivation-runs/POST/header`.
+            public struct Headers: Sendable, Hashable {
+                /// Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
+                ///
+                /// - Remark: Generated from `#/paths/v1/operator/reviews/{reviewId}/reactivation-runs/POST/header/X-Operator-Key`.
+                public var xOperatorKey: Components.Parameters.OperatorKeyHeader
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.RetriggerReviewReactivationRun.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - xOperatorKey: Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
+                ///   - accept:
+                public init(
+                    xOperatorKey: Components.Parameters.OperatorKeyHeader,
+                    accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.RetriggerReviewReactivationRun.AcceptableContentType>] = .defaultValues()
+                ) {
+                    self.xOperatorKey = xOperatorKey
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.RetriggerReviewReactivationRun.Input.Headers
+            /// - Remark: Generated from `#/paths/v1/operator/reviews/{reviewId}/reactivation-runs/POST/requestBody`.
+            @frozen public enum Body: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/operator/reviews/{reviewId}/reactivation-runs/POST/requestBody/json`.
+                public struct JsonPayload: Codable, Hashable, Sendable {
+                    /// - Remark: Generated from `#/paths/v1/operator/reviews/{reviewId}/reactivation-runs/POST/requestBody/json/tenant_id`.
+                    public var tenantId: Swift.String?
+                    /// Creates a new `JsonPayload`.
+                    ///
+                    /// - Parameters:
+                    ///   - tenantId:
+                    public init(tenantId: Swift.String? = nil) {
+                        self.tenantId = tenantId
+                    }
+                    public enum CodingKeys: String, CodingKey {
+                        case tenantId = "tenant_id"
+                    }
+                }
+                /// - Remark: Generated from `#/paths/v1/operator/reviews/{reviewId}/reactivation-runs/POST/requestBody/content/application\/json`.
+                case json(Operations.RetriggerReviewReactivationRun.Input.Body.JsonPayload)
+            }
+            public var body: Operations.RetriggerReviewReactivationRun.Input.Body?
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - path:
+            ///   - headers:
+            ///   - body:
+            public init(
+                path: Operations.RetriggerReviewReactivationRun.Input.Path,
+                headers: Operations.RetriggerReviewReactivationRun.Input.Headers,
+                body: Operations.RetriggerReviewReactivationRun.Input.Body? = nil
+            ) {
+                self.path = path
+                self.headers = headers
+                self.body = body
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/operator/reviews/{reviewId}/reactivation-runs/POST/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/v1/operator/reviews/{reviewId}/reactivation-runs/POST/responses/200/content/application\/json`.
+                    case json(Components.Schemas.OperatorRetriggerResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.OperatorRetriggerResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.RetriggerReviewReactivationRun.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.RetriggerReviewReactivationRun.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// Retrigger response
+            ///
+            /// - Remark: Generated from `#/paths//v1/operator/reviews/{reviewId}/reactivation-runs/post(retriggerReviewReactivationRun)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.RetriggerReviewReactivationRun.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.RetriggerReviewReactivationRun.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
                             response: self
                         )
                     }
@@ -4777,19 +8133,28 @@ public enum Operations {
             public var path: Operations.CreateCustomerImport.Input.Path
             /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/customers/imports/POST/header`.
             public struct Headers: Sendable, Hashable {
+                /// Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///
                 /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/customers/imports/POST/header/x-tenant-id`.
                 public var xTenantId: Components.Parameters.TenantHeader
+                /// Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
+                ///
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/customers/imports/POST/header/X-Operator-Key`.
+                public var xOperatorKey: Components.Parameters.OperatorKeyHeader
                 public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.CreateCustomerImport.AcceptableContentType>]
                 /// Creates a new `Headers`.
                 ///
                 /// - Parameters:
-                ///   - xTenantId:
+                ///   - xTenantId: Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///   - xOperatorKey: Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
                 ///   - accept:
                 public init(
                     xTenantId: Components.Parameters.TenantHeader,
+                    xOperatorKey: Components.Parameters.OperatorKeyHeader,
                     accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.CreateCustomerImport.AcceptableContentType>] = .defaultValues()
                 ) {
                     self.xTenantId = xTenantId
+                    self.xOperatorKey = xOperatorKey
                     self.accept = accept
                 }
             }
@@ -4937,13 +8302,15 @@ public enum Operations {
             public var path: Operations.GetCustomerImportStatus.Input.Path
             /// - Remark: Generated from `#/paths/v1/imports/{importId}/GET/header`.
             public struct Headers: Sendable, Hashable {
+                /// Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///
                 /// - Remark: Generated from `#/paths/v1/imports/{importId}/GET/header/x-tenant-id`.
                 public var xTenantId: Components.Parameters.TenantHeader
                 public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.GetCustomerImportStatus.AcceptableContentType>]
                 /// Creates a new `Headers`.
                 ///
                 /// - Parameters:
-                ///   - xTenantId:
+                ///   - xTenantId: Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
                 ///   - accept:
                 public init(
                     xTenantId: Components.Parameters.TenantHeader,
@@ -5097,19 +8464,28 @@ public enum Operations {
             public var query: Operations.ListCustomers.Input.Query
             /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/customers/GET/header`.
             public struct Headers: Sendable, Hashable {
+                /// Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///
                 /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/customers/GET/header/x-tenant-id`.
                 public var xTenantId: Components.Parameters.TenantHeader
+                /// Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
+                ///
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/customers/GET/header/X-Operator-Key`.
+                public var xOperatorKey: Components.Parameters.OperatorKeyHeader
                 public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.ListCustomers.AcceptableContentType>]
                 /// Creates a new `Headers`.
                 ///
                 /// - Parameters:
-                ///   - xTenantId:
+                ///   - xTenantId: Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///   - xOperatorKey: Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
                 ///   - accept:
                 public init(
                     xTenantId: Components.Parameters.TenantHeader,
+                    xOperatorKey: Components.Parameters.OperatorKeyHeader,
                     accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.ListCustomers.AcceptableContentType>] = .defaultValues()
                 ) {
                     self.xTenantId = xTenantId
+                    self.xOperatorKey = xOperatorKey
                     self.accept = accept
                 }
             }
@@ -5213,6 +8589,150 @@ public enum Operations {
             }
         }
     }
+    /// List tenant customer segment counts
+    ///
+    /// - Remark: HTTP `GET /v1/tenants/{tenantId}/customers/segments`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/customers/segments/get(listCustomerSegments)`.
+    public enum ListCustomerSegments {
+        public static let id: Swift.String = "listCustomerSegments"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/customers/segments/GET/path`.
+            public struct Path: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/customers/segments/GET/path/tenantId`.
+                public var tenantId: Components.Parameters.TenantIdPath
+                /// Creates a new `Path`.
+                ///
+                /// - Parameters:
+                ///   - tenantId:
+                public init(tenantId: Components.Parameters.TenantIdPath) {
+                    self.tenantId = tenantId
+                }
+            }
+            public var path: Operations.ListCustomerSegments.Input.Path
+            /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/customers/segments/GET/header`.
+            public struct Headers: Sendable, Hashable {
+                /// Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/customers/segments/GET/header/x-tenant-id`.
+                public var xTenantId: Components.Parameters.TenantHeader
+                /// Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
+                ///
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/customers/segments/GET/header/X-Operator-Key`.
+                public var xOperatorKey: Components.Parameters.OperatorKeyHeader
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.ListCustomerSegments.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - xTenantId: Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///   - xOperatorKey: Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
+                ///   - accept:
+                public init(
+                    xTenantId: Components.Parameters.TenantHeader,
+                    xOperatorKey: Components.Parameters.OperatorKeyHeader,
+                    accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.ListCustomerSegments.AcceptableContentType>] = .defaultValues()
+                ) {
+                    self.xTenantId = xTenantId
+                    self.xOperatorKey = xOperatorKey
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.ListCustomerSegments.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - path:
+            ///   - headers:
+            public init(
+                path: Operations.ListCustomerSegments.Input.Path,
+                headers: Operations.ListCustomerSegments.Input.Headers
+            ) {
+                self.path = path
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/customers/segments/GET/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/customers/segments/GET/responses/200/content/application\/json`.
+                    case json(Components.Schemas.CustomerSegmentsResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.CustomerSegmentsResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.ListCustomerSegments.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.ListCustomerSegments.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// Customer segment summary
+            ///
+            /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/customers/segments/get(listCustomerSegments)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.ListCustomerSegments.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.ListCustomerSegments.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
     /// Upload suppression CSV import
     ///
     /// - Remark: HTTP `POST /v1/tenants/{tenantId}/suppressions/imports`.
@@ -5235,19 +8755,28 @@ public enum Operations {
             public var path: Operations.CreateSuppressionImport.Input.Path
             /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/suppressions/imports/POST/header`.
             public struct Headers: Sendable, Hashable {
+                /// Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///
                 /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/suppressions/imports/POST/header/x-tenant-id`.
                 public var xTenantId: Components.Parameters.TenantHeader
+                /// Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
+                ///
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/suppressions/imports/POST/header/X-Operator-Key`.
+                public var xOperatorKey: Components.Parameters.OperatorKeyHeader
                 public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.CreateSuppressionImport.AcceptableContentType>]
                 /// Creates a new `Headers`.
                 ///
                 /// - Parameters:
-                ///   - xTenantId:
+                ///   - xTenantId: Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///   - xOperatorKey: Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
                 ///   - accept:
                 public init(
                     xTenantId: Components.Parameters.TenantHeader,
+                    xOperatorKey: Components.Parameters.OperatorKeyHeader,
                     accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.CreateSuppressionImport.AcceptableContentType>] = .defaultValues()
                 ) {
                     self.xTenantId = xTenantId
+                    self.xOperatorKey = xOperatorKey
                     self.accept = accept
                 }
             }
@@ -5395,13 +8924,15 @@ public enum Operations {
             public var path: Operations.GetSuppressionImportStatus.Input.Path
             /// - Remark: Generated from `#/paths/v1/suppressions/imports/{suppressionImportId}/GET/header`.
             public struct Headers: Sendable, Hashable {
+                /// Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///
                 /// - Remark: Generated from `#/paths/v1/suppressions/imports/{suppressionImportId}/GET/header/x-tenant-id`.
                 public var xTenantId: Components.Parameters.TenantHeader
                 public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.GetSuppressionImportStatus.AcceptableContentType>]
                 /// Creates a new `Headers`.
                 ///
                 /// - Parameters:
-                ///   - xTenantId:
+                ///   - xTenantId: Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
                 ///   - accept:
                 public init(
                     xTenantId: Components.Parameters.TenantHeader,
@@ -5530,19 +9061,28 @@ public enum Operations {
             public var path: Operations.SetGbpIntegration.Input.Path
             /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/integrations/gbp/PATCH/header`.
             public struct Headers: Sendable, Hashable {
+                /// Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///
                 /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/integrations/gbp/PATCH/header/x-tenant-id`.
                 public var xTenantId: Components.Parameters.TenantHeader
+                /// Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
+                ///
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/integrations/gbp/PATCH/header/X-Operator-Key`.
+                public var xOperatorKey: Components.Parameters.OperatorKeyHeader
                 public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.SetGbpIntegration.AcceptableContentType>]
                 /// Creates a new `Headers`.
                 ///
                 /// - Parameters:
-                ///   - xTenantId:
+                ///   - xTenantId: Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///   - xOperatorKey: Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
                 ///   - accept:
                 public init(
                     xTenantId: Components.Parameters.TenantHeader,
+                    xOperatorKey: Components.Parameters.OperatorKeyHeader,
                     accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.SetGbpIntegration.AcceptableContentType>] = .defaultValues()
                 ) {
                     self.xTenantId = xTenantId
+                    self.xOperatorKey = xOperatorKey
                     self.accept = accept
                 }
             }
@@ -5674,19 +9214,28 @@ public enum Operations {
             public var path: Operations.GetGbpOperatorSummary.Input.Path
             /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/integrations/gbp/operator-summary/GET/header`.
             public struct Headers: Sendable, Hashable {
+                /// Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///
                 /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/integrations/gbp/operator-summary/GET/header/x-tenant-id`.
                 public var xTenantId: Components.Parameters.TenantHeader
+                /// Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
+                ///
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/integrations/gbp/operator-summary/GET/header/X-Operator-Key`.
+                public var xOperatorKey: Components.Parameters.OperatorKeyHeader
                 public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.GetGbpOperatorSummary.AcceptableContentType>]
                 /// Creates a new `Headers`.
                 ///
                 /// - Parameters:
-                ///   - xTenantId:
+                ///   - xTenantId: Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///   - xOperatorKey: Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
                 ///   - accept:
                 public init(
                     xTenantId: Components.Parameters.TenantHeader,
+                    xOperatorKey: Components.Parameters.OperatorKeyHeader,
                     accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.GetGbpOperatorSummary.AcceptableContentType>] = .defaultValues()
                 ) {
                     self.xTenantId = xTenantId
+                    self.xOperatorKey = xOperatorKey
                     self.accept = accept
                 }
             }
@@ -5809,19 +9358,28 @@ public enum Operations {
             public var path: Operations.PollGbpReviews.Input.Path
             /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/reviews/poll/POST/header`.
             public struct Headers: Sendable, Hashable {
+                /// Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///
                 /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/reviews/poll/POST/header/x-tenant-id`.
                 public var xTenantId: Components.Parameters.TenantHeader
+                /// Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
+                ///
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/reviews/poll/POST/header/X-Operator-Key`.
+                public var xOperatorKey: Components.Parameters.OperatorKeyHeader
                 public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.PollGbpReviews.AcceptableContentType>]
                 /// Creates a new `Headers`.
                 ///
                 /// - Parameters:
-                ///   - xTenantId:
+                ///   - xTenantId: Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///   - xOperatorKey: Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
                 ///   - accept:
                 public init(
                     xTenantId: Components.Parameters.TenantHeader,
+                    xOperatorKey: Components.Parameters.OperatorKeyHeader,
                     accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.PollGbpReviews.AcceptableContentType>] = .defaultValues()
                 ) {
                     self.xTenantId = xTenantId
+                    self.xOperatorKey = xOperatorKey
                     self.accept = accept
                 }
             }
@@ -5948,35 +9506,49 @@ public enum Operations {
                 public var limit: Swift.Int?
                 /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/reviews/GET/query/cursor`.
                 public var cursor: Swift.String?
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/reviews/GET/query/since`.
+                public var since: Foundation.Date?
                 /// Creates a new `Query`.
                 ///
                 /// - Parameters:
                 ///   - limit:
                 ///   - cursor:
+                ///   - since:
                 public init(
                     limit: Swift.Int? = nil,
-                    cursor: Swift.String? = nil
+                    cursor: Swift.String? = nil,
+                    since: Foundation.Date? = nil
                 ) {
                     self.limit = limit
                     self.cursor = cursor
+                    self.since = since
                 }
             }
             public var query: Operations.ListReviews.Input.Query
             /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/reviews/GET/header`.
             public struct Headers: Sendable, Hashable {
+                /// Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///
                 /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/reviews/GET/header/x-tenant-id`.
                 public var xTenantId: Components.Parameters.TenantHeader
+                /// Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
+                ///
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/reviews/GET/header/X-Operator-Key`.
+                public var xOperatorKey: Components.Parameters.OperatorKeyHeader
                 public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.ListReviews.AcceptableContentType>]
                 /// Creates a new `Headers`.
                 ///
                 /// - Parameters:
-                ///   - xTenantId:
+                ///   - xTenantId: Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///   - xOperatorKey: Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
                 ///   - accept:
                 public init(
                     xTenantId: Components.Parameters.TenantHeader,
+                    xOperatorKey: Components.Parameters.OperatorKeyHeader,
                     accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.ListReviews.AcceptableContentType>] = .defaultValues()
                 ) {
                     self.xTenantId = xTenantId
+                    self.xOperatorKey = xOperatorKey
                     self.accept = accept
                 }
             }
@@ -6346,6 +9918,484 @@ public enum Operations {
             }
         }
     }
+    /// List recent revenue imports for tenant
+    ///
+    /// - Remark: HTTP `GET /v1/tenants/{tenantId}/revenue/imports`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/revenue/imports/get(listRevenueImports)`.
+    public enum ListRevenueImports {
+        public static let id: Swift.String = "listRevenueImports"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/revenue/imports/GET/path`.
+            public struct Path: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/revenue/imports/GET/path/tenantId`.
+                public var tenantId: Components.Parameters.TenantIdPath
+                /// Creates a new `Path`.
+                ///
+                /// - Parameters:
+                ///   - tenantId:
+                public init(tenantId: Components.Parameters.TenantIdPath) {
+                    self.tenantId = tenantId
+                }
+            }
+            public var path: Operations.ListRevenueImports.Input.Path
+            /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/revenue/imports/GET/query`.
+            public struct Query: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/revenue/imports/GET/query/limit`.
+                public var limit: Swift.Int?
+                /// Creates a new `Query`.
+                ///
+                /// - Parameters:
+                ///   - limit:
+                public init(limit: Swift.Int? = nil) {
+                    self.limit = limit
+                }
+            }
+            public var query: Operations.ListRevenueImports.Input.Query
+            /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/revenue/imports/GET/header`.
+            public struct Headers: Sendable, Hashable {
+                /// Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/revenue/imports/GET/header/x-tenant-id`.
+                public var xTenantId: Components.Parameters.TenantHeader
+                /// Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
+                ///
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/revenue/imports/GET/header/X-Operator-Key`.
+                public var xOperatorKey: Components.Parameters.OperatorKeyHeader
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.ListRevenueImports.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - xTenantId: Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///   - xOperatorKey: Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
+                ///   - accept:
+                public init(
+                    xTenantId: Components.Parameters.TenantHeader,
+                    xOperatorKey: Components.Parameters.OperatorKeyHeader,
+                    accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.ListRevenueImports.AcceptableContentType>] = .defaultValues()
+                ) {
+                    self.xTenantId = xTenantId
+                    self.xOperatorKey = xOperatorKey
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.ListRevenueImports.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - path:
+            ///   - query:
+            ///   - headers:
+            public init(
+                path: Operations.ListRevenueImports.Input.Path,
+                query: Operations.ListRevenueImports.Input.Query = .init(),
+                headers: Operations.ListRevenueImports.Input.Headers
+            ) {
+                self.path = path
+                self.query = query
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/revenue/imports/GET/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/revenue/imports/GET/responses/200/content/application\/json`.
+                    case json(Components.Schemas.RevenueImportListResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.RevenueImportListResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.ListRevenueImports.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.ListRevenueImports.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// Revenue import list
+            ///
+            /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/revenue/imports/get(listRevenueImports)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.ListRevenueImports.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.ListRevenueImports.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// Upload revenue CSV import
+    ///
+    /// - Remark: HTTP `POST /v1/tenants/{tenantId}/revenue/imports`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/revenue/imports/post(createRevenueImport)`.
+    public enum CreateRevenueImport {
+        public static let id: Swift.String = "createRevenueImport"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/revenue/imports/POST/path`.
+            public struct Path: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/revenue/imports/POST/path/tenantId`.
+                public var tenantId: Components.Parameters.TenantIdPath
+                /// Creates a new `Path`.
+                ///
+                /// - Parameters:
+                ///   - tenantId:
+                public init(tenantId: Components.Parameters.TenantIdPath) {
+                    self.tenantId = tenantId
+                }
+            }
+            public var path: Operations.CreateRevenueImport.Input.Path
+            /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/revenue/imports/POST/header`.
+            public struct Headers: Sendable, Hashable {
+                /// Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/revenue/imports/POST/header/x-tenant-id`.
+                public var xTenantId: Components.Parameters.TenantHeader
+                /// Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
+                ///
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/revenue/imports/POST/header/X-Operator-Key`.
+                public var xOperatorKey: Components.Parameters.OperatorKeyHeader
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/revenue/imports/POST/header/Idempotency-Key`.
+                public var idempotencyKey: Swift.String?
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.CreateRevenueImport.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - xTenantId: Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///   - xOperatorKey: Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
+                ///   - idempotencyKey:
+                ///   - accept:
+                public init(
+                    xTenantId: Components.Parameters.TenantHeader,
+                    xOperatorKey: Components.Parameters.OperatorKeyHeader,
+                    idempotencyKey: Swift.String? = nil,
+                    accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.CreateRevenueImport.AcceptableContentType>] = .defaultValues()
+                ) {
+                    self.xTenantId = xTenantId
+                    self.xOperatorKey = xOperatorKey
+                    self.idempotencyKey = idempotencyKey
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.CreateRevenueImport.Input.Headers
+            /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/revenue/imports/POST/requestBody`.
+            @frozen public enum Body: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/revenue/imports/POST/requestBody/multipartForm`.
+                @frozen public enum MultipartFormPayload: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/revenue/imports/POST/requestBody/multipartForm/file`.
+                    public struct FilePayload: Sendable, Hashable {
+                        public var body: OpenAPIRuntime.HTTPBody
+                        /// Creates a new `FilePayload`.
+                        ///
+                        /// - Parameters:
+                        ///   - body:
+                        public init(body: OpenAPIRuntime.HTTPBody) {
+                            self.body = body
+                        }
+                    }
+                    case file(OpenAPIRuntime.MultipartPart<Operations.CreateRevenueImport.Input.Body.MultipartFormPayload.FilePayload>)
+                    case undocumented(OpenAPIRuntime.MultipartRawPart)
+                }
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/revenue/imports/POST/requestBody/content/multipart\/form-data`.
+                case multipartForm(OpenAPIRuntime.MultipartBody<Operations.CreateRevenueImport.Input.Body.MultipartFormPayload>)
+            }
+            public var body: Operations.CreateRevenueImport.Input.Body
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - path:
+            ///   - headers:
+            ///   - body:
+            public init(
+                path: Operations.CreateRevenueImport.Input.Path,
+                headers: Operations.CreateRevenueImport.Input.Headers,
+                body: Operations.CreateRevenueImport.Input.Body
+            ) {
+                self.path = path
+                self.headers = headers
+                self.body = body
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Accepted: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/revenue/imports/POST/responses/202/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/revenue/imports/POST/responses/202/content/application\/json`.
+                    case json(Components.Schemas.CreateRevenueImportResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.CreateRevenueImportResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.CreateRevenueImport.Output.Accepted.Body
+                /// Creates a new `Accepted`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.CreateRevenueImport.Output.Accepted.Body) {
+                    self.body = body
+                }
+            }
+            /// Revenue import accepted
+            ///
+            /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/revenue/imports/post(createRevenueImport)/responses/202`.
+            ///
+            /// HTTP response code: `202 accepted`.
+            case accepted(Operations.CreateRevenueImport.Output.Accepted)
+            /// The associated value of the enum case if `self` is `.accepted`.
+            ///
+            /// - Throws: An error if `self` is not `.accepted`.
+            /// - SeeAlso: `.accepted`.
+            public var accepted: Operations.CreateRevenueImport.Output.Accepted {
+                get throws {
+                    switch self {
+                    case let .accepted(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "accepted",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// Get revenue import status
+    ///
+    /// - Remark: HTTP `GET /v1/revenue-imports/{revenueImportId}`.
+    /// - Remark: Generated from `#/paths//v1/revenue-imports/{revenueImportId}/get(getRevenueImportStatus)`.
+    public enum GetRevenueImportStatus {
+        public static let id: Swift.String = "getRevenueImportStatus"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/v1/revenue-imports/{revenueImportId}/GET/path`.
+            public struct Path: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/revenue-imports/{revenueImportId}/GET/path/revenueImportId`.
+                public var revenueImportId: Swift.String
+                /// Creates a new `Path`.
+                ///
+                /// - Parameters:
+                ///   - revenueImportId:
+                public init(revenueImportId: Swift.String) {
+                    self.revenueImportId = revenueImportId
+                }
+            }
+            public var path: Operations.GetRevenueImportStatus.Input.Path
+            /// - Remark: Generated from `#/paths/v1/revenue-imports/{revenueImportId}/GET/header`.
+            public struct Headers: Sendable, Hashable {
+                /// Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///
+                /// - Remark: Generated from `#/paths/v1/revenue-imports/{revenueImportId}/GET/header/x-tenant-id`.
+                public var xTenantId: Components.Parameters.TenantHeader
+                /// Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
+                ///
+                /// - Remark: Generated from `#/paths/v1/revenue-imports/{revenueImportId}/GET/header/X-Operator-Key`.
+                public var xOperatorKey: Components.Parameters.OperatorKeyHeader
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.GetRevenueImportStatus.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - xTenantId: Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///   - xOperatorKey: Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
+                ///   - accept:
+                public init(
+                    xTenantId: Components.Parameters.TenantHeader,
+                    xOperatorKey: Components.Parameters.OperatorKeyHeader,
+                    accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.GetRevenueImportStatus.AcceptableContentType>] = .defaultValues()
+                ) {
+                    self.xTenantId = xTenantId
+                    self.xOperatorKey = xOperatorKey
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.GetRevenueImportStatus.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - path:
+            ///   - headers:
+            public init(
+                path: Operations.GetRevenueImportStatus.Input.Path,
+                headers: Operations.GetRevenueImportStatus.Input.Headers
+            ) {
+                self.path = path
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/revenue-imports/{revenueImportId}/GET/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/v1/revenue-imports/{revenueImportId}/GET/responses/200/content/application\/json`.
+                    case json(Components.Schemas.RevenueImportStatusResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.RevenueImportStatusResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.GetRevenueImportStatus.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.GetRevenueImportStatus.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// Revenue import status
+            ///
+            /// - Remark: Generated from `#/paths//v1/revenue-imports/{revenueImportId}/get(getRevenueImportStatus)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.GetRevenueImportStatus.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.GetRevenueImportStatus.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
     /// Revenue proof summary (attribution rollup)
     ///
     /// Returns an attribution rollup using a conservative model (initially LAST_TOUCH).
@@ -6595,6 +10645,697 @@ public enum Operations {
                     .json
                 ]
             }
+        }
+    }
+    /// List campaign runs for tenant
+    ///
+    /// - Remark: HTTP `GET /v1/tenants/{tenantId}/campaign-runs`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/campaign-runs/get(listCampaignRuns)`.
+    public enum ListCampaignRuns {
+        public static let id: Swift.String = "listCampaignRuns"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/campaign-runs/GET/path`.
+            public struct Path: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/campaign-runs/GET/path/tenantId`.
+                public var tenantId: Components.Parameters.TenantIdPath
+                /// Creates a new `Path`.
+                ///
+                /// - Parameters:
+                ///   - tenantId:
+                public init(tenantId: Components.Parameters.TenantIdPath) {
+                    self.tenantId = tenantId
+                }
+            }
+            public var path: Operations.ListCampaignRuns.Input.Path
+            /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/campaign-runs/GET/query`.
+            public struct Query: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/campaign-runs/GET/query/limit`.
+                public var limit: Swift.Int?
+                /// Creates a new `Query`.
+                ///
+                /// - Parameters:
+                ///   - limit:
+                public init(limit: Swift.Int? = nil) {
+                    self.limit = limit
+                }
+            }
+            public var query: Operations.ListCampaignRuns.Input.Query
+            /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/campaign-runs/GET/header`.
+            public struct Headers: Sendable, Hashable {
+                /// Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/campaign-runs/GET/header/x-tenant-id`.
+                public var xTenantId: Components.Parameters.TenantHeader
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.ListCampaignRuns.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - xTenantId: Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///   - accept:
+                public init(
+                    xTenantId: Components.Parameters.TenantHeader,
+                    accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.ListCampaignRuns.AcceptableContentType>] = .defaultValues()
+                ) {
+                    self.xTenantId = xTenantId
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.ListCampaignRuns.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - path:
+            ///   - query:
+            ///   - headers:
+            public init(
+                path: Operations.ListCampaignRuns.Input.Path,
+                query: Operations.ListCampaignRuns.Input.Query = .init(),
+                headers: Operations.ListCampaignRuns.Input.Headers
+            ) {
+                self.path = path
+                self.query = query
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/campaign-runs/GET/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/campaign-runs/GET/responses/200/content/json`.
+                    public struct JsonPayload: Codable, Hashable, Sendable {
+                        /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/campaign-runs/GET/responses/200/content/json/items`.
+                        public var items: [Components.Schemas.CampaignRunSummary]
+                        /// Creates a new `JsonPayload`.
+                        ///
+                        /// - Parameters:
+                        ///   - items:
+                        public init(items: [Components.Schemas.CampaignRunSummary]) {
+                            self.items = items
+                        }
+                        public enum CodingKeys: String, CodingKey {
+                            case items
+                        }
+                    }
+                    /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/campaign-runs/GET/responses/200/content/application\/json`.
+                    case json(Operations.ListCampaignRuns.Output.Ok.Body.JsonPayload)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Operations.ListCampaignRuns.Output.Ok.Body.JsonPayload {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.ListCampaignRuns.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.ListCampaignRuns.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// Campaign run list
+            ///
+            /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/campaign-runs/get(listCampaignRuns)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.ListCampaignRuns.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.ListCampaignRuns.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// Get campaign run detail
+    ///
+    /// - Remark: HTTP `GET /v1/tenants/{tenantId}/campaign-runs/{runId}`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/campaign-runs/{runId}/get(getCampaignRun)`.
+    public enum GetCampaignRun {
+        public static let id: Swift.String = "getCampaignRun"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/campaign-runs/{runId}/GET/path`.
+            public struct Path: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/campaign-runs/{runId}/GET/path/tenantId`.
+                public var tenantId: Components.Parameters.TenantIdPath
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/campaign-runs/{runId}/GET/path/runId`.
+                public var runId: Components.Parameters.RunIdPath
+                /// Creates a new `Path`.
+                ///
+                /// - Parameters:
+                ///   - tenantId:
+                ///   - runId:
+                public init(
+                    tenantId: Components.Parameters.TenantIdPath,
+                    runId: Components.Parameters.RunIdPath
+                ) {
+                    self.tenantId = tenantId
+                    self.runId = runId
+                }
+            }
+            public var path: Operations.GetCampaignRun.Input.Path
+            /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/campaign-runs/{runId}/GET/header`.
+            public struct Headers: Sendable, Hashable {
+                /// Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/campaign-runs/{runId}/GET/header/x-tenant-id`.
+                public var xTenantId: Components.Parameters.TenantHeader
+                /// Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
+                ///
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/campaign-runs/{runId}/GET/header/X-Operator-Key`.
+                public var xOperatorKey: Components.Parameters.OperatorKeyHeader
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.GetCampaignRun.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - xTenantId: Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///   - xOperatorKey: Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
+                ///   - accept:
+                public init(
+                    xTenantId: Components.Parameters.TenantHeader,
+                    xOperatorKey: Components.Parameters.OperatorKeyHeader,
+                    accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.GetCampaignRun.AcceptableContentType>] = .defaultValues()
+                ) {
+                    self.xTenantId = xTenantId
+                    self.xOperatorKey = xOperatorKey
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.GetCampaignRun.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - path:
+            ///   - headers:
+            public init(
+                path: Operations.GetCampaignRun.Input.Path,
+                headers: Operations.GetCampaignRun.Input.Headers
+            ) {
+                self.path = path
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/campaign-runs/{runId}/GET/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/campaign-runs/{runId}/GET/responses/200/content/application\/json`.
+                    case json(Components.Schemas.CampaignRunDetail)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.CampaignRunDetail {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.GetCampaignRun.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.GetCampaignRun.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// Campaign run detail
+            ///
+            /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/campaign-runs/{runId}/get(getCampaignRun)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.GetCampaignRun.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.GetCampaignRun.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// Pause a campaign run
+    ///
+    /// - Remark: HTTP `POST /v1/tenants/{tenantId}/campaign-runs/{runId}/pause`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/campaign-runs/{runId}/pause/post(pauseCampaignRun)`.
+    public enum PauseCampaignRun {
+        public static let id: Swift.String = "pauseCampaignRun"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/campaign-runs/{runId}/pause/POST/path`.
+            public struct Path: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/campaign-runs/{runId}/pause/POST/path/tenantId`.
+                public var tenantId: Components.Parameters.TenantIdPath
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/campaign-runs/{runId}/pause/POST/path/runId`.
+                public var runId: Components.Parameters.RunIdPath
+                /// Creates a new `Path`.
+                ///
+                /// - Parameters:
+                ///   - tenantId:
+                ///   - runId:
+                public init(
+                    tenantId: Components.Parameters.TenantIdPath,
+                    runId: Components.Parameters.RunIdPath
+                ) {
+                    self.tenantId = tenantId
+                    self.runId = runId
+                }
+            }
+            public var path: Operations.PauseCampaignRun.Input.Path
+            /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/campaign-runs/{runId}/pause/POST/header`.
+            public struct Headers: Sendable, Hashable {
+                /// Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/campaign-runs/{runId}/pause/POST/header/x-tenant-id`.
+                public var xTenantId: Components.Parameters.TenantHeader
+                /// Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
+                ///
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/campaign-runs/{runId}/pause/POST/header/X-Operator-Key`.
+                public var xOperatorKey: Components.Parameters.OperatorKeyHeader
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.PauseCampaignRun.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - xTenantId: Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///   - xOperatorKey: Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
+                ///   - accept:
+                public init(
+                    xTenantId: Components.Parameters.TenantHeader,
+                    xOperatorKey: Components.Parameters.OperatorKeyHeader,
+                    accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.PauseCampaignRun.AcceptableContentType>] = .defaultValues()
+                ) {
+                    self.xTenantId = xTenantId
+                    self.xOperatorKey = xOperatorKey
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.PauseCampaignRun.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - path:
+            ///   - headers:
+            public init(
+                path: Operations.PauseCampaignRun.Input.Path,
+                headers: Operations.PauseCampaignRun.Input.Headers
+            ) {
+                self.path = path
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/campaign-runs/{runId}/pause/POST/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/campaign-runs/{runId}/pause/POST/responses/200/content/application\/json`.
+                    case json(Components.Schemas.OperatorInterventionResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.OperatorInterventionResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.PauseCampaignRun.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.PauseCampaignRun.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// Campaign run paused
+            ///
+            /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/campaign-runs/{runId}/pause/post(pauseCampaignRun)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.PauseCampaignRun.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.PauseCampaignRun.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// Resume a paused campaign run
+    ///
+    /// - Remark: HTTP `POST /v1/tenants/{tenantId}/campaign-runs/{runId}/resume`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/campaign-runs/{runId}/resume/post(resumeCampaignRun)`.
+    public enum ResumeCampaignRun {
+        public static let id: Swift.String = "resumeCampaignRun"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/campaign-runs/{runId}/resume/POST/path`.
+            public struct Path: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/campaign-runs/{runId}/resume/POST/path/tenantId`.
+                public var tenantId: Components.Parameters.TenantIdPath
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/campaign-runs/{runId}/resume/POST/path/runId`.
+                public var runId: Components.Parameters.RunIdPath
+                /// Creates a new `Path`.
+                ///
+                /// - Parameters:
+                ///   - tenantId:
+                ///   - runId:
+                public init(
+                    tenantId: Components.Parameters.TenantIdPath,
+                    runId: Components.Parameters.RunIdPath
+                ) {
+                    self.tenantId = tenantId
+                    self.runId = runId
+                }
+            }
+            public var path: Operations.ResumeCampaignRun.Input.Path
+            /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/campaign-runs/{runId}/resume/POST/header`.
+            public struct Headers: Sendable, Hashable {
+                /// Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/campaign-runs/{runId}/resume/POST/header/x-tenant-id`.
+                public var xTenantId: Components.Parameters.TenantHeader
+                /// Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
+                ///
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/campaign-runs/{runId}/resume/POST/header/X-Operator-Key`.
+                public var xOperatorKey: Components.Parameters.OperatorKeyHeader
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.ResumeCampaignRun.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - xTenantId: Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///   - xOperatorKey: Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
+                ///   - accept:
+                public init(
+                    xTenantId: Components.Parameters.TenantHeader,
+                    xOperatorKey: Components.Parameters.OperatorKeyHeader,
+                    accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.ResumeCampaignRun.AcceptableContentType>] = .defaultValues()
+                ) {
+                    self.xTenantId = xTenantId
+                    self.xOperatorKey = xOperatorKey
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.ResumeCampaignRun.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - path:
+            ///   - headers:
+            public init(
+                path: Operations.ResumeCampaignRun.Input.Path,
+                headers: Operations.ResumeCampaignRun.Input.Headers
+            ) {
+                self.path = path
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/campaign-runs/{runId}/resume/POST/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/campaign-runs/{runId}/resume/POST/responses/200/content/application\/json`.
+                    case json(Components.Schemas.OperatorInterventionResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.OperatorInterventionResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.ResumeCampaignRun.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.ResumeCampaignRun.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// Campaign run resumed
+            ///
+            /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/campaign-runs/{runId}/resume/post(resumeCampaignRun)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.ResumeCampaignRun.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.ResumeCampaignRun.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// Redirect tracked short link and record click telemetry
+    ///
+    /// - Remark: HTTP `GET /v1/links/{code}`.
+    /// - Remark: Generated from `#/paths//v1/links/{code}/get(redirectTrackedLink)`.
+    public enum RedirectTrackedLink {
+        public static let id: Swift.String = "redirectTrackedLink"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/v1/links/{code}/GET/path`.
+            public struct Path: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/links/{code}/GET/path/code`.
+                public var code: Swift.String
+                /// Creates a new `Path`.
+                ///
+                /// - Parameters:
+                ///   - code:
+                public init(code: Swift.String) {
+                    self.code = code
+                }
+            }
+            public var path: Operations.RedirectTrackedLink.Input.Path
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - path:
+            public init(path: Operations.RedirectTrackedLink.Input.Path) {
+                self.path = path
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Found: Sendable, Hashable {
+                /// Creates a new `Found`.
+                public init() {}
+            }
+            /// Redirect to destination URL
+            ///
+            /// - Remark: Generated from `#/paths//v1/links/{code}/get(redirectTrackedLink)/responses/302`.
+            ///
+            /// HTTP response code: `302 found`.
+            case found(Operations.RedirectTrackedLink.Output.Found)
+            /// Redirect to destination URL
+            ///
+            /// - Remark: Generated from `#/paths//v1/links/{code}/get(redirectTrackedLink)/responses/302`.
+            ///
+            /// HTTP response code: `302 found`.
+            public static var found: Self {
+                .found(.init())
+            }
+            /// The associated value of the enum case if `self` is `.found`.
+            ///
+            /// - Throws: An error if `self` is not `.found`.
+            /// - SeeAlso: `.found`.
+            public var found: Operations.RedirectTrackedLink.Output.Found {
+                get throws {
+                    switch self {
+                    case let .found(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "found",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
         }
     }
     /// Receive Postmark webhook events
@@ -6849,13 +11590,15 @@ public enum Operations {
             public var path: Operations.GetPostmarkOperatorSummary.Input.Path
             /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/integrations/postmark/operator-summary/GET/header`.
             public struct Headers: Sendable, Hashable {
+                /// Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///
                 /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/integrations/postmark/operator-summary/GET/header/x-tenant-id`.
                 public var xTenantId: Components.Parameters.TenantHeader
                 public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.GetPostmarkOperatorSummary.AcceptableContentType>]
                 /// Creates a new `Headers`.
                 ///
                 /// - Parameters:
-                ///   - xTenantId:
+                ///   - xTenantId: Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
                 ///   - accept:
                 public init(
                     xTenantId: Components.Parameters.TenantHeader,
@@ -6984,13 +11727,15 @@ public enum Operations {
             public var path: Operations.ResumePostmarkSends.Input.Path
             /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/integrations/postmark/resume/POST/header`.
             public struct Headers: Sendable, Hashable {
+                /// Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///
                 /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/integrations/postmark/resume/POST/header/x-tenant-id`.
                 public var xTenantId: Components.Parameters.TenantHeader
                 public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.ResumePostmarkSends.AcceptableContentType>]
                 /// Creates a new `Headers`.
                 ///
                 /// - Parameters:
-                ///   - xTenantId:
+                ///   - xTenantId: Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
                 ///   - accept:
                 public init(
                     xTenantId: Components.Parameters.TenantHeader,
@@ -7143,13 +11888,15 @@ public enum Operations {
             public var path: Operations.GetOperatorCommandCenter.Input.Path
             /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/operator/command-center/GET/header`.
             public struct Headers: Sendable, Hashable {
+                /// Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///
                 /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/operator/command-center/GET/header/x-tenant-id`.
                 public var xTenantId: Components.Parameters.TenantHeader
                 public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.GetOperatorCommandCenter.AcceptableContentType>]
                 /// Creates a new `Headers`.
                 ///
                 /// - Parameters:
-                ///   - xTenantId:
+                ///   - xTenantId: Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
                 ///   - accept:
                 public init(
                     xTenantId: Components.Parameters.TenantHeader,
@@ -7278,13 +12025,15 @@ public enum Operations {
             public var path: Operations.RetryGbpIngestionIntervention.Input.Path
             /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/interventions/retry-gbp-ingestion/POST/header`.
             public struct Headers: Sendable, Hashable {
+                /// Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///
                 /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/interventions/retry-gbp-ingestion/POST/header/x-tenant-id`.
                 public var xTenantId: Components.Parameters.TenantHeader
                 public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.RetryGbpIngestionIntervention.AcceptableContentType>]
                 /// Creates a new `Headers`.
                 ///
                 /// - Parameters:
-                ///   - xTenantId:
+                ///   - xTenantId: Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
                 ///   - accept:
                 public init(
                     xTenantId: Components.Parameters.TenantHeader,
@@ -7413,13 +12162,15 @@ public enum Operations {
             public var path: Operations.ResumePostmarkIntervention.Input.Path
             /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/interventions/resume-postmark/POST/header`.
             public struct Headers: Sendable, Hashable {
+                /// Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///
                 /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/interventions/resume-postmark/POST/header/x-tenant-id`.
                 public var xTenantId: Components.Parameters.TenantHeader
                 public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.ResumePostmarkIntervention.AcceptableContentType>]
                 /// Creates a new `Headers`.
                 ///
                 /// - Parameters:
-                ///   - xTenantId:
+                ///   - xTenantId: Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
                 ///   - accept:
                 public init(
                     xTenantId: Components.Parameters.TenantHeader,
@@ -7548,13 +12299,15 @@ public enum Operations {
             public var path: Operations.AckAlertIntervention.Input.Path
             /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/interventions/ack-alert/POST/header`.
             public struct Headers: Sendable, Hashable {
+                /// Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///
                 /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/interventions/ack-alert/POST/header/x-tenant-id`.
                 public var xTenantId: Components.Parameters.TenantHeader
                 public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.AckAlertIntervention.AcceptableContentType>]
                 /// Creates a new `Headers`.
                 ///
                 /// - Parameters:
-                ///   - xTenantId:
+                ///   - xTenantId: Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
                 ///   - accept:
                 public init(
                     xTenantId: Components.Parameters.TenantHeader,
@@ -7722,13 +12475,15 @@ public enum Operations {
             public var query: Operations.GetMonthlyReport.Input.Query
             /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/reports/monthly/GET/header`.
             public struct Headers: Sendable, Hashable {
+                /// Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///
                 /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/reports/monthly/GET/header/x-tenant-id`.
                 public var xTenantId: Components.Parameters.TenantHeader
                 public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.GetMonthlyReport.AcceptableContentType>]
                 /// Creates a new `Headers`.
                 ///
                 /// - Parameters:
-                ///   - xTenantId:
+                ///   - xTenantId: Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
                 ///   - accept:
                 public init(
                     xTenantId: Components.Parameters.TenantHeader,
@@ -7795,6 +12550,614 @@ public enum Operations {
             /// - Throws: An error if `self` is not `.ok`.
             /// - SeeAlso: `.ok`.
             public var ok: Operations.GetMonthlyReport.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// Monthly report PDF export
+    ///
+    /// - Remark: HTTP `GET /v1/tenants/{tenantId}/reports/monthly/pdf`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/reports/monthly/pdf/get(getMonthlyReportPdf)`.
+    public enum GetMonthlyReportPdf {
+        public static let id: Swift.String = "getMonthlyReportPdf"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/reports/monthly/pdf/GET/path`.
+            public struct Path: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/reports/monthly/pdf/GET/path/tenantId`.
+                public var tenantId: Components.Parameters.TenantIdPath
+                /// Creates a new `Path`.
+                ///
+                /// - Parameters:
+                ///   - tenantId:
+                public init(tenantId: Components.Parameters.TenantIdPath) {
+                    self.tenantId = tenantId
+                }
+            }
+            public var path: Operations.GetMonthlyReportPdf.Input.Path
+            /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/reports/monthly/pdf/GET/query`.
+            public struct Query: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/reports/monthly/pdf/GET/query/month`.
+                public var month: Swift.String?
+                /// Creates a new `Query`.
+                ///
+                /// - Parameters:
+                ///   - month:
+                public init(month: Swift.String? = nil) {
+                    self.month = month
+                }
+            }
+            public var query: Operations.GetMonthlyReportPdf.Input.Query
+            /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/reports/monthly/pdf/GET/header`.
+            public struct Headers: Sendable, Hashable {
+                /// Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/reports/monthly/pdf/GET/header/x-tenant-id`.
+                public var xTenantId: Components.Parameters.TenantHeader
+                /// Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
+                ///
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/reports/monthly/pdf/GET/header/X-Operator-Key`.
+                public var xOperatorKey: Components.Parameters.OperatorKeyHeader
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.GetMonthlyReportPdf.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - xTenantId: Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///   - xOperatorKey: Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
+                ///   - accept:
+                public init(
+                    xTenantId: Components.Parameters.TenantHeader,
+                    xOperatorKey: Components.Parameters.OperatorKeyHeader,
+                    accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.GetMonthlyReportPdf.AcceptableContentType>] = .defaultValues()
+                ) {
+                    self.xTenantId = xTenantId
+                    self.xOperatorKey = xOperatorKey
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.GetMonthlyReportPdf.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - path:
+            ///   - query:
+            ///   - headers:
+            public init(
+                path: Operations.GetMonthlyReportPdf.Input.Path,
+                query: Operations.GetMonthlyReportPdf.Input.Query = .init(),
+                headers: Operations.GetMonthlyReportPdf.Input.Headers
+            ) {
+                self.path = path
+                self.query = query
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/reports/monthly/pdf/GET/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/reports/monthly/pdf/GET/responses/200/content/application\/pdf`.
+                    case pdf(OpenAPIRuntime.HTTPBody)
+                    /// The associated value of the enum case if `self` is `.pdf`.
+                    ///
+                    /// - Throws: An error if `self` is not `.pdf`.
+                    /// - SeeAlso: `.pdf`.
+                    public var pdf: OpenAPIRuntime.HTTPBody {
+                        get throws {
+                            switch self {
+                            case let .pdf(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.GetMonthlyReportPdf.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.GetMonthlyReportPdf.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// PDF bytes
+            ///
+            /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/reports/monthly/pdf/get(getMonthlyReportPdf)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.GetMonthlyReportPdf.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.GetMonthlyReportPdf.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case pdf
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/pdf":
+                    self = .pdf
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .pdf:
+                    return "application/pdf"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .pdf
+                ]
+            }
+        }
+    }
+    /// Download monthly report CSV
+    ///
+    /// - Remark: HTTP `GET /v1/tenants/{tenantId}/reports/monthly/export.csv`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/reports/monthly/export.csv/get(getMonthlyReportCsv)`.
+    public enum GetMonthlyReportCsv {
+        public static let id: Swift.String = "getMonthlyReportCsv"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/reports/monthly/export.csv/GET/path`.
+            public struct Path: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/reports/monthly/export.csv/GET/path/tenantId`.
+                public var tenantId: Components.Parameters.TenantIdPath
+                /// Creates a new `Path`.
+                ///
+                /// - Parameters:
+                ///   - tenantId:
+                public init(tenantId: Components.Parameters.TenantIdPath) {
+                    self.tenantId = tenantId
+                }
+            }
+            public var path: Operations.GetMonthlyReportCsv.Input.Path
+            /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/reports/monthly/export.csv/GET/query`.
+            public struct Query: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/reports/monthly/export.csv/GET/query/month`.
+                public var month: Swift.String?
+                /// Creates a new `Query`.
+                ///
+                /// - Parameters:
+                ///   - month:
+                public init(month: Swift.String? = nil) {
+                    self.month = month
+                }
+            }
+            public var query: Operations.GetMonthlyReportCsv.Input.Query
+            /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/reports/monthly/export.csv/GET/header`.
+            public struct Headers: Sendable, Hashable {
+                /// Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/reports/monthly/export.csv/GET/header/x-tenant-id`.
+                public var xTenantId: Components.Parameters.TenantHeader
+                /// Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
+                ///
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/reports/monthly/export.csv/GET/header/X-Operator-Key`.
+                public var xOperatorKey: Components.Parameters.OperatorKeyHeader
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.GetMonthlyReportCsv.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - xTenantId: Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///   - xOperatorKey: Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
+                ///   - accept:
+                public init(
+                    xTenantId: Components.Parameters.TenantHeader,
+                    xOperatorKey: Components.Parameters.OperatorKeyHeader,
+                    accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.GetMonthlyReportCsv.AcceptableContentType>] = .defaultValues()
+                ) {
+                    self.xTenantId = xTenantId
+                    self.xOperatorKey = xOperatorKey
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.GetMonthlyReportCsv.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - path:
+            ///   - query:
+            ///   - headers:
+            public init(
+                path: Operations.GetMonthlyReportCsv.Input.Path,
+                query: Operations.GetMonthlyReportCsv.Input.Query = .init(),
+                headers: Operations.GetMonthlyReportCsv.Input.Headers
+            ) {
+                self.path = path
+                self.query = query
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/reports/monthly/export.csv/GET/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/reports/monthly/export.csv/GET/responses/200/content/text\/csv`.
+                    case csv(OpenAPIRuntime.HTTPBody)
+                    /// The associated value of the enum case if `self` is `.csv`.
+                    ///
+                    /// - Throws: An error if `self` is not `.csv`.
+                    /// - SeeAlso: `.csv`.
+                    public var csv: OpenAPIRuntime.HTTPBody {
+                        get throws {
+                            switch self {
+                            case let .csv(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.GetMonthlyReportCsv.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.GetMonthlyReportCsv.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// CSV report export
+            ///
+            /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/reports/monthly/export.csv/get(getMonthlyReportCsv)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.GetMonthlyReportCsv.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.GetMonthlyReportCsv.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case csv
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "text/csv":
+                    self = .csv
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .csv:
+                    return "text/csv"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .csv
+                ]
+            }
+        }
+    }
+    /// Run operator smoke checks
+    ///
+    /// - Remark: HTTP `POST /v1/tenants/{tenantId}/operator/smoke`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/operator/smoke/post(runOperatorSmoke)`.
+    public enum RunOperatorSmoke {
+        public static let id: Swift.String = "runOperatorSmoke"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/operator/smoke/POST/path`.
+            public struct Path: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/operator/smoke/POST/path/tenantId`.
+                public var tenantId: Components.Parameters.TenantIdPath
+                /// Creates a new `Path`.
+                ///
+                /// - Parameters:
+                ///   - tenantId:
+                public init(tenantId: Components.Parameters.TenantIdPath) {
+                    self.tenantId = tenantId
+                }
+            }
+            public var path: Operations.RunOperatorSmoke.Input.Path
+            /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/operator/smoke/POST/header`.
+            public struct Headers: Sendable, Hashable {
+                /// Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/operator/smoke/POST/header/x-tenant-id`.
+                public var xTenantId: Components.Parameters.TenantHeader
+                /// Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
+                ///
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/operator/smoke/POST/header/X-Operator-Key`.
+                public var xOperatorKey: Components.Parameters.OperatorKeyHeader
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.RunOperatorSmoke.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - xTenantId: Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///   - xOperatorKey: Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
+                ///   - accept:
+                public init(
+                    xTenantId: Components.Parameters.TenantHeader,
+                    xOperatorKey: Components.Parameters.OperatorKeyHeader,
+                    accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.RunOperatorSmoke.AcceptableContentType>] = .defaultValues()
+                ) {
+                    self.xTenantId = xTenantId
+                    self.xOperatorKey = xOperatorKey
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.RunOperatorSmoke.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - path:
+            ///   - headers:
+            public init(
+                path: Operations.RunOperatorSmoke.Input.Path,
+                headers: Operations.RunOperatorSmoke.Input.Headers
+            ) {
+                self.path = path
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/operator/smoke/POST/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/operator/smoke/POST/responses/200/content/application\/json`.
+                    case json(Components.Schemas.OperatorSmokeResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.OperatorSmokeResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.RunOperatorSmoke.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.RunOperatorSmoke.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// Smoke check results
+            ///
+            /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/operator/smoke/post(runOperatorSmoke)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.RunOperatorSmoke.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.RunOperatorSmoke.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// Rotate tenant operator key
+    ///
+    /// - Remark: HTTP `POST /v1/tenants/{tenantId}/operator/keys/rotate`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/operator/keys/rotate/post(rotateOperatorKey)`.
+    public enum RotateOperatorKey {
+        public static let id: Swift.String = "rotateOperatorKey"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/operator/keys/rotate/POST/path`.
+            public struct Path: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/operator/keys/rotate/POST/path/tenantId`.
+                public var tenantId: Components.Parameters.TenantIdPath
+                /// Creates a new `Path`.
+                ///
+                /// - Parameters:
+                ///   - tenantId:
+                public init(tenantId: Components.Parameters.TenantIdPath) {
+                    self.tenantId = tenantId
+                }
+            }
+            public var path: Operations.RotateOperatorKey.Input.Path
+            /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/operator/keys/rotate/POST/header`.
+            public struct Headers: Sendable, Hashable {
+                /// Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/operator/keys/rotate/POST/header/x-tenant-id`.
+                public var xTenantId: Components.Parameters.TenantHeader
+                /// Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
+                ///
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/operator/keys/rotate/POST/header/X-Operator-Key`.
+                public var xOperatorKey: Components.Parameters.OperatorKeyHeader
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.RotateOperatorKey.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - xTenantId: Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
+                ///   - xOperatorKey: Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
+                ///   - accept:
+                public init(
+                    xTenantId: Components.Parameters.TenantHeader,
+                    xOperatorKey: Components.Parameters.OperatorKeyHeader,
+                    accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.RotateOperatorKey.AcceptableContentType>] = .defaultValues()
+                ) {
+                    self.xTenantId = xTenantId
+                    self.xOperatorKey = xOperatorKey
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.RotateOperatorKey.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - path:
+            ///   - headers:
+            public init(
+                path: Operations.RotateOperatorKey.Input.Path,
+                headers: Operations.RotateOperatorKey.Input.Headers
+            ) {
+                self.path = path
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/operator/keys/rotate/POST/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/v1/tenants/{tenantId}/operator/keys/rotate/POST/responses/200/content/application\/json`.
+                    case json(Components.Schemas.RotateOperatorKeyResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.RotateOperatorKeyResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.RotateOperatorKey.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.RotateOperatorKey.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// Rotated key response
+            ///
+            /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/operator/keys/rotate/post(rotateOperatorKey)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.RotateOperatorKey.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.RotateOperatorKey.Output.Ok {
                 get throws {
                     switch self {
                     case let .ok(response):

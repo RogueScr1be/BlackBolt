@@ -40,6 +40,8 @@ public struct Client: APIProtocol {
     }
     /// Health check endpoint
     ///
+    /// Returns a minimal health payload used by the operator shell and smoke tooling.
+    ///
     /// - Remark: HTTP `GET /health`.
     /// - Remark: Generated from `#/paths//health/get(getHealth)`.
     public func getHealth(_ input: Operations.GetHealth.Input) async throws -> Operations.GetHealth.Output {
@@ -98,19 +100,19 @@ public struct Client: APIProtocol {
             }
         )
     }
-    /// Operator dashboard summary
+    /// Get tenant bootstrap readiness status
     ///
-    /// Returns top-level KPI summary and dashboard widget counts for the scoped tenant.
+    /// Returns bootstrap readiness checks for the tenant identified by the operator headers.
     ///
-    /// - Remark: HTTP `GET /dashboard/summary`.
-    /// - Remark: Generated from `#/paths//dashboard/summary/get(getDashboardSummary)`.
-    public func getDashboardSummary(_ input: Operations.GetDashboardSummary.Input) async throws -> Operations.GetDashboardSummary.Output {
+    /// - Remark: HTTP `GET /v1/bootstrap/status`.
+    /// - Remark: Generated from `#/paths//v1/bootstrap/status/get(getBootstrapStatus)`.
+    public func getBootstrapStatus(_ input: Operations.GetBootstrapStatus.Input) async throws -> Operations.GetBootstrapStatus.Output {
         try await client.send(
             input: input,
-            forOperation: Operations.GetDashboardSummary.id,
+            forOperation: Operations.GetBootstrapStatus.id,
             serializer: { input in
                 let path = try converter.renderedPath(
-                    template: "/dashboard/summary",
+                    template: "/v1/bootstrap/status",
                     parameters: []
                 )
                 var request: HTTPTypes.HTTPRequest = .init(
@@ -138,7 +140,7 @@ public struct Client: APIProtocol {
                 switch response.status.code {
                 case 200:
                     let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
-                    let body: Operations.GetDashboardSummary.Output.Ok.Body
+                    let body: Operations.GetBootstrapStatus.Output.Ok.Body
                     let chosenContentType = try converter.bestContentType(
                         received: contentType,
                         options: [
@@ -148,7 +150,7 @@ public struct Client: APIProtocol {
                     switch chosenContentType {
                     case "application/json":
                         body = try await converter.getResponseBodyAsJSON(
-                            Components.Schemas.DashboardSummaryResponse.self,
+                            Components.Schemas.BootstrapStatusResponse.self,
                             from: responseBody,
                             transforming: { value in
                                 .json(value)
@@ -170,177 +172,19 @@ public struct Client: APIProtocol {
             }
         )
     }
-    /// List operator activity events
+    /// List operator-visible tenants for the scoped tenant operator key
     ///
-    /// Returns tenant-scoped event feed items ordered newest-first.
+    /// Returns the tenant summary available to a tenant-scoped operator key. Tier-1 keeps this tenant-scoped rather than portfolio-wide.
     ///
-    /// - Remark: HTTP `GET /events`.
-    /// - Remark: Generated from `#/paths//events/get(listOperatorEvents)`.
-    public func listOperatorEvents(_ input: Operations.ListOperatorEvents.Input) async throws -> Operations.ListOperatorEvents.Output {
-        try await client.send(
-            input: input,
-            forOperation: Operations.ListOperatorEvents.id,
-            serializer: { input in
-                let path = try converter.renderedPath(
-                    template: "/events",
-                    parameters: []
-                )
-                var request: HTTPTypes.HTTPRequest = .init(
-                    soar_path: path,
-                    method: .get
-                )
-                suppressMutabilityWarning(&request)
-                try converter.setHeaderFieldAsURI(
-                    in: &request.headerFields,
-                    name: "x-tenant-id",
-                    value: input.headers.xTenantId
-                )
-                try converter.setHeaderFieldAsURI(
-                    in: &request.headerFields,
-                    name: "X-Operator-Key",
-                    value: input.headers.xOperatorKey
-                )
-                try converter.setQueryItemAsURI(
-                    in: &request,
-                    style: .form,
-                    explode: true,
-                    name: "since",
-                    value: input.query.since
-                )
-                converter.setAcceptHeader(
-                    in: &request.headerFields,
-                    contentTypes: input.headers.accept
-                )
-                return (request, nil)
-            },
-            deserializer: { response, responseBody in
-                switch response.status.code {
-                case 200:
-                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
-                    let body: Operations.ListOperatorEvents.Output.Ok.Body
-                    let chosenContentType = try converter.bestContentType(
-                        received: contentType,
-                        options: [
-                            "application/json"
-                        ]
-                    )
-                    switch chosenContentType {
-                    case "application/json":
-                        body = try await converter.getResponseBodyAsJSON(
-                            Components.Schemas.OperatorEventsResponse.self,
-                            from: responseBody,
-                            transforming: { value in
-                                .json(value)
-                            }
-                        )
-                    default:
-                        preconditionFailure("bestContentType chose an invalid content type.")
-                    }
-                    return .ok(.init(body: body))
-                default:
-                    return .undocumented(
-                        statusCode: response.status.code,
-                        .init(
-                            headerFields: response.headerFields,
-                            body: responseBody
-                        )
-                    )
-                }
-            }
-        )
-    }
-    /// List operator alerts
-    ///
-    /// Returns tenant-scoped alerts; default state is open.
-    ///
-    /// - Remark: HTTP `GET /alerts`.
-    /// - Remark: Generated from `#/paths//alerts/get(listOperatorAlerts)`.
-    public func listOperatorAlerts(_ input: Operations.ListOperatorAlerts.Input) async throws -> Operations.ListOperatorAlerts.Output {
-        try await client.send(
-            input: input,
-            forOperation: Operations.ListOperatorAlerts.id,
-            serializer: { input in
-                let path = try converter.renderedPath(
-                    template: "/alerts",
-                    parameters: []
-                )
-                var request: HTTPTypes.HTTPRequest = .init(
-                    soar_path: path,
-                    method: .get
-                )
-                suppressMutabilityWarning(&request)
-                try converter.setHeaderFieldAsURI(
-                    in: &request.headerFields,
-                    name: "x-tenant-id",
-                    value: input.headers.xTenantId
-                )
-                try converter.setHeaderFieldAsURI(
-                    in: &request.headerFields,
-                    name: "X-Operator-Key",
-                    value: input.headers.xOperatorKey
-                )
-                try converter.setQueryItemAsURI(
-                    in: &request,
-                    style: .form,
-                    explode: true,
-                    name: "state",
-                    value: input.query.state
-                )
-                converter.setAcceptHeader(
-                    in: &request.headerFields,
-                    contentTypes: input.headers.accept
-                )
-                return (request, nil)
-            },
-            deserializer: { response, responseBody in
-                switch response.status.code {
-                case 200:
-                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
-                    let body: Operations.ListOperatorAlerts.Output.Ok.Body
-                    let chosenContentType = try converter.bestContentType(
-                        received: contentType,
-                        options: [
-                            "application/json"
-                        ]
-                    )
-                    switch chosenContentType {
-                    case "application/json":
-                        body = try await converter.getResponseBodyAsJSON(
-                            Components.Schemas.OperatorAlertsResponse.self,
-                            from: responseBody,
-                            transforming: { value in
-                                .json(value)
-                            }
-                        )
-                    default:
-                        preconditionFailure("bestContentType chose an invalid content type.")
-                    }
-                    return .ok(.init(body: body))
-                default:
-                    return .undocumented(
-                        statusCode: response.status.code,
-                        .init(
-                            headerFields: response.headerFields,
-                            body: responseBody
-                        )
-                    )
-                }
-            }
-        )
-    }
-    /// List operator-visible tenants
-    ///
-    /// Returns tenant list for the current operator scope.
-    ///
-    /// - Remark: HTTP `GET /tenants`.
-    /// - Remark: Generated from `#/paths//tenants/get(listOperatorTenants)`.
+    /// - Remark: HTTP `GET /v1/tenants`.
+    /// - Remark: Generated from `#/paths//v1/tenants/get(listOperatorTenants)`.
     public func listOperatorTenants(_ input: Operations.ListOperatorTenants.Input) async throws -> Operations.ListOperatorTenants.Output {
         try await client.send(
             input: input,
             forOperation: Operations.ListOperatorTenants.id,
             serializer: { input in
                 let path = try converter.renderedPath(
-                    template: "/tenants",
+                    template: "/v1/tenants",
                     parameters: []
                 )
                 var request: HTTPTypes.HTTPRequest = .init(
@@ -388,6 +232,50 @@ public struct Client: APIProtocol {
                         preconditionFailure("bestContentType chose an invalid content type.")
                     }
                     return .ok(.init(body: body))
+                case 401:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Components.Responses.Unauthorized.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.ErrorResponse.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .unauthorized(.init(body: body))
+                case 403:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Components.Responses.Forbidden.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.ErrorResponse.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .forbidden(.init(body: body))
                 default:
                     return .undocumented(
                         statusCode: response.status.code,
@@ -400,19 +288,19 @@ public struct Client: APIProtocol {
             }
         )
     }
-    /// Get operator tenant detail
+    /// Get operator-visible tenant detail
     ///
-    /// Returns detail for a tenant scoped by tenant header and path.
+    /// Returns tenant detail for the route tenant after tenant-header and tenant-path matching succeeds.
     ///
-    /// - Remark: HTTP `GET /tenants/{tenantId}`.
-    /// - Remark: Generated from `#/paths//tenants/{tenantId}/get(getOperatorTenant)`.
+    /// - Remark: HTTP `GET /v1/tenants/{tenantId}`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/get(getOperatorTenant)`.
     public func getOperatorTenant(_ input: Operations.GetOperatorTenant.Input) async throws -> Operations.GetOperatorTenant.Output {
         try await client.send(
             input: input,
             forOperation: Operations.GetOperatorTenant.id,
             serializer: { input in
                 let path = try converter.renderedPath(
-                    template: "/tenants/{}",
+                    template: "/v1/tenants/{}",
                     parameters: [
                         input.path.tenantId
                     ]
@@ -462,6 +350,72 @@ public struct Client: APIProtocol {
                         preconditionFailure("bestContentType chose an invalid content type.")
                     }
                     return .ok(.init(body: body))
+                case 401:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Components.Responses.Unauthorized.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.ErrorResponse.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .unauthorized(.init(body: body))
+                case 403:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Components.Responses.Forbidden.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.ErrorResponse.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .forbidden(.init(body: body))
+                case 404:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Components.Responses.NotFound.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.ErrorResponse.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .notFound(.init(body: body))
                 default:
                     return .undocumented(
                         statusCode: response.status.code,
@@ -474,19 +428,19 @@ public struct Client: APIProtocol {
             }
         )
     }
-    /// Get operator tenant metrics time series
+    /// Get operator-visible tenant metrics
     ///
-    /// Returns tenant metrics series for dashboard ranges.
+    /// Returns tenant metrics series for the selected range after tenant-header and tenant-path matching succeeds.
     ///
-    /// - Remark: HTTP `GET /tenants/{tenantId}/metrics`.
-    /// - Remark: Generated from `#/paths//tenants/{tenantId}/metrics/get(getOperatorTenantMetrics)`.
+    /// - Remark: HTTP `GET /v1/tenants/{tenantId}/metrics`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/metrics/get(getOperatorTenantMetrics)`.
     public func getOperatorTenantMetrics(_ input: Operations.GetOperatorTenantMetrics.Input) async throws -> Operations.GetOperatorTenantMetrics.Output {
         try await client.send(
             input: input,
             forOperation: Operations.GetOperatorTenantMetrics.id,
             serializer: { input in
                 let path = try converter.renderedPath(
-                    template: "/tenants/{}/metrics",
+                    template: "/v1/tenants/{}/metrics",
                     parameters: [
                         input.path.tenantId
                     ]
@@ -543,6 +497,94 @@ public struct Client: APIProtocol {
                         preconditionFailure("bestContentType chose an invalid content type.")
                     }
                     return .ok(.init(body: body))
+                case 400:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Components.Responses.BadRequest.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.ErrorResponse.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .badRequest(.init(body: body))
+                case 401:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Components.Responses.Unauthorized.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.ErrorResponse.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .unauthorized(.init(body: body))
+                case 403:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Components.Responses.Forbidden.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.ErrorResponse.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .forbidden(.init(body: body))
+                case 404:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Components.Responses.NotFound.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.ErrorResponse.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .notFound(.init(body: body))
                 default:
                     return .undocumented(
                         statusCode: response.status.code,
@@ -555,24 +597,706 @@ public struct Client: APIProtocol {
             }
         )
     }
-    /// Placeholder login endpoint
+    /// Operator dashboard summary
     ///
-    /// - Remark: HTTP `POST /v1/auth/login`.
-    /// - Remark: Generated from `#/paths//v1/auth/login/post(authLogin)`.
-    public func authLogin(_ input: Operations.AuthLogin.Input) async throws -> Operations.AuthLogin.Output {
+    /// Returns top-level KPI summary and dashboard widget counts for the scoped tenant.
+    ///
+    /// - Remark: HTTP `GET /v1/tenants/{tenantId}/dashboard/summary`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/dashboard/summary/get(getDashboardSummary)`.
+    public func getDashboardSummary(_ input: Operations.GetDashboardSummary.Input) async throws -> Operations.GetDashboardSummary.Output {
         try await client.send(
             input: input,
-            forOperation: Operations.AuthLogin.id,
+            forOperation: Operations.GetDashboardSummary.id,
             serializer: { input in
                 let path = try converter.renderedPath(
-                    template: "/v1/auth/login",
+                    template: "/v1/tenants/{}/dashboard/summary",
+                    parameters: [
+                        input.path.tenantId
+                    ]
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .get
+                )
+                suppressMutabilityWarning(&request)
+                try converter.setHeaderFieldAsURI(
+                    in: &request.headerFields,
+                    name: "x-tenant-id",
+                    value: input.headers.xTenantId
+                )
+                try converter.setHeaderFieldAsURI(
+                    in: &request.headerFields,
+                    name: "X-Operator-Key",
+                    value: input.headers.xOperatorKey
+                )
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                return (request, nil)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 200:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.GetDashboardSummary.Output.Ok.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.DashboardSummaryResponse.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .ok(.init(body: body))
+                case 401:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Components.Responses.Unauthorized.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.ErrorResponse.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .unauthorized(.init(body: body))
+                case 403:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Components.Responses.Forbidden.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.ErrorResponse.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .forbidden(.init(body: body))
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
+    /// List operator activity events
+    ///
+    /// Returns tenant-scoped event feed items ordered newest-first.
+    ///
+    /// - Remark: HTTP `GET /v1/tenants/{tenantId}/events`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/events/get(listOperatorEvents)`.
+    public func listOperatorEvents(_ input: Operations.ListOperatorEvents.Input) async throws -> Operations.ListOperatorEvents.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.ListOperatorEvents.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/v1/tenants/{}/events",
+                    parameters: [
+                        input.path.tenantId
+                    ]
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .get
+                )
+                suppressMutabilityWarning(&request)
+                try converter.setHeaderFieldAsURI(
+                    in: &request.headerFields,
+                    name: "x-tenant-id",
+                    value: input.headers.xTenantId
+                )
+                try converter.setHeaderFieldAsURI(
+                    in: &request.headerFields,
+                    name: "X-Operator-Key",
+                    value: input.headers.xOperatorKey
+                )
+                try converter.setQueryItemAsURI(
+                    in: &request,
+                    style: .form,
+                    explode: true,
+                    name: "since",
+                    value: input.query.since
+                )
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                return (request, nil)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 200:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.ListOperatorEvents.Output.Ok.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.OperatorEventsResponse.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .ok(.init(body: body))
+                case 401:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Components.Responses.Unauthorized.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.ErrorResponse.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .unauthorized(.init(body: body))
+                case 403:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Components.Responses.Forbidden.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.ErrorResponse.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .forbidden(.init(body: body))
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
+    /// List operator alerts
+    ///
+    /// Returns tenant-scoped alerts; default state is open.
+    ///
+    /// - Remark: HTTP `GET /v1/tenants/{tenantId}/alerts`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/alerts/get(listOperatorAlerts)`.
+    public func listOperatorAlerts(_ input: Operations.ListOperatorAlerts.Input) async throws -> Operations.ListOperatorAlerts.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.ListOperatorAlerts.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/v1/tenants/{}/alerts",
+                    parameters: [
+                        input.path.tenantId
+                    ]
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .get
+                )
+                suppressMutabilityWarning(&request)
+                try converter.setHeaderFieldAsURI(
+                    in: &request.headerFields,
+                    name: "x-tenant-id",
+                    value: input.headers.xTenantId
+                )
+                try converter.setHeaderFieldAsURI(
+                    in: &request.headerFields,
+                    name: "X-Operator-Key",
+                    value: input.headers.xOperatorKey
+                )
+                try converter.setQueryItemAsURI(
+                    in: &request,
+                    style: .form,
+                    explode: true,
+                    name: "state",
+                    value: input.query.state
+                )
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                return (request, nil)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 200:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.ListOperatorAlerts.Output.Ok.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.OperatorAlertsResponse.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .ok(.init(body: body))
+                case 401:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Components.Responses.Unauthorized.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.ErrorResponse.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .unauthorized(.init(body: body))
+                case 403:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Components.Responses.Forbidden.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.ErrorResponse.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .forbidden(.init(body: body))
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
+    /// List operator portfolio tenants
+    ///
+    /// Returns all tenant memberships available to the authenticated portfolio operator key.
+    ///
+    /// - Remark: HTTP `GET /v1/operator/portfolio/tenants`.
+    /// - Remark: Generated from `#/paths//v1/operator/portfolio/tenants/get(listOperatorPortfolioTenants)`.
+    public func listOperatorPortfolioTenants(_ input: Operations.ListOperatorPortfolioTenants.Input) async throws -> Operations.ListOperatorPortfolioTenants.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.ListOperatorPortfolioTenants.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/v1/operator/portfolio/tenants",
                     parameters: []
                 )
                 var request: HTTPTypes.HTTPRequest = .init(
                     soar_path: path,
-                    method: .post
+                    method: .get
                 )
                 suppressMutabilityWarning(&request)
+                try converter.setHeaderFieldAsURI(
+                    in: &request.headerFields,
+                    name: "X-Operator-Key",
+                    value: input.headers.xOperatorKey
+                )
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                return (request, nil)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 200:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.ListOperatorPortfolioTenants.Output.Ok.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.OperatorTenantListResponse.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .ok(.init(body: body))
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
+    /// List review queue across operator portfolio
+    ///
+    /// Returns review queue items filtered by state, tenant, and timestamp.
+    ///
+    /// - Remark: HTTP `GET /v1/operator/reviews/queue`.
+    /// - Remark: Generated from `#/paths//v1/operator/reviews/queue/get(listOperatorReviewQueue)`.
+    public func listOperatorReviewQueue(_ input: Operations.ListOperatorReviewQueue.Input) async throws -> Operations.ListOperatorReviewQueue.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.ListOperatorReviewQueue.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/v1/operator/reviews/queue",
+                    parameters: []
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .get
+                )
+                suppressMutabilityWarning(&request)
+                try converter.setHeaderFieldAsURI(
+                    in: &request.headerFields,
+                    name: "X-Operator-Key",
+                    value: input.headers.xOperatorKey
+                )
+                try converter.setQueryItemAsURI(
+                    in: &request,
+                    style: .form,
+                    explode: true,
+                    name: "state",
+                    value: input.query.state
+                )
+                try converter.setQueryItemAsURI(
+                    in: &request,
+                    style: .form,
+                    explode: true,
+                    name: "since",
+                    value: input.query.since
+                )
+                try converter.setQueryItemAsURI(
+                    in: &request,
+                    style: .form,
+                    explode: true,
+                    name: "tenant_id",
+                    value: input.query.tenantId
+                )
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                return (request, nil)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 200:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.ListOperatorReviewQueue.Output.Ok.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.OperatorReviewQueueResponse.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .ok(.init(body: body))
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
+    /// List approval items across operator portfolio
+    ///
+    /// Returns approval cards for awaiting_approval, approved, or rejected state.
+    ///
+    /// - Remark: HTTP `GET /v1/operator/approvals`.
+    /// - Remark: Generated from `#/paths//v1/operator/approvals/get(listOperatorApprovals)`.
+    public func listOperatorApprovals(_ input: Operations.ListOperatorApprovals.Input) async throws -> Operations.ListOperatorApprovals.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.ListOperatorApprovals.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/v1/operator/approvals",
+                    parameters: []
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .get
+                )
+                suppressMutabilityWarning(&request)
+                try converter.setHeaderFieldAsURI(
+                    in: &request.headerFields,
+                    name: "X-Operator-Key",
+                    value: input.headers.xOperatorKey
+                )
+                try converter.setQueryItemAsURI(
+                    in: &request,
+                    style: .form,
+                    explode: true,
+                    name: "state",
+                    value: input.query.state
+                )
+                try converter.setQueryItemAsURI(
+                    in: &request,
+                    style: .form,
+                    explode: true,
+                    name: "tenant_id",
+                    value: input.query.tenantId
+                )
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                return (request, nil)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 200:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.ListOperatorApprovals.Output.Ok.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.OperatorApprovalListResponse.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .ok(.init(body: body))
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
+    /// Get approval item detail
+    ///
+    /// Returns full draft/edit context and run counts for one approval item.
+    ///
+    /// - Remark: HTTP `GET /v1/operator/approvals/{approvalId}`.
+    /// - Remark: Generated from `#/paths//v1/operator/approvals/{approvalId}/get(getOperatorApproval)`.
+    public func getOperatorApproval(_ input: Operations.GetOperatorApproval.Input) async throws -> Operations.GetOperatorApproval.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.GetOperatorApproval.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/v1/operator/approvals/{}",
+                    parameters: [
+                        input.path.approvalId
+                    ]
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .get
+                )
+                suppressMutabilityWarning(&request)
+                try converter.setHeaderFieldAsURI(
+                    in: &request.headerFields,
+                    name: "X-Operator-Key",
+                    value: input.headers.xOperatorKey
+                )
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                return (request, nil)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 200:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.GetOperatorApproval.Output.Ok.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.OperatorApprovalDetail.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .ok(.init(body: body))
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
+    /// Patch draft fields for an approval item
+    ///
+    /// Applies operator edits to subject, body, segment, and send window before approval.
+    ///
+    /// - Remark: HTTP `PATCH /v1/operator/approvals/{approvalId}/draft`.
+    /// - Remark: Generated from `#/paths//v1/operator/approvals/{approvalId}/draft/patch(patchOperatorApprovalDraft)`.
+    public func patchOperatorApprovalDraft(_ input: Operations.PatchOperatorApprovalDraft.Input) async throws -> Operations.PatchOperatorApprovalDraft.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.PatchOperatorApprovalDraft.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/v1/operator/approvals/{}/draft",
+                    parameters: [
+                        input.path.approvalId
+                    ]
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .patch
+                )
+                suppressMutabilityWarning(&request)
+                try converter.setHeaderFieldAsURI(
+                    in: &request.headerFields,
+                    name: "X-Operator-Key",
+                    value: input.headers.xOperatorKey
+                )
                 converter.setAcceptHeader(
                     in: &request.headerFields,
                     contentTypes: input.headers.accept
@@ -590,9 +1314,9 @@ public struct Client: APIProtocol {
             },
             deserializer: { response, responseBody in
                 switch response.status.code {
-                case 501:
+                case 200:
                     let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
-                    let body: Operations.AuthLogin.Output.NotImplemented.Body
+                    let body: Operations.PatchOperatorApprovalDraft.Output.Ok.Body
                     let chosenContentType = try converter.bestContentType(
                         received: contentType,
                         options: [
@@ -602,7 +1326,7 @@ public struct Client: APIProtocol {
                     switch chosenContentType {
                     case "application/json":
                         body = try await converter.getResponseBodyAsJSON(
-                            Components.Schemas.NotImplementedError.self,
+                            Components.Schemas.OperatorApprovalDetail.self,
                             from: responseBody,
                             transforming: { value in
                                 .json(value)
@@ -611,7 +1335,7 @@ public struct Client: APIProtocol {
                     default:
                         preconditionFailure("bestContentType chose an invalid content type.")
                     }
-                    return .notImplemented(.init(body: body))
+                    return .ok(.init(body: body))
                 default:
                     return .undocumented(
                         statusCode: response.status.code,
@@ -624,28 +1348,32 @@ public struct Client: APIProtocol {
             }
         )
     }
-    /// Placeholder tenant listing endpoint
+    /// Approve a reactivation run
     ///
-    /// - Remark: HTTP `GET /v1/tenants`.
-    /// - Remark: Generated from `#/paths//v1/tenants/get(listTenants)`.
-    public func listTenants(_ input: Operations.ListTenants.Input) async throws -> Operations.ListTenants.Output {
+    /// Atomically approves a run and transitions paused messages into queued state.
+    ///
+    /// - Remark: HTTP `POST /v1/operator/approvals/{approvalId}/approve`.
+    /// - Remark: Generated from `#/paths//v1/operator/approvals/{approvalId}/approve/post(approveOperatorApproval)`.
+    public func approveOperatorApproval(_ input: Operations.ApproveOperatorApproval.Input) async throws -> Operations.ApproveOperatorApproval.Output {
         try await client.send(
             input: input,
-            forOperation: Operations.ListTenants.id,
+            forOperation: Operations.ApproveOperatorApproval.id,
             serializer: { input in
                 let path = try converter.renderedPath(
-                    template: "/v1/tenants",
-                    parameters: []
+                    template: "/v1/operator/approvals/{}/approve",
+                    parameters: [
+                        input.path.approvalId
+                    ]
                 )
                 var request: HTTPTypes.HTTPRequest = .init(
                     soar_path: path,
-                    method: .get
+                    method: .post
                 )
                 suppressMutabilityWarning(&request)
                 try converter.setHeaderFieldAsURI(
                     in: &request.headerFields,
-                    name: "x-tenant-id",
-                    value: input.headers.xTenantId
+                    name: "X-Operator-Key",
+                    value: input.headers.xOperatorKey
                 )
                 converter.setAcceptHeader(
                     in: &request.headerFields,
@@ -655,9 +1383,9 @@ public struct Client: APIProtocol {
             },
             deserializer: { response, responseBody in
                 switch response.status.code {
-                case 501:
+                case 200:
                     let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
-                    let body: Operations.ListTenants.Output.NotImplemented.Body
+                    let body: Operations.ApproveOperatorApproval.Output.Ok.Body
                     let chosenContentType = try converter.bestContentType(
                         received: contentType,
                         options: [
@@ -667,7 +1395,7 @@ public struct Client: APIProtocol {
                     switch chosenContentType {
                     case "application/json":
                         body = try await converter.getResponseBodyAsJSON(
-                            Components.Schemas.NotImplementedError.self,
+                            Components.Schemas.OperatorApprovalMutationResponse.self,
                             from: responseBody,
                             transforming: { value in
                                 .json(value)
@@ -676,7 +1404,167 @@ public struct Client: APIProtocol {
                     default:
                         preconditionFailure("bestContentType chose an invalid content type.")
                     }
-                    return .notImplemented(.init(body: body))
+                    return .ok(.init(body: body))
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
+    /// Reject a reactivation run
+    ///
+    /// Rejects an approval item and keeps the run paused/closed with audit metadata.
+    ///
+    /// - Remark: HTTP `POST /v1/operator/approvals/{approvalId}/reject`.
+    /// - Remark: Generated from `#/paths//v1/operator/approvals/{approvalId}/reject/post(rejectOperatorApproval)`.
+    public func rejectOperatorApproval(_ input: Operations.RejectOperatorApproval.Input) async throws -> Operations.RejectOperatorApproval.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.RejectOperatorApproval.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/v1/operator/approvals/{}/reject",
+                    parameters: [
+                        input.path.approvalId
+                    ]
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .post
+                )
+                suppressMutabilityWarning(&request)
+                try converter.setHeaderFieldAsURI(
+                    in: &request.headerFields,
+                    name: "X-Operator-Key",
+                    value: input.headers.xOperatorKey
+                )
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                let body: OpenAPIRuntime.HTTPBody?
+                switch input.body {
+                case .none:
+                    body = nil
+                case let .json(value):
+                    body = try converter.setOptionalRequestBodyAsJSON(
+                        value,
+                        headerFields: &request.headerFields,
+                        contentType: "application/json; charset=utf-8"
+                    )
+                }
+                return (request, body)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 200:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.RejectOperatorApproval.Output.Ok.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.OperatorApprovalMutationResponse.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .ok(.init(body: body))
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
+    /// Manual reactivation run retrigger
+    ///
+    /// Request a manual retrigger for review-driven reactivation workflow.
+    ///
+    /// - Remark: HTTP `POST /v1/operator/reviews/{reviewId}/reactivation-runs`.
+    /// - Remark: Generated from `#/paths//v1/operator/reviews/{reviewId}/reactivation-runs/post(retriggerReviewReactivationRun)`.
+    public func retriggerReviewReactivationRun(_ input: Operations.RetriggerReviewReactivationRun.Input) async throws -> Operations.RetriggerReviewReactivationRun.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.RetriggerReviewReactivationRun.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/v1/operator/reviews/{}/reactivation-runs",
+                    parameters: [
+                        input.path.reviewId
+                    ]
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .post
+                )
+                suppressMutabilityWarning(&request)
+                try converter.setHeaderFieldAsURI(
+                    in: &request.headerFields,
+                    name: "X-Operator-Key",
+                    value: input.headers.xOperatorKey
+                )
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                let body: OpenAPIRuntime.HTTPBody?
+                switch input.body {
+                case .none:
+                    body = nil
+                case let .json(value):
+                    body = try converter.setOptionalRequestBodyAsJSON(
+                        value,
+                        headerFields: &request.headerFields,
+                        contentType: "application/json; charset=utf-8"
+                    )
+                }
+                return (request, body)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 200:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.RetriggerReviewReactivationRun.Output.Ok.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.OperatorRetriggerResponse.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .ok(.init(body: body))
                 default:
                     return .undocumented(
                         statusCode: response.status.code,
@@ -713,6 +1601,11 @@ public struct Client: APIProtocol {
                     in: &request.headerFields,
                     name: "x-tenant-id",
                     value: input.headers.xTenantId
+                )
+                try converter.setHeaderFieldAsURI(
+                    in: &request.headerFields,
+                    name: "X-Operator-Key",
+                    value: input.headers.xOperatorKey
                 )
                 converter.setAcceptHeader(
                     in: &request.headerFields,
@@ -884,6 +1777,11 @@ public struct Client: APIProtocol {
                     name: "x-tenant-id",
                     value: input.headers.xTenantId
                 )
+                try converter.setHeaderFieldAsURI(
+                    in: &request.headerFields,
+                    name: "X-Operator-Key",
+                    value: input.headers.xOperatorKey
+                )
                 try converter.setQueryItemAsURI(
                     in: &request,
                     style: .form,
@@ -947,6 +1845,78 @@ public struct Client: APIProtocol {
             }
         )
     }
+    /// List tenant customer segment counts
+    ///
+    /// - Remark: HTTP `GET /v1/tenants/{tenantId}/customers/segments`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/customers/segments/get(listCustomerSegments)`.
+    public func listCustomerSegments(_ input: Operations.ListCustomerSegments.Input) async throws -> Operations.ListCustomerSegments.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.ListCustomerSegments.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/v1/tenants/{}/customers/segments",
+                    parameters: [
+                        input.path.tenantId
+                    ]
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .get
+                )
+                suppressMutabilityWarning(&request)
+                try converter.setHeaderFieldAsURI(
+                    in: &request.headerFields,
+                    name: "x-tenant-id",
+                    value: input.headers.xTenantId
+                )
+                try converter.setHeaderFieldAsURI(
+                    in: &request.headerFields,
+                    name: "X-Operator-Key",
+                    value: input.headers.xOperatorKey
+                )
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                return (request, nil)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 200:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.ListCustomerSegments.Output.Ok.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.CustomerSegmentsResponse.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .ok(.init(body: body))
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
     /// Upload suppression CSV import
     ///
     /// - Remark: HTTP `POST /v1/tenants/{tenantId}/suppressions/imports`.
@@ -971,6 +1941,11 @@ public struct Client: APIProtocol {
                     in: &request.headerFields,
                     name: "x-tenant-id",
                     value: input.headers.xTenantId
+                )
+                try converter.setHeaderFieldAsURI(
+                    in: &request.headerFields,
+                    name: "X-Operator-Key",
+                    value: input.headers.xOperatorKey
                 )
                 converter.setAcceptHeader(
                     in: &request.headerFields,
@@ -1142,6 +2117,11 @@ public struct Client: APIProtocol {
                     name: "x-tenant-id",
                     value: input.headers.xTenantId
                 )
+                try converter.setHeaderFieldAsURI(
+                    in: &request.headerFields,
+                    name: "X-Operator-Key",
+                    value: input.headers.xOperatorKey
+                )
                 converter.setAcceptHeader(
                     in: &request.headerFields,
                     contentTypes: input.headers.accept
@@ -1218,6 +2198,11 @@ public struct Client: APIProtocol {
                     name: "x-tenant-id",
                     value: input.headers.xTenantId
                 )
+                try converter.setHeaderFieldAsURI(
+                    in: &request.headerFields,
+                    name: "X-Operator-Key",
+                    value: input.headers.xOperatorKey
+                )
                 converter.setAcceptHeader(
                     in: &request.headerFields,
                     contentTypes: input.headers.accept
@@ -1284,6 +2269,11 @@ public struct Client: APIProtocol {
                     in: &request.headerFields,
                     name: "x-tenant-id",
                     value: input.headers.xTenantId
+                )
+                try converter.setHeaderFieldAsURI(
+                    in: &request.headerFields,
+                    name: "X-Operator-Key",
+                    value: input.headers.xOperatorKey
                 )
                 converter.setAcceptHeader(
                     in: &request.headerFields,
@@ -1352,6 +2342,11 @@ public struct Client: APIProtocol {
                     name: "x-tenant-id",
                     value: input.headers.xTenantId
                 )
+                try converter.setHeaderFieldAsURI(
+                    in: &request.headerFields,
+                    name: "X-Operator-Key",
+                    value: input.headers.xOperatorKey
+                )
                 try converter.setQueryItemAsURI(
                     in: &request,
                     style: .form,
@@ -1365,6 +2360,13 @@ public struct Client: APIProtocol {
                     explode: true,
                     name: "cursor",
                     value: input.query.cursor
+                )
+                try converter.setQueryItemAsURI(
+                    in: &request,
+                    style: .form,
+                    explode: true,
+                    name: "since",
+                    value: input.query.since
                 )
                 converter.setAcceptHeader(
                     in: &request.headerFields,
@@ -1598,6 +2600,270 @@ public struct Client: APIProtocol {
             }
         )
     }
+    /// List recent revenue imports for tenant
+    ///
+    /// - Remark: HTTP `GET /v1/tenants/{tenantId}/revenue/imports`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/revenue/imports/get(listRevenueImports)`.
+    public func listRevenueImports(_ input: Operations.ListRevenueImports.Input) async throws -> Operations.ListRevenueImports.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.ListRevenueImports.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/v1/tenants/{}/revenue/imports",
+                    parameters: [
+                        input.path.tenantId
+                    ]
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .get
+                )
+                suppressMutabilityWarning(&request)
+                try converter.setHeaderFieldAsURI(
+                    in: &request.headerFields,
+                    name: "x-tenant-id",
+                    value: input.headers.xTenantId
+                )
+                try converter.setHeaderFieldAsURI(
+                    in: &request.headerFields,
+                    name: "X-Operator-Key",
+                    value: input.headers.xOperatorKey
+                )
+                try converter.setQueryItemAsURI(
+                    in: &request,
+                    style: .form,
+                    explode: true,
+                    name: "limit",
+                    value: input.query.limit
+                )
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                return (request, nil)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 200:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.ListRevenueImports.Output.Ok.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.RevenueImportListResponse.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .ok(.init(body: body))
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
+    /// Upload revenue CSV import
+    ///
+    /// - Remark: HTTP `POST /v1/tenants/{tenantId}/revenue/imports`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/revenue/imports/post(createRevenueImport)`.
+    public func createRevenueImport(_ input: Operations.CreateRevenueImport.Input) async throws -> Operations.CreateRevenueImport.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.CreateRevenueImport.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/v1/tenants/{}/revenue/imports",
+                    parameters: [
+                        input.path.tenantId
+                    ]
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .post
+                )
+                suppressMutabilityWarning(&request)
+                try converter.setHeaderFieldAsURI(
+                    in: &request.headerFields,
+                    name: "x-tenant-id",
+                    value: input.headers.xTenantId
+                )
+                try converter.setHeaderFieldAsURI(
+                    in: &request.headerFields,
+                    name: "X-Operator-Key",
+                    value: input.headers.xOperatorKey
+                )
+                try converter.setHeaderFieldAsURI(
+                    in: &request.headerFields,
+                    name: "Idempotency-Key",
+                    value: input.headers.idempotencyKey
+                )
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                let body: OpenAPIRuntime.HTTPBody?
+                switch input.body {
+                case let .multipartForm(value):
+                    body = try converter.setRequiredRequestBodyAsMultipart(
+                        value,
+                        headerFields: &request.headerFields,
+                        contentType: "multipart/form-data",
+                        allowsUnknownParts: true,
+                        requiredExactlyOncePartNames: [
+                            "file"
+                        ],
+                        requiredAtLeastOncePartNames: [],
+                        atMostOncePartNames: [],
+                        zeroOrMoreTimesPartNames: [],
+                        encoding: { part in
+                            switch part {
+                            case let .file(wrapped):
+                                var headerFields: HTTPTypes.HTTPFields = .init()
+                                let value = wrapped.payload
+                                let body = try converter.setRequiredRequestBodyAsBinary(
+                                    value.body,
+                                    headerFields: &headerFields,
+                                    contentType: "text/plain"
+                                )
+                                return .init(
+                                    name: "file",
+                                    filename: wrapped.filename,
+                                    headerFields: headerFields,
+                                    body: body
+                                )
+                            case let .undocumented(value):
+                                return value
+                            }
+                        }
+                    )
+                }
+                return (request, body)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 202:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.CreateRevenueImport.Output.Accepted.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.CreateRevenueImportResponse.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .accepted(.init(body: body))
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
+    /// Get revenue import status
+    ///
+    /// - Remark: HTTP `GET /v1/revenue-imports/{revenueImportId}`.
+    /// - Remark: Generated from `#/paths//v1/revenue-imports/{revenueImportId}/get(getRevenueImportStatus)`.
+    public func getRevenueImportStatus(_ input: Operations.GetRevenueImportStatus.Input) async throws -> Operations.GetRevenueImportStatus.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.GetRevenueImportStatus.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/v1/revenue-imports/{}",
+                    parameters: [
+                        input.path.revenueImportId
+                    ]
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .get
+                )
+                suppressMutabilityWarning(&request)
+                try converter.setHeaderFieldAsURI(
+                    in: &request.headerFields,
+                    name: "x-tenant-id",
+                    value: input.headers.xTenantId
+                )
+                try converter.setHeaderFieldAsURI(
+                    in: &request.headerFields,
+                    name: "X-Operator-Key",
+                    value: input.headers.xOperatorKey
+                )
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                return (request, nil)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 200:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.GetRevenueImportStatus.Output.Ok.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.RevenueImportStatusResponse.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .ok(.init(body: body))
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
     /// Revenue proof summary (attribution rollup)
     ///
     /// Returns an attribution rollup using a conservative model (initially LAST_TOUCH).
@@ -1754,6 +3020,337 @@ public struct Client: APIProtocol {
                         preconditionFailure("bestContentType chose an invalid content type.")
                     }
                     return .internalServerError(.init(body: body))
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
+    /// List campaign runs for tenant
+    ///
+    /// - Remark: HTTP `GET /v1/tenants/{tenantId}/campaign-runs`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/campaign-runs/get(listCampaignRuns)`.
+    public func listCampaignRuns(_ input: Operations.ListCampaignRuns.Input) async throws -> Operations.ListCampaignRuns.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.ListCampaignRuns.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/v1/tenants/{}/campaign-runs",
+                    parameters: [
+                        input.path.tenantId
+                    ]
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .get
+                )
+                suppressMutabilityWarning(&request)
+                try converter.setHeaderFieldAsURI(
+                    in: &request.headerFields,
+                    name: "x-tenant-id",
+                    value: input.headers.xTenantId
+                )
+                try converter.setQueryItemAsURI(
+                    in: &request,
+                    style: .form,
+                    explode: true,
+                    name: "limit",
+                    value: input.query.limit
+                )
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                return (request, nil)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 200:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.ListCampaignRuns.Output.Ok.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Operations.ListCampaignRuns.Output.Ok.Body.JsonPayload.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .ok(.init(body: body))
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
+    /// Get campaign run detail
+    ///
+    /// - Remark: HTTP `GET /v1/tenants/{tenantId}/campaign-runs/{runId}`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/campaign-runs/{runId}/get(getCampaignRun)`.
+    public func getCampaignRun(_ input: Operations.GetCampaignRun.Input) async throws -> Operations.GetCampaignRun.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.GetCampaignRun.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/v1/tenants/{}/campaign-runs/{}",
+                    parameters: [
+                        input.path.tenantId,
+                        input.path.runId
+                    ]
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .get
+                )
+                suppressMutabilityWarning(&request)
+                try converter.setHeaderFieldAsURI(
+                    in: &request.headerFields,
+                    name: "x-tenant-id",
+                    value: input.headers.xTenantId
+                )
+                try converter.setHeaderFieldAsURI(
+                    in: &request.headerFields,
+                    name: "X-Operator-Key",
+                    value: input.headers.xOperatorKey
+                )
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                return (request, nil)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 200:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.GetCampaignRun.Output.Ok.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.CampaignRunDetail.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .ok(.init(body: body))
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
+    /// Pause a campaign run
+    ///
+    /// - Remark: HTTP `POST /v1/tenants/{tenantId}/campaign-runs/{runId}/pause`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/campaign-runs/{runId}/pause/post(pauseCampaignRun)`.
+    public func pauseCampaignRun(_ input: Operations.PauseCampaignRun.Input) async throws -> Operations.PauseCampaignRun.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.PauseCampaignRun.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/v1/tenants/{}/campaign-runs/{}/pause",
+                    parameters: [
+                        input.path.tenantId,
+                        input.path.runId
+                    ]
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .post
+                )
+                suppressMutabilityWarning(&request)
+                try converter.setHeaderFieldAsURI(
+                    in: &request.headerFields,
+                    name: "x-tenant-id",
+                    value: input.headers.xTenantId
+                )
+                try converter.setHeaderFieldAsURI(
+                    in: &request.headerFields,
+                    name: "X-Operator-Key",
+                    value: input.headers.xOperatorKey
+                )
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                return (request, nil)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 200:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.PauseCampaignRun.Output.Ok.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.OperatorInterventionResponse.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .ok(.init(body: body))
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
+    /// Resume a paused campaign run
+    ///
+    /// - Remark: HTTP `POST /v1/tenants/{tenantId}/campaign-runs/{runId}/resume`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/campaign-runs/{runId}/resume/post(resumeCampaignRun)`.
+    public func resumeCampaignRun(_ input: Operations.ResumeCampaignRun.Input) async throws -> Operations.ResumeCampaignRun.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.ResumeCampaignRun.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/v1/tenants/{}/campaign-runs/{}/resume",
+                    parameters: [
+                        input.path.tenantId,
+                        input.path.runId
+                    ]
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .post
+                )
+                suppressMutabilityWarning(&request)
+                try converter.setHeaderFieldAsURI(
+                    in: &request.headerFields,
+                    name: "x-tenant-id",
+                    value: input.headers.xTenantId
+                )
+                try converter.setHeaderFieldAsURI(
+                    in: &request.headerFields,
+                    name: "X-Operator-Key",
+                    value: input.headers.xOperatorKey
+                )
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                return (request, nil)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 200:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.ResumeCampaignRun.Output.Ok.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.OperatorInterventionResponse.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .ok(.init(body: body))
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
+    /// Redirect tracked short link and record click telemetry
+    ///
+    /// - Remark: HTTP `GET /v1/links/{code}`.
+    /// - Remark: Generated from `#/paths//v1/links/{code}/get(redirectTrackedLink)`.
+    public func redirectTrackedLink(_ input: Operations.RedirectTrackedLink.Input) async throws -> Operations.RedirectTrackedLink.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.RedirectTrackedLink.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/v1/links/{}",
+                    parameters: [
+                        input.path.code
+                    ]
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .get
+                )
+                suppressMutabilityWarning(&request)
+                return (request, nil)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 302:
+                    return .found(.init())
                 default:
                     return .undocumented(
                         statusCode: response.status.code,
@@ -2357,6 +3954,308 @@ public struct Client: APIProtocol {
                     case "application/json":
                         body = try await converter.getResponseBodyAsJSON(
                             Components.Schemas.MonthlyReportPayload.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .ok(.init(body: body))
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
+    /// Monthly report PDF export
+    ///
+    /// - Remark: HTTP `GET /v1/tenants/{tenantId}/reports/monthly/pdf`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/reports/monthly/pdf/get(getMonthlyReportPdf)`.
+    public func getMonthlyReportPdf(_ input: Operations.GetMonthlyReportPdf.Input) async throws -> Operations.GetMonthlyReportPdf.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.GetMonthlyReportPdf.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/v1/tenants/{}/reports/monthly/pdf",
+                    parameters: [
+                        input.path.tenantId
+                    ]
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .get
+                )
+                suppressMutabilityWarning(&request)
+                try converter.setHeaderFieldAsURI(
+                    in: &request.headerFields,
+                    name: "x-tenant-id",
+                    value: input.headers.xTenantId
+                )
+                try converter.setHeaderFieldAsURI(
+                    in: &request.headerFields,
+                    name: "X-Operator-Key",
+                    value: input.headers.xOperatorKey
+                )
+                try converter.setQueryItemAsURI(
+                    in: &request,
+                    style: .form,
+                    explode: true,
+                    name: "month",
+                    value: input.query.month
+                )
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                return (request, nil)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 200:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.GetMonthlyReportPdf.Output.Ok.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/pdf"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/pdf":
+                        body = try converter.getResponseBodyAsBinary(
+                            OpenAPIRuntime.HTTPBody.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .pdf(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .ok(.init(body: body))
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
+    /// Download monthly report CSV
+    ///
+    /// - Remark: HTTP `GET /v1/tenants/{tenantId}/reports/monthly/export.csv`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/reports/monthly/export.csv/get(getMonthlyReportCsv)`.
+    public func getMonthlyReportCsv(_ input: Operations.GetMonthlyReportCsv.Input) async throws -> Operations.GetMonthlyReportCsv.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.GetMonthlyReportCsv.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/v1/tenants/{}/reports/monthly/export.csv",
+                    parameters: [
+                        input.path.tenantId
+                    ]
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .get
+                )
+                suppressMutabilityWarning(&request)
+                try converter.setHeaderFieldAsURI(
+                    in: &request.headerFields,
+                    name: "x-tenant-id",
+                    value: input.headers.xTenantId
+                )
+                try converter.setHeaderFieldAsURI(
+                    in: &request.headerFields,
+                    name: "X-Operator-Key",
+                    value: input.headers.xOperatorKey
+                )
+                try converter.setQueryItemAsURI(
+                    in: &request,
+                    style: .form,
+                    explode: true,
+                    name: "month",
+                    value: input.query.month
+                )
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                return (request, nil)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 200:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.GetMonthlyReportCsv.Output.Ok.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "text/csv"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "text/csv":
+                        body = try converter.getResponseBodyAsBinary(
+                            OpenAPIRuntime.HTTPBody.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .csv(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .ok(.init(body: body))
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
+    /// Run operator smoke checks
+    ///
+    /// - Remark: HTTP `POST /v1/tenants/{tenantId}/operator/smoke`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/operator/smoke/post(runOperatorSmoke)`.
+    public func runOperatorSmoke(_ input: Operations.RunOperatorSmoke.Input) async throws -> Operations.RunOperatorSmoke.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.RunOperatorSmoke.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/v1/tenants/{}/operator/smoke",
+                    parameters: [
+                        input.path.tenantId
+                    ]
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .post
+                )
+                suppressMutabilityWarning(&request)
+                try converter.setHeaderFieldAsURI(
+                    in: &request.headerFields,
+                    name: "x-tenant-id",
+                    value: input.headers.xTenantId
+                )
+                try converter.setHeaderFieldAsURI(
+                    in: &request.headerFields,
+                    name: "X-Operator-Key",
+                    value: input.headers.xOperatorKey
+                )
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                return (request, nil)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 200:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.RunOperatorSmoke.Output.Ok.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.OperatorSmokeResponse.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .ok(.init(body: body))
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
+    /// Rotate tenant operator key
+    ///
+    /// - Remark: HTTP `POST /v1/tenants/{tenantId}/operator/keys/rotate`.
+    /// - Remark: Generated from `#/paths//v1/tenants/{tenantId}/operator/keys/rotate/post(rotateOperatorKey)`.
+    public func rotateOperatorKey(_ input: Operations.RotateOperatorKey.Input) async throws -> Operations.RotateOperatorKey.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.RotateOperatorKey.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/v1/tenants/{}/operator/keys/rotate",
+                    parameters: [
+                        input.path.tenantId
+                    ]
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .post
+                )
+                suppressMutabilityWarning(&request)
+                try converter.setHeaderFieldAsURI(
+                    in: &request.headerFields,
+                    name: "x-tenant-id",
+                    value: input.headers.xTenantId
+                )
+                try converter.setHeaderFieldAsURI(
+                    in: &request.headerFields,
+                    name: "X-Operator-Key",
+                    value: input.headers.xOperatorKey
+                )
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                return (request, nil)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 200:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.RotateOperatorKey.Output.Ok.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.RotateOperatorKeyResponse.self,
                             from: responseBody,
                             transforming: { value in
                                 .json(value)

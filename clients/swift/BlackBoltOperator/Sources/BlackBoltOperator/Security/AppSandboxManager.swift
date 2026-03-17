@@ -114,9 +114,7 @@ actor AppSandboxManager {
     /// Verify app has proper code signing
     /// - Returns: true if code signature is valid
     func verifyCodeSignature() -> Bool {
-        guard let bundlePath = Bundle.main.bundlePath else {
-            return false
-        }
+        let bundlePath = Bundle.main.bundlePath
 
         let task = Process()
         task.executableURL = URL(fileURLWithPath: "/usr/bin/codesign")
@@ -138,9 +136,7 @@ actor AppSandboxManager {
     /// Get code signing identity
     /// - Returns: Code signing identity string if available
     func getCodeSigningIdentity() -> String? {
-        guard let bundlePath = Bundle.main.bundlePath else {
-            return nil
-        }
+        let bundlePath = Bundle.main.bundlePath
 
         let task = Process()
         task.executableURL = URL(fileURLWithPath: "/usr/bin/codesign")

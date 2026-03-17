@@ -1,0 +1,132 @@
+{
+  "success_responses": {
+    "empty": {
+      "statusCode": 200,
+      "body": {}
+    },
+    "import_status": {
+      "statusCode": 200,
+      "body": {
+        "importId": "import-123",
+        "status": "processing",
+        "totalRows": 1000,
+        "processedRows": 500,
+        "succeededRows": 480,
+        "failedRows": 20,
+        "duplicateRows": 0
+      }
+    },
+    "customer_segments": {
+      "statusCode": 200,
+      "body": {
+        "tenantId": "tenant-1",
+        "total": 5000,
+        "items": [
+          {
+            "segment": "premium",
+            "count": 1500
+          },
+          {
+            "segment": "standard",
+            "count": 3000
+          },
+          {
+            "segment": "trial",
+            "count": 500
+          }
+        ]
+      }
+    },
+    "revenue_import": {
+      "statusCode": 200,
+      "body": {
+        "revenueImportId": "rev-import-456",
+        "status": "completed",
+        "totalRows": 500,
+        "processedRows": 500,
+        "succeededRows": 495,
+        "failedRows": 5,
+        "duplicateRows": 0,
+        "createdAt": "2024-03-03T10:00:00Z",
+        "finishedAt": "2024-03-03T10:05:00Z"
+      }
+    }
+  },
+  "error_responses": {
+    "bad_request": {
+      "statusCode": 400,
+      "body": {
+        "code": "bad_request",
+        "message": "Request validation failed"
+      }
+    },
+    "unauthorized": {
+      "statusCode": 401,
+      "body": {
+        "code": "invalid_operator_key",
+        "message": "Invalid or missing operator key"
+      }
+    },
+    "forbidden": {
+      "statusCode": 403,
+      "body": {
+        "code": "forbidden",
+        "message": "Access to resource denied"
+      }
+    },
+    "not_found": {
+      "statusCode": 404,
+      "body": {
+        "code": "not_found",
+        "message": "Resource not found"
+      }
+    },
+    "conflict": {
+      "statusCode": 409,
+      "body": {
+        "code": "conflict",
+        "message": "Resource already exists"
+      }
+    },
+    "rate_limited": {
+      "statusCode": 429,
+      "body": {
+        "code": "rate_limited",
+        "message": "Too many requests"
+      }
+    },
+    "server_error": {
+      "statusCode": 500,
+      "body": {
+        "code": "server_error",
+        "message": "Internal server error"
+      }
+    },
+    "service_unavailable": {
+      "statusCode": 503,
+      "body": {
+        "code": "service_unavailable",
+        "message": "Service temporarily unavailable"
+      }
+    }
+  },
+  "validation_errors": {
+    "import_errors": [
+      {
+        "rowNum": 1,
+        "code": "invalid_format",
+        "message": "Invalid data format"
+      },
+      {
+        "rowNum": 5,
+        "code": "missing_field",
+        "message": "Required field missing"
+      },
+      {
+        "rowNum": 10,
+        "code": "type_mismatch",
+        "message": "Data type mismatch"
+      }
+    ]
+  }
+}

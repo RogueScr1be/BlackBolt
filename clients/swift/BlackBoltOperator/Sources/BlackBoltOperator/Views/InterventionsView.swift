@@ -9,6 +9,12 @@ struct InterventionsView: View {
     @State private var errorMessage: String?
     @State private var isBusy = false
 
+    private let apiService: any OperatorAPIServicing
+
+    init(apiService: any OperatorAPIServicing = GeneratedOperatorAPIService()) {
+        self.apiService = apiService
+    }
+
     var body: some View {
         List {
             Section {
@@ -143,10 +149,9 @@ struct InterventionsView: View {
         defer { isBusy = false }
 
         do {
-            let gbpReq = try runtime.request(path: "/v1/tenants/\(runtime.tenantId)/integrations/gbp/operator-summary")
-            let postmarkReq = try runtime.request(path: "/v1/tenants/\(runtime.tenantId)/integrations/postmark/operator-summary")
-            async let gbpTask = OperatorHTTP.fetchJSON(gbpReq, as: GbpOperatorSummary.self)
-            async let postmarkTask = OperatorHTTP.fetchJSON(postmarkReq, as: PostmarkOperatorSummary.self)
+            let context = try runtime.apiContext()
+            async let gbpTask = apiService.gbpSummary(context: context, tenantId: context.tenantId)
+            async let postmarkTask = apiService.postmarkSummary(context: context, tenantId: context.tenantId)
             let (gbp, postmark) = try await (gbpTask, postmarkTask)
             gbpSummary = gbp
             postmarkSummary = postmark
@@ -160,9 +165,9 @@ struct InterventionsView: View {
         isBusy = true
         defer { isBusy = false }
         do {
-            let request = try runtime.request(path: "/v1/tenants/\(runtime.tenantId)/reviews/poll", method: "POST")
-            let response = try await OperatorHTTP.fetchJSON(request, as: PollResponse.self)
-            statusMessage = "GBP ingestion queued: \(response.jobId ?? "none")"
+            let context = try runtime.apiContext()
+            try await apiService.retryGbpIngestion(context: context, tenantId: context.tenantId)
+            statusMessage = "GBP ingestion retriggered."
             errorMessage = nil
             await refreshContext()
         } catch {
@@ -174,10 +179,12 @@ struct InterventionsView: View {
         isBusy = true
         defer { isBusy = false }
         do {
-            var request = try runtime.request(path: "/v1/tenants/\(runtime.tenantId)/integrations/postmark/resume", method: "POST")
-            request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.httpBody = Data("{\"checklistAck\":true}".utf8)
-            let response = try await OperatorHTTP.fetchJSON(request, as: OperatorActionResponse.self)
+            let context = try runtime.apiContext()
+            let response = try await apiService.resumePostmarkSends(
+                context: context,
+                tenantId: context.tenantId,
+                checklistAck: true
+            )
             if response.resumed == true {
                 statusMessage = "Postmark send path resumed."
             } else {

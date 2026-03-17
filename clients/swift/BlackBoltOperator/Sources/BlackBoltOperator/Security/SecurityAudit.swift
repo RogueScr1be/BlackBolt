@@ -31,7 +31,7 @@ actor SecurityAudit {
         var results: [SecurityCheckResult] = []
 
         // Run all security checks
-        results.append(checkCodeSignature())
+        results.append(await checkCodeSignature())
         results.append(await checkKeychain())
         results.append(checkBundleIntegrity())
         results.append(checkDebuggerStatus())
@@ -46,9 +46,9 @@ actor SecurityAudit {
     }
 
     /// Check if code signature is valid
-    private func checkCodeSignature() -> SecurityCheckResult {
+    private func checkCodeSignature() async -> SecurityCheckResult {
         let sandboxManager = AppSandboxManager()
-        let isValid = sandboxManager.verifyCodeSignature()
+        let isValid = await sandboxManager.verifyCodeSignature()
 
         return SecurityCheckResult(
             name: "Code Signature Verification",
@@ -105,14 +105,7 @@ actor SecurityAudit {
             )
         }
 
-        guard let bundlePath = Bundle.main.bundlePath else {
-            return SecurityCheckResult(
-                name: "Bundle Integrity",
-                passed: false,
-                message: "Bundle path not found",
-                severity: .critical
-            )
-        }
+        let bundlePath = Bundle.main.bundlePath
 
         let fileManager = FileManager.default
         let bundleExists = fileManager.fileExists(atPath: bundlePath)
@@ -172,7 +165,6 @@ actor SecurityAudit {
 
     /// Check minimum OS version
     private func checkMinimumOSVersion() -> SecurityCheckResult {
-        let minimumVersion = "14.0"
         let currentVersion = ProcessInfo.processInfo.operatingSystemVersionString
 
         let versionCheck = ProcessInfo.processInfo.operatingSystemVersion
@@ -244,10 +236,15 @@ actor SecurityAudit {
     /// Private helper to check debugger presence
     private func isDebuggerPresent() -> Bool {
         var info = kinfo_proc()
-        var mib: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_PID, getpid()]
+        var mib: [Int32] = [
+            Int32(CTL_KERN),
+            Int32(KERN_PROC),
+            Int32(KERN_PROC_PID),
+            getpid()
+        ]
 
         var size = MemoryLayout<kinfo_proc>.stride
-        let junk = sysctl(&mib, u_int32_t(mib.count), &info, &size, nil, 0)
+        let junk = sysctl(&mib, UInt32(mib.count), &info, &size, nil, 0)
 
         return junk == 0 && (info.kp_proc.p_flag & P_TRACED) != 0
     }
@@ -257,4 +254,4 @@ actor SecurityAudit {
 import Darwin
 
 let KERN_PROC_PID = 1
-let P_TRACED = 0x00000800
+let P_TRACED: Int32 = 0x00000800

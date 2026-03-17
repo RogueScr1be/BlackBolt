@@ -1,5 +1,6 @@
 import Foundation
 import Security
+import CryptoKit
 
 /// Error types for certificate pinning operations
 enum CertificatePinningError: Error, Equatable {
@@ -44,7 +45,7 @@ actor CertificatePinning {
     ///   - challenge: URLAuthenticationChallenge for additional context
     /// - Returns: True if certificate passes pinning validation
     /// - Throws: CertificatePinningError if validation fails
-    func validateCertificate(
+    nonisolated func validateCertificate(
         _ certificate: SecCertificate,
         challenge: URLAuthenticationChallenge?
     ) throws -> Bool {
@@ -76,7 +77,7 @@ actor CertificatePinning {
     /// Validate certificate chain integrity
     /// - Parameter certificate: Certificate to validate
     /// - Throws: CertificatePinningError if chain validation fails
-    private func validateCertificateChain(_ certificate: SecCertificate) throws {
+    private nonisolated func validateCertificateChain(_ certificate: SecCertificate) throws {
         var trust: SecTrust?
         let policy = SecPolicyCreateSSL(true, nil)
 
@@ -93,7 +94,6 @@ actor CertificatePinning {
         }
 
         // Evaluate trust
-        var trustResult: SecTrustResultType = .invalid
         let trustStatus = SecTrustEvaluateWithError(trust, nil)
 
         guard trustStatus else {
@@ -107,7 +107,7 @@ actor CertificatePinning {
     /// - Parameter certificate: SecCertificate to extract key from
     /// - Returns: SecKey representing the public key
     /// - Throws: CertificatePinningError if extraction fails
-    private func extractPublicKey(from certificate: SecCertificate) throws -> SecKey {
+    private nonisolated func extractPublicKey(from certificate: SecCertificate) throws -> SecKey {
         var publicKey: SecKey?
         let policy = SecPolicyCreateBasicX509()
         var trust: SecTrust?
@@ -134,18 +134,19 @@ actor CertificatePinning {
     /// Calculate SHA256 hash of public key
     /// - Parameter publicKey: SecKey to hash
     /// - Returns: Base64-encoded SHA256 hash of the key
-    private func calculatePublicKeyHash(_ publicKey: SecKey) -> String {
+    private nonisolated func calculatePublicKeyHash(_ publicKey: SecKey) -> String {
         guard let publicKeyData = SecKeyCopyExternalRepresentation(publicKey, nil) as Data? else {
             return ""
         }
-
-        // Calculate SHA256 hash (simplified - in production use CryptoKit)
-        return publicKeyData.base64EncodedString().prefix(32).description
+        // Calculate SHA256 hash of public key data
+        let digest = SHA256.hash(data: publicKeyData)
+        let hashData = Data(digest)
+        return hashData.base64EncodedString()
     }
 }
 
 /// URLSessionDelegate for certificate pinning validation
-class CertificatePinningDelegate: NSObject, URLSessionDelegate {
+final class CertificatePinningDelegate: NSObject, URLSessionDelegate {
     private let certificatePinning: CertificatePinning
 
     init(certificatePinning: CertificatePinning) {
@@ -175,23 +176,20 @@ class CertificatePinningDelegate: NSObject, URLSessionDelegate {
             return
         }
 
-        // Validate certificate pinning
-        Task {
-            do {
-                let isValid = try await certificatePinning.validateCertificate(
-                    certificate,
-                    challenge: challenge
-                )
+        do {
+            let isValid = try certificatePinning.validateCertificate(
+                certificate,
+                challenge: challenge
+            )
 
-                if isValid {
-                    let credential = URLCredential(trust: serverTrust)
-                    completionHandler(.useCredential, credential)
-                } else {
-                    completionHandler(.cancelAuthenticationChallenge, nil)
-                }
-            } catch {
+            if isValid {
+                let credential = URLCredential(trust: serverTrust)
+                completionHandler(.useCredential, credential)
+            } else {
                 completionHandler(.cancelAuthenticationChallenge, nil)
             }
+        } catch {
+            completionHandler(.cancelAuthenticationChallenge, nil)
         }
     }
 }

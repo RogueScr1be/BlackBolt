@@ -25,24 +25,30 @@ struct AlertsHubView: View {
                 }
             }
 
-            if case .failed(let sectionError) = store.alertsState {
-                HStack {
-                    Text(sectionError.message)
-                        .font(.caption)
-                        .foregroundColor(.red)
-                    Spacer()
-                    Button("Retry Alerts") {
-                        Task { await store.reloadAlerts(runtime: runtime) }
-                    }
-                    .disabled(!store.hasRequiredSettings(runtime: runtime) || store.isLoading)
-                }
+            if case .degraded(let sectionError) = alertsContentState {
+                Text("Alert feed is partially degraded: \(sectionError.message)")
+                    .font(.caption)
+                    .foregroundColor(.orange)
             }
 
             List {
-                if store.unresolvedAlerts.isEmpty {
+                switch alertsContentState {
+                case .loading:
+                    ProgressView("Loading alerts...")
+                case .failed(let sectionError):
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(sectionError.message)
+                            .font(.caption)
+                            .foregroundColor(.red)
+                        Button("Retry Alerts") {
+                            Task { await store.reloadAlerts(runtime: runtime) }
+                        }
+                        .disabled(!store.hasRequiredSettings(runtime: runtime) || store.isLoading)
+                    }
+                case .empty:
                     Text("No unresolved alerts")
                         .foregroundColor(.secondary)
-                } else {
+                case .degraded, .ready:
                     ForEach(sortedAlerts) { alert in
                         VStack(alignment: .leading, spacing: 6) {
                             HStack {
@@ -97,6 +103,10 @@ struct AlertsHubView: View {
                 }
             }
         }
+    }
+
+    private var alertsContentState: OperatorContentState {
+        store.contentState(for: store.alertsState, hasContent: !store.unresolvedAlerts.isEmpty)
     }
 
     private var sortedAlerts: [OperatorAlertListItem] {

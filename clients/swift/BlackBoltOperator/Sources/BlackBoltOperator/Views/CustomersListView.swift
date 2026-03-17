@@ -6,6 +6,12 @@ struct CustomersListView: View {
     @State private var segment = ""
     @State private var errorMessage: String?
 
+    private let apiService: any OperatorAPIServicing
+
+    init(apiService: any OperatorAPIServicing = GeneratedOperatorAPIService()) {
+        self.apiService = apiService
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -33,36 +39,16 @@ struct CustomersListView: View {
 
     private func fetchCustomers() async {
         do {
-            var req = try runtime.request(path: "/v1/tenants/\(runtime.tenantId)/customers")
-            guard let url = req.url, var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
-                throw URLError(.badURL)
-            }
-            if !segment.isEmpty {
-                components.queryItems = [URLQueryItem(name: "segment", value: segment)]
-            }
-            req.url = components.url
-
-            let (data, response) = try await URLSession.shared.data(for: req)
-            try ensureSuccess(response: response, data: data)
-            let decoded = try JSONDecoder().decode(CustomersPage.self, from: data)
-            rows = decoded.items
+            let context = try runtime.apiContext()
+            let page = try await apiService.customers(
+                context: context,
+                tenantId: context.tenantId,
+                segment: segment
+            )
+            rows = page.items
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
-        }
-    }
-
-    private func ensureSuccess(response: URLResponse, data: Data) throws {
-        guard let http = response as? HTTPURLResponse else {
-            throw URLError(.badServerResponse)
-        }
-        guard (200 ... 299).contains(http.statusCode) else {
-            let body = String(data: data, encoding: .utf8) ?? ""
-            throw NSError(
-                domain: "OperatorHTTPError",
-                code: http.statusCode,
-                userInfo: [NSLocalizedDescriptionKey: "HTTP \(http.statusCode): \(body)"]
-            )
         }
     }
 }
