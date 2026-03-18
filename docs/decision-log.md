@@ -396,3 +396,32 @@
   - `swift test` is again a credible certification gate for the active operator package surface
   - remaining quarantines are explicit package debt, not silent red-gate noise
   - the operator app now tells the truth when a section is empty or degraded instead of implying everything is fully ready
+
+## 2026-03-18 — Production backend aligned to canonical `/v1` tenant routes
+- Context: the installed Black Bolt Operator app was healthy locally but production still returned legacy-compatible data on non-versioned routes while the canonical tenant-scoped `/v1` routes returned `501`/`404`.
+- Decision:
+  - deploy the backend route-alignment patch from a clean release worktree instead of changing the app back to legacy paths
+  - keep the Swift operator app on canonical `/v1` routes and treat production backend lag as the defect
+  - use a temporary production deploy branch (`codex/backend-align-prod`) because Railway service configuration is still pinned to a stale `rootDirectory=/prisma` + Dockerfile build path
+- Consequence:
+  - production now serves the canonical tenant routes required by the operator app:
+    - `/v1/tenants`
+    - `/v1/tenants/{tenantId}`
+    - `/v1/tenants/{tenantId}/metrics`
+    - `/v1/tenants/{tenantId}/dashboard/summary`
+    - `/v1/tenants/{tenantId}/events`
+    - `/v1/tenants/{tenantId}/alerts`
+  - the old app-visible `404`/`501` route mismatch is resolved at the backend layer
+
+## 2026-03-18 — Railway deploy-source drift is a production risk
+- Context: Railway API deployments were marked against the correct service, but the production service still built through a stale `rootDirectory=/prisma` configuration and an untracked Dockerfile flow that could clone the wrong branch inside the image build.
+- Decision:
+  - treat Railway source-root and Dockerfile drift as release-blocking production config debt
+  - require production API verification to include:
+    - `railway deployment list --service blackbolt-api --limit 1 --json`
+    - live `/health` probe
+    - canonical `/v1` route probes with real operator headers
+  - do not trust `build_sha` log fields alone as deployment truth until the deploy source is normalized; the current production log still reports an old SHA even while new route mappings are live
+- Consequence:
+  - future production API releases must verify live route behavior, not just deployment success state
+  - Railway service configuration should be normalized in a dedicated follow-up so API deploys no longer depend on branch-cloning inside Docker builds

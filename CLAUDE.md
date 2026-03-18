@@ -259,6 +259,29 @@
   - no `URLSession.shared` business flows
   - no reintroduction of deprecated non-versioned operator routes in app source
 
+## Production Alignment Guardrails
+- If the installed operator app shows `404`/`501` on canonical `/v1` routes while legacy compatibility routes still return `200`, treat it as production backend drift first, not an app-routing regression.
+- For production backend verification, always probe live canonical routes with real operator headers before changing Swift:
+  - `/health`
+  - `/v1/bootstrap/status`
+  - `/v1/tenants`
+  - `/v1/tenants/{tenantId}`
+  - `/v1/tenants/{tenantId}/metrics`
+  - `/v1/tenants/{tenantId}/dashboard/summary`
+  - `/v1/tenants/{tenantId}/events`
+  - `/v1/tenants/{tenantId}/alerts`
+- Railway deployment success is not sufficient proof of correctness. Verify:
+  - deployment status
+  - live route responses
+  - installed app retry behavior
+- Current production config debt:
+  - Railway API service still reports `rootDirectory=/prisma`
+  - production builds can depend on branch-cloning Dockerfile behavior
+  - runtime `build_sha` logging is not trustworthy release evidence until deploy source is normalized
+- If canonical routes are fixed and the installed app still degrades after retry, classify the next issue separately:
+  - backend/schema/runtime error if the API returns non-2xx or Prisma failures
+  - Swift generated-client decode/adapter mismatch if API returns `200` but the app reports “data couldn’t be read because it isn’t in the correct format”
+
 ## Operator Onboarding Truth
 - Tenant onboarding is complete only after running `npm run tenant:seed -- --name=\"...\" --slug=...`.
 - The seed output is source-of-truth for `tenantId` (`x-tenant-id`) and `operatorKey` (`x-operator-key`).

@@ -249,3 +249,45 @@ These are not part of the `/v1` appendix, but they are a Phase 0 contract-discip
   - they are not required to certify the generated-client operator workflow path
   - they still need deeper Swift 6 concurrency cleanup and/or helper redesign
   - keeping them active would make the package gate noisy again without improving Tier-1 operator confidence
+
+## 2026-03-18 — Production backend drift vs canonical operator contract
+
+### Failure observed
+- Production host `https://blackbolt-api-production.up.railway.app` served the legacy compatibility routes successfully while the operator app's canonical tenant-scoped `/v1` routes failed:
+  - `GET /v1/tenants` -> `501`
+  - `GET /v1/tenants/{tenantId}` -> `404`
+  - `GET /v1/tenants/{tenantId}/metrics` -> `404`
+  - `GET /v1/tenants/{tenantId}/dashboard/summary` -> `404`
+  - `GET /v1/tenants/{tenantId}/events` -> `404`
+  - `GET /v1/tenants/{tenantId}/alerts` -> `404`
+- Meanwhile the non-versioned compatibility routes still returned `200`, which made the installed operator app look broken even though the app was calling the right contract.
+
+### Root cause
+- Production backend was behind the canonical Phase 2/3 contract surface.
+- Railway deploy source was also misaligned:
+  - stale `rootDirectory=/prisma`
+  - untracked Dockerfile behavior in the canonical repo
+  - Docker build path could clone an old branch inside the image layer
+
+### Fix applied
+- Deployed backend alignment from clean worktree branch `codex/backend-align-prod`.
+- Confirmed production now returns `200` for the canonical tenant `/v1` route set.
+
+### Remaining failures after route fix
+- `GET /v1/operator/reviews/queue?state=all` -> `500`
+- `GET /v1/operator/approvals?state=awaiting_approval` -> `500`
+- `GET /v1/tenants/{tenantId}/revenue/imports` -> `500`
+
+### Remaining root causes
+- Reviews queue and approvals:
+  - Prisma `P2021`
+  - missing table `public.operator_portfolio_credentials`
+  - classification: environment/schema mismatch
+- Revenue imports list:
+  - Prisma `P2021`
+  - missing table `public.revenue_imports`
+  - classification: environment/schema mismatch
+
+### Additional learning
+- After the backend route mismatch was fixed, the installed operator app no longer surfaced the old `404`/`501` route failures; after retry it instead surfaced generated-client decode errors on tenant/detail/dashboard/events payloads.
+- That means the backend route outage is resolved, and the remaining operator-app degradation is now a separate client decode/adapter issue rather than a missing-route problem.
