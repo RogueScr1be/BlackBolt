@@ -1,8 +1,6 @@
 export const OPENAPI_OPERATION_IDS = [
   'getHealth',
   'getBootstrapStatus',
-  'authLogin',
-  'listTenants',
   'createCustomerImport',
   'getCustomerImportStatus',
   'listCustomers',
