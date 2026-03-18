@@ -9,6 +9,7 @@ import { OperatorTenantsService } from './operator-tenants.service';
 @Module({
   imports: [PrismaModule, TenancyModule, OperatorCredentialsModule],
   controllers: [OperatorTenantsController],
-  providers: [OperatorTenantsService, OperatorKeyGuard]
+  providers: [OperatorTenantsService, OperatorKeyGuard],
+  exports: [OperatorTenantsService]
 })
 export class OperatorTenantsModule {}
