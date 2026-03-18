@@ -5,10 +5,10 @@ RUN apk add --no-cache git bash
 WORKDIR /app
 
 ARG BLACKBOLT_REF=codex/backend-align-prod
-ARG BLACKBOLT_SHA=5efafd68ef13fd1932961901884c18f3ab8da8fb
+ARG BLACKBOLT_CACHE_BUSTER=20260318-v1-route-align-provider-export
 RUN git clone https://github.com/RogueScr1be/BlackBolt.git . && \
     git checkout "${BLACKBOLT_REF}" && \
-    git checkout "${BLACKBOLT_SHA}"
+    echo "${BLACKBOLT_CACHE_BUSTER}" >/dev/null
 
 RUN npm ci
 RUN npm run api:build
