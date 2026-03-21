@@ -1204,11 +1204,12 @@ components:
   schemas:
     HealthResponse:
       type: object
-      required: [ok, service, version]
+      required: [ok, service, version, build_sha]
       properties:
         ok: { type: boolean }
         service: { type: string }
         version: { type: string }
+        build_sha: { type: string }
         checks:
           type: object
           nullable: true
