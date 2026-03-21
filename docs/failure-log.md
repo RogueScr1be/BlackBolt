@@ -274,3 +274,27 @@ These are not part of the `/v1` appendix, but they are a Phase 0 contract-discip
 ### Guardrail learned
 - If production requires a stacked hotfix branch or deploy-only Dockerfile trick to ship a canonical fix, the real incident is release-path drift until canonical root deploys work end to end.
 - Release evidence is incomplete unless a machine-readable health endpoint proves the live SHA directly; log banners and operator memory are not acceptable provenance.
+
+## 2026-03-21 — `--help` on the canonical deploy script triggered a real deploy
+
+### Failure mode
+- `bash scripts/release/deploy-production-canonical.sh --help` performed a real production deploy instead of printing usage.
+- Root cause:
+  - the script had no argument parsing
+  - there were no guard clauses for help/inspection paths
+  - the mutating Railway `variable set` and `up` commands were the implicit default fallthrough behavior
+
+### Repair
+- Added explicit modes:
+  - no args -> usage, exit 0, no side effects
+  - `--help` -> usage, exit 0, no side effects
+  - `--dry-run` -> print exact deploy plan, exit 0, no side effects
+  - `--execute` -> only path that can deploy
+- Added fail-closed behavior:
+  - unknown flags print usage and exit non-zero
+  - non-interactive execution requires `CI=1` with `--execute`
+  - local `--execute` requires interactive confirmation
+
+### Guardrail learned
+- Any release script that can reach production mutation must default to non-execution unless intent is explicit.
+- `--help` and other inspection flags need regression checks because argument-handling defects are release-control defects, not cosmetic CLI bugs.

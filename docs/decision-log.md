@@ -408,3 +408,16 @@
   - canonical repo state can now serve as the production deploy base without stacked branch-only Dockerfile hacks
   - live SHA verification no longer depends on boot logs or stale environment folklore
   - future release work must normalize Railway service settings before accepting a workaround deploy branch as “good enough”
+
+## 2026-03-21 — Release scripts must fail closed unless execution intent is explicit
+- Context: `bash scripts/release/deploy-production-canonical.sh --help` performed a real production deploy because the script had no argument parsing and always fell through to the mutating Railway commands.
+- Decision:
+  - release scripts must require explicit execution intent via `--execute`
+  - `--help` and no-arg invocation must print usage and exit 0 with no side effects
+  - `--dry-run` must print the exact deploy plan and exit 0 with no side effects
+  - unknown flags must fail closed with usage and non-zero exit
+  - non-interactive execution is only allowed with `CI=1` plus `--execute`
+- Consequence:
+  - inspection paths can no longer trigger a real deploy by accident
+  - release intent is explicit in both terminal use and package scripts
+  - future release-script changes need regression coverage around argument handling before they are considered safe
