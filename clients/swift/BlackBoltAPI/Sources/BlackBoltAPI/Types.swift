@@ -1004,6 +1004,8 @@ public enum Components {
             public var service: Swift.String
             /// - Remark: Generated from `#/components/schemas/HealthResponse/version`.
             public var version: Swift.String
+            /// - Remark: Generated from `#/components/schemas/HealthResponse/build_sha`.
+            public var buildSha: Swift.String
             /// - Remark: Generated from `#/components/schemas/HealthResponse/checks`.
             public struct ChecksPayload: Codable, Hashable, Sendable {
                 /// - Remark: Generated from `#/components/schemas/HealthResponse/checks/db`.
@@ -1047,22 +1049,26 @@ public enum Components {
             ///   - ok:
             ///   - service:
             ///   - version:
+            ///   - buildSha:
             ///   - checks:
             public init(
                 ok: Swift.Bool,
                 service: Swift.String,
                 version: Swift.String,
+                buildSha: Swift.String,
                 checks: Components.Schemas.HealthResponse.ChecksPayload? = nil
             ) {
                 self.ok = ok
                 self.service = service
                 self.version = version
+                self.buildSha = buildSha
                 self.checks = checks
             }
             public enum CodingKeys: String, CodingKey {
                 case ok
                 case service
                 case version
+                case buildSha = "build_sha"
                 case checks
             }
         }

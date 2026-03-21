@@ -2,6 +2,15 @@ const REQUIRED_BASE_ENV = ['DATABASE_URL', 'REDIS_URL'] as const;
 const REQUIRED_API_ENV = ['DATABASE_URL'] as const;
 const REQUIRED_WORKER_ENV = REQUIRED_BASE_ENV;
 
+export function getBuildSha(): string {
+  const value = process.env.BUILD_SHA;
+  if (!value || value.trim().length === 0) {
+    return 'unknown';
+  }
+
+  return value.trim();
+}
+
 export function requireEnv(name: string): string {
   const value = process.env[name];
   if (!value || value.trim().length === 0) {
@@ -53,7 +62,7 @@ export function buildBootBanner(input: {
     `[boot] role=${input.role}`,
     `node=${process.version}`,
     `node_env=${process.env.NODE_ENV ?? 'undefined'}`,
-    `build_sha=${process.env.BUILD_SHA ?? 'unknown'}`
+    `build_sha=${getBuildSha()}`
   ];
 
   if (input.role === 'api') {
