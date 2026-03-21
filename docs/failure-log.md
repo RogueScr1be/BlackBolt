@@ -249,3 +249,52 @@ These are not part of the `/v1` appendix, but they are a Phase 0 contract-discip
   - they are not required to certify the generated-client operator workflow path
   - they still need deeper Swift 6 concurrency cleanup and/or helper redesign
   - keeping them active would make the package gate noisy again without improving Tier-1 operator confidence
+
+## 2026-03-21 — Canonical deploy path drift and stale release evidence
+
+### Failure mode
+- Production-critical API fixes were not safely reproducible from canonical repo head because Railway `blackbolt-api` still had `rootDirectory=/prisma`.
+- The first canonical release-script run correctly stamped `BUILD_SHA`, but the API deployment still failed because the service instance ignored the repo-root deploy intent and tried to build from the stale service root.
+- Even when newer code was live, runtime `build_sha` evidence was not trustworthy because:
+  - `BUILD_SHA` env could stay stale across deploys
+  - `/health` did not expose the SHA at all
+  - boot logs alone were an unreliable proof source
+
+### Repair
+- Synced the production-critical route-alignment and campaign-runs fixes into the canonical release branch.
+- Normalized Railway `blackbolt-api` service config to:
+  - `rootDirectory="."`
+  - `dockerfilePath="Dockerfile"`
+  - `healthcheckPath="/health"`
+- Added canonical release stamping and verification:
+  - deploy script now sets `BUILD_SHA` on both API and worker before deploy
+  - `/health` now returns `build_sha`
+  - rollout scripts now fail if `/health.build_sha` does not match the intended release SHA
+
+### Guardrail learned
+- If production requires a stacked hotfix branch or deploy-only Dockerfile trick to ship a canonical fix, the real incident is release-path drift until canonical root deploys work end to end.
+- Release evidence is incomplete unless a machine-readable health endpoint proves the live SHA directly; log banners and operator memory are not acceptable provenance.
+
+## 2026-03-21 — `--help` on the canonical deploy script triggered a real deploy
+
+### Failure mode
+- `bash scripts/release/deploy-production-canonical.sh --help` performed a real production deploy instead of printing usage.
+- Root cause:
+  - the script had no argument parsing
+  - there were no guard clauses for help/inspection paths
+  - the mutating Railway `variable set` and `up` commands were the implicit default fallthrough behavior
+
+### Repair
+- Added explicit modes:
+  - no args -> usage, exit 0, no side effects
+  - `--help` -> usage, exit 0, no side effects
+  - `--dry-run` -> print exact deploy plan, exit 0, no side effects
+  - `--execute` -> only path that can deploy
+- Added fail-closed behavior:
+  - unknown flags print usage and exit non-zero
+  - non-interactive execution requires `CI=1` with `--execute`
+  - local `--execute` requires interactive confirmation
+
+### Guardrail learned
+- Any release script that can reach production mutation must default to non-execution unless intent is explicit.
+- `--help` and other inspection flags need regression checks because argument-handling defects are release-control defects, not cosmetic CLI bugs.

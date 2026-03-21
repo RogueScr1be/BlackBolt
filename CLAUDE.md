@@ -259,6 +259,21 @@
   - no `URLSession.shared` business flows
   - no reintroduction of deprecated non-versioned operator routes in app source
 
+## Release Normalization Guardrails
+- Canonical production deploys for `blackbolt-api` and `blackbolt-worker` must build from repo root (`rootDirectory="."`) using the root `Dockerfile`; `rootDirectory=/prisma` is a release-blocking drift condition.
+- Do not accept stacked hotfix branches or branch-only Dockerfile tricks as a stable production path. If a fix only ships from a workaround branch, normalize the canonical deploy path before signoff.
+- Every production deploy must stamp the canonical git SHA into `BUILD_SHA` for both API and worker before deploy.
+- `/health` must expose the live `build_sha`, and release verification must fail if `/health.build_sha` does not match the intended shipping SHA.
+- Boot logs are supporting evidence only; they are not authoritative release provenance.
+- Release scripts that mutate production must default to no-op inspection behavior:
+  - no args -> usage only
+  - `--help` -> usage only
+  - `--dry-run` -> exact plan only
+  - only `--execute` may deploy
+- Unknown release-script flags must fail closed, not fall through to a deploy path.
+- Non-interactive release execution is allowed only when `CI=1` is set explicitly alongside the execute flag.
+- Add regression checks for release-script argument handling whenever deploy-control behavior changes.
+
 ## Operator Onboarding Truth
 - Tenant onboarding is complete only after running `npm run tenant:seed -- --name=\"...\" --slug=...`.
 - The seed output is source-of-truth for `tenantId` (`x-tenant-id`) and `operatorKey` (`x-operator-key`).

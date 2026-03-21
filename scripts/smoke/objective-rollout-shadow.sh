@@ -77,6 +77,44 @@ print_latest_deployments() {
   done
 }
 
+check_health_build_sha() {
+  local response
+  response="$(curl -sS "${API_BASE_URL}/health" || true)"
+  if [ -z "$response" ]; then
+    echo "[rollout-shadow] FAIL empty /health response while checking live build_sha"
+    exit 1
+  fi
+
+  local observed
+  observed="$(printf '%s' "$response" | node -e '
+    let input = "";
+    process.stdin.on("data", (chunk) => { input += chunk; });
+    process.stdin.on("end", () => {
+      try {
+        const parsed = JSON.parse(input);
+        const value = parsed.build_sha;
+        if (value === undefined || value === null) {
+          process.exit(2);
+          return;
+        }
+        process.stdout.write(String(value));
+      } catch {
+        process.exit(3);
+      }
+    });
+  ' 2>/dev/null || true)"
+  if [ -z "$observed" ]; then
+    echo "[rollout-shadow] FAIL /health did not expose build_sha"
+    exit 1
+  fi
+  if [ "$observed" != "$EXPECTED_SHA" ]; then
+    echo "[rollout-shadow] FAIL /health build_sha expected ${EXPECTED_SHA}"
+    echo "[rollout-shadow] observed /health build_sha=${observed}"
+    exit 1
+  fi
+  echo "[rollout-shadow] OK   /health build_sha=${observed}"
+}
+
 wait_for_readiness() {
   local attempt=1
   while [ "$attempt" -le "$READINESS_ATTEMPTS" ]; do
@@ -205,5 +243,6 @@ else
 fi
 
 wait_for_readiness
+check_health_build_sha
 bash "${SCRIPT_DIR}/objective-shadow-verify.sh" "$API_BASE_URL" "$TENANT_ID" "$OPERATOR_KEY" "$AUTH_INPUT" "$MONTH_INPUT"
 echo "[rollout-shadow] Gate B PASS"

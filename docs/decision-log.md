@@ -396,3 +396,28 @@
   - `swift test` is again a credible certification gate for the active operator package surface
   - remaining quarantines are explicit package debt, not silent red-gate noise
   - the operator app now tells the truth when a section is empty or degraded instead of implying everything is fully ready
+
+## 2026-03-21 — Canonical production deploy path must be root-based and SHA-stamped
+- Context: production route alignment and campaign-runs fixes could only be shipped from stacked hotfix branches because the live Railway `blackbolt-api` service instance still pointed at `rootDirectory=/prisma`, while runtime release evidence relied on a stale `BUILD_SHA` env value that was not exposed through `/health`.
+- Decision:
+  - canonical production API and worker deploys must build from repo root (`rootDirectory="."`) with the root `Dockerfile`
+  - Railway service config is part of release normalization; a rootDirectory drift that blocks canonical deploys is a release bug, not an ops footnote
+  - release provenance must be stamped at deploy time by canonical git SHA and exposed through `/health.build_sha`
+  - release smoke scripts must fail if `/health.build_sha` does not match the intended shipping SHA
+- Consequence:
+  - canonical repo state can now serve as the production deploy base without stacked branch-only Dockerfile hacks
+  - live SHA verification no longer depends on boot logs or stale environment folklore
+  - future release work must normalize Railway service settings before accepting a workaround deploy branch as “good enough”
+
+## 2026-03-21 — Release scripts must fail closed unless execution intent is explicit
+- Context: `bash scripts/release/deploy-production-canonical.sh --help` performed a real production deploy because the script had no argument parsing and always fell through to the mutating Railway commands.
+- Decision:
+  - release scripts must require explicit execution intent via `--execute`
+  - `--help` and no-arg invocation must print usage and exit 0 with no side effects
+  - `--dry-run` must print the exact deploy plan and exit 0 with no side effects
+  - unknown flags must fail closed with usage and non-zero exit
+  - non-interactive execution is only allowed with `CI=1` plus `--execute`
+- Consequence:
+  - inspection paths can no longer trigger a real deploy by accident
+  - release intent is explicit in both terminal use and package scripts
+  - future release-script changes need regression coverage around argument handling before they are considered safe

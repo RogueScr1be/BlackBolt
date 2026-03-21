@@ -2,6 +2,21 @@ import { HealthService } from '../src/modules/health/health.service';
 import { WorkerHeartbeatService } from '../src/modules/health/worker-heartbeat.service';
 
 describe('HealthService', () => {
+  const originalBuildSha = process.env.BUILD_SHA;
+
+  beforeEach(() => {
+    process.env.BUILD_SHA = 'release-sha-123';
+  });
+
+  afterEach(() => {
+    if (originalBuildSha === undefined) {
+      delete process.env.BUILD_SHA;
+      return;
+    }
+
+    process.env.BUILD_SHA = originalBuildSha;
+  });
+
   const createService = (heartbeat: { ok: boolean; lastActivityAt: string | null }) => {
     const prisma = {
       $queryRawUnsafe: jest.fn()
@@ -23,6 +38,7 @@ describe('HealthService', () => {
     expect(result.checks.redis).toBe(true);
     expect(result.checks.worker_heartbeat).toBe(true);
     expect(result.checks.last_worker_activity_at).toBe(now);
+    expect(result.build_sha).toBe('release-sha-123');
     expect(result.ok).toBe(true);
   });
 

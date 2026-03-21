@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import Redis from 'ioredis';
 import { PrismaService } from '../prisma/prisma.service';
 import { WorkerHeartbeatService } from './worker-heartbeat.service';
+import { getBuildSha } from '../../runtime/env';
 
 @Injectable()
 export class HealthService {
@@ -19,6 +20,7 @@ export class HealthService {
       ok: dbOk && redisOk && workerHeartbeat.ok,
       service: 'blackbolt-api',
       version: '1.0.0-phase1',
+      build_sha: getBuildSha(),
       checks: {
         db: dbOk,
         redis: redisOk,

@@ -1,5 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+
+type PublicCampaignRunStatus = 'QUEUED' | 'RUNNING' | 'PAUSED' | 'COMPLETED' | 'FAILED';
+type PublicCampaignRunSegmentMode = 'default' | 'volume' | 'gentle';
 
 @Injectable()
 export class CampaignRunsService {
@@ -219,8 +222,8 @@ export class CampaignRunsService {
   }) {
     return {
       id: row.id,
-      status: row.status,
-      segment_mode: row.segmentMode,
+      status: this.normalizeStatus(row.status),
+      segment_mode: this.normalizeSegmentMode(row.segmentMode),
       send_window_at: row.sendWindowAt,
       recipients_total: row.recipientsTotal,
       messages_queued: row.messagesQueued,
@@ -240,5 +243,33 @@ export class CampaignRunsService {
         created_at: row.triggerReview.createdAt
       }
     };
+  }
+
+  private normalizeStatus(status: string): PublicCampaignRunStatus {
+    switch (status) {
+      case 'QUEUED':
+      case 'RUNNING':
+      case 'PAUSED':
+      case 'COMPLETED':
+      case 'FAILED':
+        return status;
+      case 'AWAITING_APPROVAL':
+        return 'PAUSED';
+      default:
+        throw new InternalServerErrorException(`Unsupported campaign run status: ${status}`);
+    }
+  }
+
+  private normalizeSegmentMode(segmentMode: string): PublicCampaignRunSegmentMode {
+    switch (segmentMode) {
+      case 'default':
+      case 'volume':
+      case 'gentle':
+        return segmentMode;
+      case 'last_seen_90_365':
+        return 'default';
+      default:
+        throw new InternalServerErrorException(`Unsupported campaign run segment mode: ${segmentMode}`);
+    }
   }
 }

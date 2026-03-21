@@ -3,16 +3,33 @@ info:
   title: Black Bolt API
   version: 1.0.0
   description: Contract-first API surface for Black Bolt Tier-1.
+  contact:
+    name: Black Bolt Engineering
 servers:
   - url: https://api.blackbolt.example
-security:
-  - bearerAuth: []
+tags:
+  - name: system
+  - name: operator
+  - name: bootstrap
+  - name: tenants
+  - name: reviews
+  - name: approvals
+  - name: customers
+  - name: imports
+  - name: suppressions
+  - name: integrations
+  - name: revenue
+  - name: campaign-runs
+  - name: links
+  - name: webhooks
+  - name: reports
 paths:
   /health:
     get:
       operationId: getHealth
       tags: [system]
       summary: Health check endpoint
+      description: Returns a minimal health payload used by the operator shell and smoke tooling.
       security: []
       responses:
         '200':
@@ -27,6 +44,7 @@ paths:
       operationId: getBootstrapStatus
       tags: [operator, bootstrap]
       summary: Get tenant bootstrap readiness status
+      description: Returns bootstrap readiness checks for the tenant identified by the operator headers.
       parameters:
         - $ref: '#/components/parameters/TenantHeader'
         - $ref: '#/components/parameters/OperatorKeyHeader'
@@ -38,73 +56,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/BootstrapStatusResponse'
 
-  /dashboard/summary:
-    get:
-      operationId: getDashboardSummary
-      tags: [operator]
-      summary: Operator dashboard summary
-      description: Returns top-level KPI summary and dashboard widget counts for the scoped tenant.
-      parameters:
-        - $ref: '#/components/parameters/TenantHeader'
-        - $ref: '#/components/parameters/OperatorKeyHeader'
-      responses:
-        '200':
-          description: Dashboard summary
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DashboardSummaryResponse'
-
-  /events:
-    get:
-      operationId: listOperatorEvents
-      tags: [operator]
-      summary: List operator activity events
-      description: Returns tenant-scoped event feed items ordered newest-first.
-      parameters:
-        - $ref: '#/components/parameters/TenantHeader'
-        - $ref: '#/components/parameters/OperatorKeyHeader'
-        - name: since
-          in: query
-          required: false
-          schema: { type: string, format: date-time }
-      responses:
-        '200':
-          description: Event list
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OperatorEventsResponse'
-
-  /alerts:
-    get:
-      operationId: listOperatorAlerts
-      tags: [operator]
-      summary: List operator alerts
-      description: Returns tenant-scoped alerts; default state is open.
-      parameters:
-        - $ref: '#/components/parameters/TenantHeader'
-        - $ref: '#/components/parameters/OperatorKeyHeader'
-        - name: state
-          in: query
-          required: false
-          schema:
-            type: string
-            enum: [open, all]
-      responses:
-        '200':
-          description: Alert list
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OperatorAlertsResponse'
-
-  /tenants:
+  /v1/tenants:
     get:
       operationId: listOperatorTenants
-      tags: [operator]
-      summary: List operator-visible tenants
-      description: Returns tenant list for the current operator scope.
+      tags: [operator, tenants]
+      summary: List operator-visible tenants for the scoped tenant operator key
+      description: Returns the tenant summary available to a tenant-scoped operator key. Tier-1 keeps this tenant-scoped rather than portfolio-wide.
       parameters:
         - $ref: '#/components/parameters/TenantHeader'
         - $ref: '#/components/parameters/OperatorKeyHeader'
@@ -115,13 +72,17 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/OperatorTenantListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
 
-  /tenants/{tenantId}:
+  /v1/tenants/{tenantId}:
     get:
       operationId: getOperatorTenant
-      tags: [operator]
-      summary: Get operator tenant detail
-      description: Returns detail for a tenant scoped by tenant header and path.
+      tags: [operator, tenants]
+      summary: Get operator-visible tenant detail
+      description: Returns tenant detail for the route tenant after tenant-header and tenant-path matching succeeds.
       parameters:
         - $ref: '#/components/parameters/TenantHeader'
         - $ref: '#/components/parameters/OperatorKeyHeader'
@@ -133,13 +94,19 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/OperatorTenantDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
 
-  /tenants/{tenantId}/metrics:
+  /v1/tenants/{tenantId}/metrics:
     get:
       operationId: getOperatorTenantMetrics
-      tags: [operator]
-      summary: Get operator tenant metrics time series
-      description: Returns tenant metrics series for dashboard ranges.
+      tags: [operator, tenants]
+      summary: Get operator-visible tenant metrics
+      description: Returns tenant metrics series for the selected range after tenant-header and tenant-path matching succeeds.
       parameters:
         - $ref: '#/components/parameters/TenantHeader'
         - $ref: '#/components/parameters/OperatorKeyHeader'
@@ -157,6 +124,90 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/OperatorTenantMetricsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/tenants/{tenantId}/dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [operator]
+      summary: Operator dashboard summary
+      description: Returns top-level KPI summary and dashboard widget counts for the scoped tenant.
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/OperatorKeyHeader'
+        - $ref: '#/components/parameters/TenantIdPath'
+      responses:
+        '200':
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardSummaryResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /v1/tenants/{tenantId}/events:
+    get:
+      operationId: listOperatorEvents
+      tags: [operator]
+      summary: List operator activity events
+      description: Returns tenant-scoped event feed items ordered newest-first.
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/OperatorKeyHeader'
+        - $ref: '#/components/parameters/TenantIdPath'
+        - name: since
+          in: query
+          required: false
+          schema: { type: string, format: date-time }
+      responses:
+        '200':
+          description: Event list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperatorEventsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /v1/tenants/{tenantId}/alerts:
+    get:
+      operationId: listOperatorAlerts
+      tags: [operator]
+      summary: List operator alerts
+      description: Returns tenant-scoped alerts; default state is open.
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/OperatorKeyHeader'
+        - $ref: '#/components/parameters/TenantIdPath'
+        - name: state
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [open, all]
+      responses:
+        '200':
+          description: Alert list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperatorAlertsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
 
   /v1/operator/portfolio/tenants:
     get:
@@ -363,41 +414,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/OperatorRetriggerResponse'
 
-  /v1/auth/login:
-    post:
-      operationId: authLogin
-      tags: [auth]
-      summary: Placeholder login endpoint
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/LoginRequest'
-      responses:
-        '501':
-          description: Not implemented
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/NotImplementedError'
-
-  /v1/tenants:
-    get:
-      operationId: listTenants
-      tags: [tenants]
-      summary: Placeholder tenant listing endpoint
-      parameters:
-        - $ref: '#/components/parameters/TenantHeader'
-      responses:
-        '501':
-          description: Not implemented
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/NotImplementedError'
-
   /v1/tenants/{tenantId}/customers/imports:
     post:
       operationId: createCustomerImport
@@ -468,7 +484,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ListCustomersResponse'
 
-  /v1/tenants/{tenantId}/segments:
+  /v1/tenants/{tenantId}/customers/segments:
     get:
       operationId: listCustomerSegments
       tags: [customers]
@@ -1108,22 +1124,19 @@ paths:
                 $ref: '#/components/schemas/RotateOperatorKeyResponse'
 
 components:
-  securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
   parameters:
     TenantHeader:
       name: x-tenant-id
       in: header
       required: true
       schema: { type: string }
+      description: Required tenant scope for tenant-scoped operator routes. Must match the tenantId path parameter when present.
     OperatorKeyHeader:
       name: X-Operator-Key
       in: header
       required: true
       schema: { type: string }
+      description: Operator credential. Tenant-scoped routes require a tenant key; portfolio routes accept a portfolio key.
     TenantIdPath:
       name: tenantId
       in: path
@@ -1170,6 +1183,12 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
     Conflict:
       description: Conflict
       content:
@@ -1185,11 +1204,12 @@ components:
   schemas:
     HealthResponse:
       type: object
-      required: [ok, service, version]
+      required: [ok, service, version, build_sha]
       properties:
         ok: { type: boolean }
         service: { type: string }
         version: { type: string }
+        build_sha: { type: string }
         checks:
           type: object
           nullable: true
@@ -1228,24 +1248,17 @@ components:
         missing:
           type: array
           items: { type: string }
-    LoginRequest:
-      type: object
-      required: [email, password]
-      properties:
-        email: { type: string, format: email }
-        password: { type: string, minLength: 8 }
     ErrorResponse:
       type: object
-      required: [error, message]
+      required: [statusCode, message, error]
       properties:
+        statusCode: { type: integer }
+        message:
+          oneOf:
+            - type: string
+            - type: array
+              items: { type: string }
         error: { type: string }
-        message: { type: string }
-    NotImplementedError:
-      allOf:
-        - $ref: '#/components/schemas/ErrorResponse'
-        - type: object
-          properties:
-            statusCode: { type: integer, enum: [501] }
     CreateImportResponse:
       type: object
       required: [importId, status]
