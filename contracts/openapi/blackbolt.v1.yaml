@@ -2078,6 +2078,31 @@ components:
       properties:
         resumed: { type: boolean }
         reason: { type: string, nullable: true }
+        blockingReasons:
+          type: array
+          items: { type: string }
+        pausedBefore:
+          type: boolean
+          description: Whether the tenant was paused when the resume request started.
+        pausedAfter:
+          type: boolean
+          description: Whether the tenant remains paused after the resume decision completes.
+        resumeChecklistAck:
+          type: boolean
+          description: Current persisted checklist acknowledgement state after the request.
+        resumeChecklistAckActor:
+          type: string
+          nullable: true
+          description: Actor recorded on the persisted checklist acknowledgement state.
+        resumeChecklistAckAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Timestamp recorded on the persisted checklist acknowledgement state.
+        requeuedMessageCount:
+          type: integer
+          minimum: 0
+          description: Count of paused campaign messages moved back to the dispatch-ready state by this request.
     RevenueAttributionModel:
       type: string
       enum: [LAST_TOUCH]

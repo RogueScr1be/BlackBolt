@@ -22,6 +22,8 @@ export type PostmarkTenantPolicy = {
   pauseReason: string | null;
   lastErrorClass: string | null;
   resumeChecklistAck: boolean;
+  resumeChecklistAckActor: string | null;
+  resumeChecklistAckAt: Date | null;
   maxPerMinute: number;
   maxGlobalPerMinute: number;
   bounceRateThreshold: number;
@@ -63,6 +65,8 @@ export class PostmarkPolicyService {
       pauseReason: controlRow?.pauseReason ?? null,
       lastErrorClass: controlRow?.lastErrorClass ?? null,
       resumeChecklistAck: controlRow?.resumeChecklistAck ?? false,
+      resumeChecklistAckActor: controlRow?.resumeChecklistAckActor ?? null,
+      resumeChecklistAckAt: controlRow?.resumeChecklistAckAt ?? null,
       maxPerMinute: json.maxPerMinute ?? 20,
       maxGlobalPerMinute: json.maxGlobalPerMinute ?? 200,
       bounceRateThreshold: json.bounceRateThreshold ?? 0.08,

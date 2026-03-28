@@ -20,10 +20,25 @@ export class PostmarkOpsController {
     @Body() body: { checklistAck?: boolean }
   ) {
     if (!body.checklistAck) {
-      return { resumed: false, reason: 'checklistAck must be true' };
+      return {
+        resumed: false,
+        reason: 'checklistAck must be true',
+        blockingReasons: ['checklistAck must be true'],
+        pausedBefore: false,
+        pausedAfter: false,
+        resumeChecklistAck: false,
+        resumeChecklistAckActor: null,
+        resumeChecklistAckAt: null,
+        requeuedMessageCount: 0
+      };
     }
 
     const actor = req.userId ?? 'system';
-    return this.opsService.ackAndResume(tenantId, actor);
+    return this.opsService.ackAndResume(tenantId, actor, {
+      action: 'POSTMARK_CONTROL_PLANE_RESUME',
+      entityType: 'postmark.send_control',
+      actorUserId: req.userId ?? actor,
+      surface: 'integrations/postmark/resume'
+    });
   }
 }

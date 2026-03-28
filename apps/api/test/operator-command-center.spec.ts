@@ -138,4 +138,55 @@ describe('Operator command center', () => {
     expect(operatorService.ackAlert).toHaveBeenCalledWith({ tenantId: 'tenant-1', alertId: 'a1', actorUserId: 'op' });
     expect(operatorService.getMonthlyReport).toHaveBeenCalledWith('tenant-1', '2026-02');
   });
+
+  it('uses shared resume helper and avoids a second intervention audit write', async () => {
+    const prisma = {
+      tenant: { findUnique: jest.fn().mockResolvedValue({ id: 'tenant-1' }) },
+      auditLog: { create: jest.fn().mockResolvedValue({}) }
+    };
+    const postmarkOpsService = {
+      ackAndResume: jest.fn().mockResolvedValue({
+        resumed: true,
+        reason: null,
+        blockingReasons: [],
+        pausedBefore: true,
+        pausedAfter: false,
+        resumeChecklistAck: true,
+        resumeChecklistAckActor: 'operator',
+        resumeChecklistAckAt: '2026-02-14T15:01:00.000Z',
+        requeuedMessageCount: 1
+      })
+    };
+    const service = new OperatorService(
+      prisma as never,
+      { enqueuePoll: jest.fn() } as never,
+      postmarkOpsService as never,
+      { verifyKey: jest.fn(), generateOperatorKey: jest.fn(), upsertKey: jest.fn() } as never
+    );
+
+    const response = await service.resumePostmark('tenant-1', null);
+
+    expect(response).toEqual({
+      ok: true,
+      intervention: 'resume-postmark',
+      result: {
+        resumed: true,
+        reason: null,
+        blockingReasons: [],
+        pausedBefore: true,
+        pausedAfter: false,
+        resumeChecklistAck: true,
+        resumeChecklistAckActor: 'operator',
+        resumeChecklistAckAt: '2026-02-14T15:01:00.000Z',
+        requeuedMessageCount: 1
+      }
+    });
+    expect(postmarkOpsService.ackAndResume).toHaveBeenCalledWith('tenant-1', 'operator', {
+      action: 'OPERATOR_INTERVENTION_RESUME_POSTMARK',
+      entityType: 'operator.intervention',
+      actorUserId: 'operator',
+      surface: 'interventions/resume-postmark'
+    });
+    expect(prisma.auditLog.create).not.toHaveBeenCalled();
+  });
 });

@@ -645,3 +645,8 @@
 - Context: `batch17-home-desktop-hero-video-lcp-chain-hardening` failed strict mini-gate despite route-scoped mutation and validator-passed targeting.
 - Decision: retire batch17 from forward mutation decisioning (audit retained), keep strict thresholds unchanged, and run `phase19-home-lcp-post-rollback-control-pack` as diagnostic-only before choosing the next mutation lane.
 - Consequence: production remains blocked; full-gate skipped for phase18 per policy; next mutation lane selection deferred until post-rollback home control evidence is captured.
+
+## 2026-03-27 — Phase 19 resume proof parity uses shared audited helper with FK-safe actor persistence
+- Context: direct Postmark resume had regressed to a minimal runtime payload while intervention resume still used a separate audit write that could fail on `audit_logs_actor_user_id_fkey` when operator callers presented synthetic actor identifiers such as `operator`.
+- Decision: restore the shared Phase 15-style `ackAndResume` proof path as the single audit writer for both `/v1/tenants/{tenantId}/integrations/postmark/resume` and `/v1/tenants/{tenantId}/interventions/resume-postmark`, and resolve `actor_user_id` only when the presented actor matches a real tenant-scoped `users.id`.
+- Consequence: both resume surfaces now return the same typed proof semantics, successful resumes emit exactly one audit row, synthetic actors persist `actor_user_id = null`, and provenance remains preserved in audit metadata.

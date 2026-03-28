@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { PostmarkPolicyService } from './postmark-policy.service';
@@ -20,6 +21,26 @@ type InvariantBreach = {
   runbookQuery: string;
   nextActions: string[];
   staleThresholdMinutes?: number;
+};
+
+type ResumeAuditContext = {
+  action: 'POSTMARK_CONTROL_PLANE_RESUME' | 'OPERATOR_INTERVENTION_RESUME_POSTMARK';
+  entityType: string;
+  entityId?: string;
+  actorUserId: string | null;
+  surface: 'integrations/postmark/resume' | 'interventions/resume-postmark';
+};
+
+type PostmarkResumeProof = {
+  resumed: boolean;
+  reason: string | null;
+  blockingReasons: string[];
+  pausedBefore: boolean;
+  pausedAfter: boolean;
+  resumeChecklistAck: boolean;
+  resumeChecklistAckActor: string | null;
+  resumeChecklistAckAt: string | null;
+  requeuedMessageCount: number;
 };
 
 @Injectable()
@@ -238,9 +259,69 @@ export class PostmarkOpsService {
     return summary;
   }
 
-  async ackAndResume(tenantId: string, actor: string) {
+  async ackAndResume(
+    tenantId: string,
+    actor: string,
+    auditContext?: ResumeAuditContext
+  ): Promise<PostmarkResumeProof> {
     await this.policyService.acknowledgeResumeChecklist({ tenantId, actor });
-    return this.policyService.resumeTenantIfChecklistAcked({ tenantId, actor });
+    const policyAfterAck = await this.policyService.getTenantPolicy(tenantId);
+    const pausedBefore = Boolean(policyAfterAck.pausedUntil && policyAfterAck.pausedUntil.getTime() > Date.now());
+    const blockingReasons = this.getResumeBlockedReasons({
+      breaches: await this.getActiveBreaches(tenantId),
+      policy: policyAfterAck,
+      paused: pausedBefore
+    });
+
+    if (blockingReasons.length > 0) {
+      const blocked: PostmarkResumeProof = {
+        resumed: false,
+        reason: blockingReasons[0],
+        blockingReasons,
+        pausedBefore,
+        pausedAfter: pausedBefore,
+        resumeChecklistAck: policyAfterAck.resumeChecklistAck,
+        resumeChecklistAckActor: policyAfterAck.resumeChecklistAckActor,
+        resumeChecklistAckAt: policyAfterAck.resumeChecklistAckAt?.toISOString() ?? null,
+        requeuedMessageCount: 0
+      };
+      await this.writeResumeAudit(tenantId, blocked, auditContext);
+      return blocked;
+    }
+
+    const decision = await this.policyService.resumeTenantIfChecklistAcked({ tenantId, actor });
+    let requeuedMessageCount = 0;
+    if (decision.resumed) {
+      const requeued = await this.prisma.campaignMessage.updateMany({
+        where: {
+          tenantId,
+          status: 'PAUSED',
+          providerMessageId: null
+        },
+        data: {
+          status: 'QUEUED'
+        }
+      });
+      requeuedMessageCount = requeued.count;
+    }
+
+    const policyAfterDecision = await this.policyService.getTenantPolicy(tenantId);
+    const result: PostmarkResumeProof = {
+      resumed: decision.resumed,
+      reason: decision.resumed ? null : decision.reason ?? null,
+      blockingReasons: decision.resumed ? [] : decision.reason ? [decision.reason] : [],
+      pausedBefore,
+      pausedAfter: Boolean(
+        policyAfterDecision.pausedUntil && policyAfterDecision.pausedUntil.getTime() > Date.now()
+      ),
+      resumeChecklistAck: policyAfterDecision.resumeChecklistAck,
+      resumeChecklistAckActor: policyAfterDecision.resumeChecklistAckActor,
+      resumeChecklistAckAt: policyAfterDecision.resumeChecklistAckAt?.toISOString() ?? null,
+      requeuedMessageCount
+    };
+
+    await this.writeResumeAudit(tenantId, result, auditContext);
+    return result;
   }
 
   private async rollupWindow(
@@ -262,5 +343,141 @@ export class PostmarkOpsService {
     ]);
 
     return { sent, simulated, failed };
+  }
+
+  private async getActiveBreaches(tenantId: string): Promise<InvariantBreach[]> {
+    const staleClaimBefore = new Date(Date.now() - POSTMARK_STALE_SEND_CLAIM_MINUTES * 60 * 1000);
+    const [invariantAlert, stuckSending] = await Promise.all([
+      this.prisma.integrationAlert.findFirst({
+        where: {
+          tenantId,
+          integration: POSTMARK_PROVIDER,
+          code: 'POSTMARK_SEND_SENT_WITHOUT_PROVIDER_ID',
+          resolvedAt: null
+        },
+        orderBy: { createdAt: 'desc' },
+        select: {
+          code: true,
+          createdAt: true
+        }
+      }),
+      this.prisma.campaignMessage.findFirst({
+        where: {
+          tenantId,
+          status: 'SENDING',
+          providerMessageId: null,
+          claimedAt: { lt: staleClaimBefore }
+        },
+        orderBy: { claimedAt: 'asc' },
+        select: {
+          claimedAt: true
+        }
+      })
+    ]);
+
+    const breaches: InvariantBreach[] = [];
+    if (invariantAlert) {
+      const normalizedCode = parsePostmarkInvariantCode(invariantAlert.code);
+      breaches.push({
+        active: true,
+        code: normalizedCode,
+        severity: normalizedCode === 'POSTMARK_INVARIANT_UNKNOWN' ? 'low' : 'high',
+        message:
+          normalizedCode === 'POSTMARK_INVARIANT_UNKNOWN'
+            ? 'Unknown invariant breach code - requires engineering review'
+            : 'Data invariant breach - requires engineering',
+        detectedAt: invariantAlert.createdAt,
+        runbookRef: 'docs/runbooks/postmark-send-invariants.md',
+        runbookQuery: '',
+        nextActions: []
+      });
+    }
+    if (stuckSending) {
+      breaches.push({
+        active: true,
+        code: 'POSTMARK_SEND_STUCK_SENDING_WITHOUT_PROVIDER_ID',
+        severity: 'medium',
+        message: 'Stale send claim detected - requires engineering',
+        detectedAt: stuckSending.claimedAt ?? new Date(),
+        runbookRef: 'docs/runbooks/postmark-send-invariants.md',
+        runbookQuery: '',
+        nextActions: [],
+        staleThresholdMinutes: POSTMARK_STALE_SEND_CLAIM_MINUTES
+      });
+    }
+    breaches.sort((a, b) => rankPostmarkInvariantBreach(b.code) - rankPostmarkInvariantBreach(a.code));
+    return breaches;
+  }
+
+  private getResumeBlockedReasons(input: {
+    breaches: InvariantBreach[];
+    policy: Awaited<ReturnType<PostmarkPolicyService['getTenantPolicy']>>;
+    paused: boolean;
+  }): string[] {
+    const reasons: string[] = [];
+
+    if (input.breaches.length > 0) {
+      reasons.push(input.breaches[0].message);
+    }
+    if (!input.policy.resumeChecklistAck) {
+      reasons.push('Resume checklist ack required');
+    }
+    if (!input.paused) {
+      reasons.push('Tenant send path is not currently paused');
+    }
+
+    return reasons;
+  }
+
+  private async resolveAuditActorUserId(tenantId: string, actorUserId: string | null): Promise<string | null> {
+    if (!actorUserId) {
+      return null;
+    }
+
+    const actor = await this.prisma.user.findFirst({
+      where: {
+        tenantId,
+        id: actorUserId
+      },
+      select: { id: true }
+    });
+
+    return actor?.id ?? null;
+  }
+
+  private async writeResumeAudit(
+    tenantId: string,
+    result: PostmarkResumeProof,
+    auditContext?: ResumeAuditContext
+  ): Promise<void> {
+    if (!auditContext) {
+      return;
+    }
+
+    const resolvedActorUserId = await this.resolveAuditActorUserId(tenantId, auditContext.actorUserId);
+
+    await this.prisma.auditLog.create({
+      data: {
+        tenantId,
+        actorUserId: resolvedActorUserId,
+        action: auditContext.action,
+        entityType: auditContext.entityType,
+        entityId: auditContext.entityId ?? tenantId,
+        metadataJson: {
+          surface: auditContext.surface,
+          actorPresented: auditContext.actorUserId,
+          actorUserIdResolved: resolvedActorUserId,
+          resumed: result.resumed,
+          reason: result.reason,
+          blockingReasons: result.blockingReasons,
+          pausedBefore: result.pausedBefore,
+          pausedAfter: result.pausedAfter,
+          resumeChecklistAck: result.resumeChecklistAck,
+          resumeChecklistAckActor: result.resumeChecklistAckActor,
+          resumeChecklistAckAt: result.resumeChecklistAckAt,
+          requeuedMessageCount: result.requeuedMessageCount
+        } as Prisma.InputJsonValue
+      }
+    });
   }
 }

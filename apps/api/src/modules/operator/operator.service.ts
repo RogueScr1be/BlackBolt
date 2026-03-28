@@ -1,5 +1,4 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { ReviewsService } from '../reviews/reviews.service';
 import { PostmarkOpsService } from '../postmark/postmark-ops.service';
@@ -165,17 +164,11 @@ export class OperatorService {
   async resumePostmark(tenantId: string, actorUserId: string | null) {
     await this.assertTenant(tenantId);
     const actor = actorUserId ?? 'operator';
-    const resumed = await this.postmarkOpsService.ackAndResume(tenantId, actor);
-
-    await this.prisma.auditLog.create({
-      data: {
-        tenantId,
-        actorUserId,
-        action: 'OPERATOR_INTERVENTION_RESUME_POSTMARK',
-        entityType: 'operator.intervention',
-        entityId: tenantId,
-        metadataJson: resumed as Prisma.InputJsonValue
-      }
+    const resumed = await this.postmarkOpsService.ackAndResume(tenantId, actor, {
+      action: 'OPERATOR_INTERVENTION_RESUME_POSTMARK',
+      entityType: 'operator.intervention',
+      actorUserId: actorUserId ?? actor,
+      surface: 'interventions/resume-postmark'
     });
 
     return {
