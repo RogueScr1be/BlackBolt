@@ -73,7 +73,7 @@ export class ReviewsService {
     const items = hasNext ? rows.slice(0, input.limit) : rows;
 
     return {
-      items: items.map((item) => ({
+      items: items.map((item: (typeof items)[number]) => ({
         id: item.id,
         tenantId: item.tenantId,
         source: item.source,

@@ -72,6 +72,7 @@ describe('Operator command center', () => {
       prisma as never,
       reviewsService as never,
       postmarkOpsService as never,
+      { prepareFixture: jest.fn(), cleanupFixture: jest.fn() } as never,
       { verifyKey: jest.fn(), generateOperatorKey: jest.fn(), upsertKey: jest.fn() } as never
     );
     const result = await service.getCommandCenter('tenant-1');
@@ -106,6 +107,7 @@ describe('Operator command center', () => {
       prisma as never,
       { enqueuePoll: jest.fn() } as never,
       { getOperatorSummary: jest.fn(), ackAndResume: jest.fn() } as never,
+      { prepareFixture: jest.fn(), cleanupFixture: jest.fn() } as never,
       { verifyKey: jest.fn(), generateOperatorKey: jest.fn(), upsertKey: jest.fn() } as never
     );
 
@@ -121,6 +123,8 @@ describe('Operator command center', () => {
       getCommandCenter: jest.fn().mockResolvedValue({}),
       retryGbpIngestion: jest.fn().mockResolvedValue({ ok: true }),
       resumePostmark: jest.fn().mockResolvedValue({ ok: true }),
+      preparePostmarkResumeFixture: jest.fn().mockResolvedValue({ ok: true }),
+      cleanupPostmarkResumeFixture: jest.fn().mockResolvedValue({ ok: true }),
       ackAlert: jest.fn().mockResolvedValue({ ok: true }),
       getMonthlyReport: jest.fn().mockResolvedValue({ tenant_id: 'tenant-1', month: '2026-02' })
     };
@@ -129,12 +133,16 @@ describe('Operator command center', () => {
     await controller.getCommandCenter('tenant-1');
     await controller.retryGbpIngestion('tenant-1', { userId: 'op' } as never);
     await controller.resumePostmark('tenant-1', { userId: 'op' } as never);
+    await controller.preparePostmarkResumeFixture('tenant-1', { userId: 'op' } as never);
+    await controller.cleanupPostmarkResumeFixture('tenant-1', { userId: 'op' } as never);
     await controller.ackAlert('tenant-1', { userId: 'op' } as never, { alert_id: 'a1' });
     await controller.getMonthlyReport('tenant-1', '2026-02');
 
     expect(operatorService.getCommandCenter).toHaveBeenCalledWith('tenant-1');
     expect(operatorService.retryGbpIngestion).toHaveBeenCalledWith('tenant-1', 'op');
     expect(operatorService.resumePostmark).toHaveBeenCalledWith('tenant-1', 'op');
+    expect(operatorService.preparePostmarkResumeFixture).toHaveBeenCalledWith('tenant-1', 'op');
+    expect(operatorService.cleanupPostmarkResumeFixture).toHaveBeenCalledWith('tenant-1', 'op');
     expect(operatorService.ackAlert).toHaveBeenCalledWith({ tenantId: 'tenant-1', alertId: 'a1', actorUserId: 'op' });
     expect(operatorService.getMonthlyReport).toHaveBeenCalledWith('tenant-1', '2026-02');
   });
@@ -161,6 +169,7 @@ describe('Operator command center', () => {
       prisma as never,
       { enqueuePoll: jest.fn() } as never,
       postmarkOpsService as never,
+      { prepareFixture: jest.fn(), cleanupFixture: jest.fn() } as never,
       { verifyKey: jest.fn(), generateOperatorKey: jest.fn(), upsertKey: jest.fn() } as never
     );
 
@@ -188,5 +197,36 @@ describe('Operator command center', () => {
       surface: 'interventions/resume-postmark'
     });
     expect(prisma.auditLog.create).not.toHaveBeenCalled();
+  });
+
+  it('wraps fixture prepare and cleanup results without extra audit writes', async () => {
+    const prisma = {
+      tenant: { findUnique: jest.fn().mockResolvedValue({ id: 'tenant-1' }) }
+    };
+    const fixtureService = {
+      prepareFixture: jest.fn().mockResolvedValue({ fixtureToken: 'token-1', expectedRequeuedMessageCount: 1 }),
+      cleanupFixture: jest.fn().mockResolvedValue({ fixtureToken: 'token-1', pauseCleared: true })
+    };
+
+    const service = new OperatorService(
+      prisma as never,
+      { enqueuePoll: jest.fn() } as never,
+      { getOperatorSummary: jest.fn(), ackAndResume: jest.fn() } as never,
+      fixtureService as never,
+      { verifyKey: jest.fn(), generateOperatorKey: jest.fn(), upsertKey: jest.fn() } as never
+    );
+
+    await expect(service.preparePostmarkResumeFixture('tenant-1', 'op')).resolves.toEqual({
+      ok: true,
+      intervention: 'prepare-postmark-resume-fixture',
+      result: { fixtureToken: 'token-1', expectedRequeuedMessageCount: 1 }
+    });
+    await expect(service.cleanupPostmarkResumeFixture('tenant-1', 'op')).resolves.toEqual({
+      ok: true,
+      intervention: 'cleanup-postmark-resume-fixture',
+      result: { fixtureToken: 'token-1', pauseCleared: true }
+    });
+    expect(fixtureService.prepareFixture).toHaveBeenCalledWith('tenant-1', 'op');
+    expect(fixtureService.cleanupFixture).toHaveBeenCalledWith('tenant-1', 'op');
   });
 });

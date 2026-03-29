@@ -1261,6 +1261,38 @@ paths:
               schema:
                 $ref: '#/components/schemas/OperatorInterventionResponse'
 
+  /v1/tenants/{tenantId}/interventions/prepare-postmark-resume-fixture:
+    post:
+      operationId: preparePostmarkResumeFixtureIntervention
+      tags: [operator, interventions]
+      summary: Prepare a single paused Postmark resume acceptance fixture on a shadow-safe tenant
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/TenantIdPath'
+      responses:
+        '200':
+          description: Postmark fixture prepare intervention result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PreparePostmarkResumeFixtureInterventionResponse'
+
+  /v1/tenants/{tenantId}/interventions/cleanup-postmark-resume-fixture:
+    post:
+      operationId: cleanupPostmarkResumeFixtureIntervention
+      tags: [operator, interventions]
+      summary: Remove a prepared Postmark resume acceptance fixture and clear its pause marker
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/TenantIdPath'
+      responses:
+        '200':
+          description: Postmark fixture cleanup intervention result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CleanupPostmarkResumeFixtureInterventionResponse'
+
   /v1/tenants/{tenantId}/interventions/ack-alert:
     post:
       operationId: ackAlertIntervention
@@ -2375,6 +2407,45 @@ components:
           additionalProperties: true
         alert_id: { type: string, nullable: true }
         resolved_at: { type: string, format: date-time, nullable: true }
+    PreparePostmarkResumeFixtureResult:
+      type: object
+      required:
+        [fixtureToken, pausedUntil, customerId, campaignId, draftMessageId, campaignMessageId, expectedRequeuedMessageCount]
+      properties:
+        fixtureToken: { type: string }
+        pausedUntil: { type: string, format: date-time }
+        customerId: { type: string }
+        campaignId: { type: string }
+        draftMessageId: { type: string }
+        campaignMessageId: { type: string }
+        expectedRequeuedMessageCount: { type: integer, enum: [1] }
+    PreparePostmarkResumeFixtureInterventionResponse:
+      type: object
+      required: [ok, intervention, result]
+      properties:
+        ok: { type: boolean, enum: [true] }
+        intervention: { type: string, enum: [prepare-postmark-resume-fixture] }
+        result:
+          $ref: '#/components/schemas/PreparePostmarkResumeFixtureResult'
+    CleanupPostmarkResumeFixtureResult:
+      type: object
+      required:
+        [fixtureToken, pauseCleared, deletedCampaignMessageCount, deletedDraftMessageCount, deletedCampaignCount, deletedCustomerCount]
+      properties:
+        fixtureToken: { type: string }
+        pauseCleared: { type: boolean }
+        deletedCampaignMessageCount: { type: integer }
+        deletedDraftMessageCount: { type: integer }
+        deletedCampaignCount: { type: integer }
+        deletedCustomerCount: { type: integer }
+    CleanupPostmarkResumeFixtureInterventionResponse:
+      type: object
+      required: [ok, intervention, result]
+      properties:
+        ok: { type: boolean, enum: [true] }
+        intervention: { type: string, enum: [cleanup-postmark-resume-fixture] }
+        result:
+          $ref: '#/components/schemas/CleanupPostmarkResumeFixtureResult'
     CampaignRunStatus:
       type: string
       enum: [QUEUED, RUNNING, PAUSED, COMPLETED, FAILED]

@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ReviewsService } from '../reviews/reviews.service';
 import { PostmarkOpsService } from '../postmark/postmark-ops.service';
+import { PostmarkResumeFixtureService } from '../postmark/postmark-resume-fixture.service';
 import { OperatorCredentialsService } from '../operator-credentials/operator-credentials.service';
 import type { CommandCenterPayload, MonthlyReportPayload, OperatorAlert, OperatorHealth } from './operator.types';
 
@@ -13,6 +14,7 @@ export class OperatorService {
     private readonly prisma: PrismaService,
     private readonly reviewsService: ReviewsService,
     private readonly postmarkOpsService: PostmarkOpsService,
+    private readonly postmarkResumeFixtureService: PostmarkResumeFixtureService,
     private readonly operatorCredentials: OperatorCredentialsService
   ) {}
 
@@ -87,7 +89,7 @@ export class OperatorService {
       })
     ]);
 
-    const alerts = unresolvedAlerts.map((alert): OperatorAlert => ({
+    const alerts = unresolvedAlerts.map((alert: (typeof unresolvedAlerts)[number]): OperatorAlert => ({
       id: alert.id,
       type: `${alert.integration.toLowerCase()}:${alert.code.toLowerCase()}`,
       severity: this.mapSeverity(alert.severity),
@@ -112,7 +114,9 @@ export class OperatorService {
     });
 
     const healthScore = this.healthScore(health);
-    const actionRequiredCount = alerts.filter((item) => item.severity !== 'info').length + (health.worker_liveness === 'critical' ? 1 : 0);
+    const actionRequiredCount =
+      alerts.filter((item: OperatorAlert) => item.severity !== 'info').length +
+      (health.worker_liveness === 'critical' ? 1 : 0);
 
     return {
       tenant_id: tenantId,
@@ -175,6 +179,28 @@ export class OperatorService {
       ok: true,
       intervention: 'resume-postmark',
       result: resumed
+    };
+  }
+
+  async preparePostmarkResumeFixture(tenantId: string, actorUserId: string | null) {
+    await this.assertTenant(tenantId);
+    const result = await this.postmarkResumeFixtureService.prepareFixture(tenantId, actorUserId);
+
+    return {
+      ok: true,
+      intervention: 'prepare-postmark-resume-fixture',
+      result
+    };
+  }
+
+  async cleanupPostmarkResumeFixture(tenantId: string, actorUserId: string | null) {
+    await this.assertTenant(tenantId);
+    const result = await this.postmarkResumeFixtureService.cleanupFixture(tenantId, actorUserId);
+
+    return {
+      ok: true,
+      intervention: 'cleanup-postmark-resume-fixture',
+      result
     };
   }
 
@@ -273,7 +299,7 @@ export class OperatorService {
     const bookingConservative = Math.max(0, Math.floor(bookingBase * 0.8));
     const bookingAggressive = Math.ceil(bookingBase * 1.2);
 
-    const praised = this.extractPraisedBenefits(draftMessages.map((item) => item.bodyText));
+    const praised = this.extractPraisedBenefits(draftMessages.map((item: (typeof draftMessages)[number]) => item.bodyText));
     const attributedCents = attributed._sum.attributedCents ?? 0;
     const revenueCents = revenue._sum.amountCents ?? 0;
 

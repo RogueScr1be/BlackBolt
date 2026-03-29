@@ -24,6 +24,16 @@ export class OperatorController {
     return this.operatorService.resumePostmark(tenantId, req.userId ?? null);
   }
 
+  @Post('interventions/prepare-postmark-resume-fixture')
+  async preparePostmarkResumeFixture(@Param('tenantId') tenantId: string, @Req() req: RequestWithContext) {
+    return this.operatorService.preparePostmarkResumeFixture(tenantId, req.userId ?? null);
+  }
+
+  @Post('interventions/cleanup-postmark-resume-fixture')
+  async cleanupPostmarkResumeFixture(@Param('tenantId') tenantId: string, @Req() req: RequestWithContext) {
+    return this.operatorService.cleanupPostmarkResumeFixture(tenantId, req.userId ?? null);
+  }
+
   @Post('interventions/ack-alert')
   async ackAlert(
     @Param('tenantId') tenantId: string,

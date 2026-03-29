@@ -10,6 +10,7 @@ import { PostmarkClient } from './postmark.client';
 import { PostmarkPolicyService } from './postmark-policy.service';
 import { PostmarkOpsController } from './postmark-ops.controller';
 import { PostmarkOpsService } from './postmark-ops.service';
+import { PostmarkResumeFixtureService } from './postmark-resume-fixture.service';
 import { TenancyModule } from '../tenancy/tenancy.module';
 import { PostmarkMetricsService } from './postmark-metrics.service';
 import { PostmarkWebhookLimiterService } from './postmark-webhook-limiter.service';
@@ -42,8 +43,9 @@ const queueImports = isWorker
     PostmarkQueue,
     PostmarkClient,
     PostmarkPolicyService,
-    PostmarkOpsService
+    PostmarkOpsService,
+    PostmarkResumeFixtureService
   ],
-  exports: [PostmarkService, PostmarkOpsService]
+  exports: [PostmarkService, PostmarkOpsService, PostmarkResumeFixtureService]
 })
 export class PostmarkModule {}
