@@ -112,7 +112,7 @@ describe('Postmark resume fixture service', () => {
   it('creates exactly one paused fixture message, pause marker, and one audit row without send events or alerts', async () => {
     const { prisma, service } = makeService({ actorExists: false });
     const tx = {
-      customer: { create: jest.fn().mockResolvedValue({ id: 'customer-1' }) },
+      $queryRawUnsafe: jest.fn().mockResolvedValue([{ id: 'customer-1' }]),
       campaign: { create: jest.fn().mockResolvedValue({ id: 'campaign-1' }) },
       draftMessage: { create: jest.fn().mockResolvedValue({ id: 'draft-1' }) },
       campaignMessage: { create: jest.fn().mockResolvedValue({ id: 'message-1' }) },
@@ -127,7 +127,7 @@ describe('Postmark resume fixture service', () => {
 
     expect(result.fixtureToken).toEqual(expect.any(String));
     expect(result.expectedRequeuedMessageCount).toBe(1);
-    expect(tx.customer.create).toHaveBeenCalledTimes(1);
+    expect(tx.$queryRawUnsafe).toHaveBeenCalledTimes(1);
     expect(tx.campaign.create).toHaveBeenCalledTimes(1);
     expect(tx.draftMessage.create).toHaveBeenCalledWith(
       expect.objectContaining({

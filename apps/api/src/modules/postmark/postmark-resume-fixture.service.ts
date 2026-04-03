@@ -76,16 +76,37 @@ export class PostmarkResumeFixtureService {
     const marker = this.fixtureMarker(fixtureToken);
     const pausedUntil = new Date(now.getTime() + POSTMARK_RESUME_FIXTURE_WINDOW_MINUTES * 60 * 1000);
     const resolvedActorUserId = await this.resolveAuditActorUserId(tenantId, actorUserId);
+    const customerId = randomUUID();
+    const customerEmail = `postmark-resume-fixture+${fixtureToken}@example.invalid`;
+    const customerDisplayName = 'Postmark Resume Fixture';
 
     return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      const customer = await tx.customer.create({
-        data: {
-          tenantId,
-          externalRef: marker,
-          email: `postmark-resume-fixture+${fixtureToken}@example.invalid`,
-          displayName: 'Postmark Resume Fixture'
-        }
-      });
+      const insertedCustomers = await tx.$queryRawUnsafe<Array<{ id: string }>>(
+        `
+          INSERT INTO "customers" (
+            "id",
+            "tenant_id",
+            "external_ref",
+            "email",
+            "display_name",
+            "created_at",
+            "updated_at"
+          )
+          VALUES ($1, $2, $3, $4, $5, $6, $7)
+          RETURNING "id"
+        `,
+        customerId,
+        tenantId,
+        marker,
+        customerEmail,
+        customerDisplayName,
+        now,
+        now
+      );
+      const customer = insertedCustomers[0];
+      if (!customer) {
+        throw new Error('Fixture customer insert did not return an id');
+      }
 
       const campaign = await tx.campaign.create({
         data: {
