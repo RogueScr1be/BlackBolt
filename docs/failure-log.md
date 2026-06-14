@@ -1,5 +1,14 @@
 # Failure Log
 
+## 2026-06-14 — Phase C-F3 synthetic smoke audit-log FK failure
+
+### Summary
+The synthetic inbound review-alert smoke reached the Postmark adapter, but the transaction failed on `audit_logs_actor_user_id_fkey` because the shadow adapter wrote `actorUserId: 'system'` even though `AuditLog.actorUserId` is nullable and no `User` row with id `system` exists in production.
+
+### Guardrail
+- Shadow email-alert adapters must write `actorUserId: null` for system-generated audit rows unless a real persisted actor exists.
+- Treat synthetic smoke failures caused by invented actor ids as a release blocker for the adapter transaction, not as a DB/environment issue.
+
 ## 2026-03-14 — Phase 0 Tier-1 architecture audit findings
 
 ### Summary
@@ -249,3 +258,20 @@ These are not part of the `/v1` appendix, but they are a Phase 0 contract-discip
   - they are not required to certify the generated-client operator workflow path
   - they still need deeper Swift 6 concurrency cleanup and/or helper redesign
   - keeping them active would make the package gate noisy again without improving Tier-1 operator confidence
+
+## 2026-06-13 — Railway deploy wrapper and Prisma migration path mismatch
+
+### Failure observed
+- The clean release worktree for the Postmark inbound adapter could not deploy with `railway up` until a Dockerfile wrapper was present in the upload.
+- `prisma migrate deploy` run through `railway run` still used the private `postgres.railway.internal` URL and failed from the workstation.
+
+### Root cause
+- BlackBolt Railway production uses a Dockerfile wrapper that clones a pushed Git ref during build, so a release worktree without that wrapper cannot be built by Railway.
+- Local migration runs need the public Postgres URL; the private Railway hostname is only reachable from inside Railway.
+
+### Fix applied
+- Used a temporary deploy-only Dockerfile wrapper and a pushed clean release branch ref for the Railway build.
+- Ran production migrations against `DATABASE_PUBLIC_URL` instead of the private host.
+
+### Consequence
+- Production deploys for this path are now documented as a two-step process: make the release ref reachable to the Dockerfile build, then migrate using the public database connection from outside Railway.

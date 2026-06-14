@@ -26,6 +26,7 @@
 - If using `expo export -p web`, treat hosting as static only.
 - Any `/api/*` expectation must map to explicit serverless deployment or an external backend URL.
 - For Railway service domains, ensure `targetPort` matches the app `PORT` used at runtime; mismatches can produce edge `502 Application failed to respond` even when app logs show successful boot.
+- BlackBolt Railway production deploys are Dockerfile-based and may clone a pushed Git ref during build; if the local release worktree is missing the deploy wrapper, use a temporary deploy-only wrapper and make sure the target ref is actually pushed before retrying.
 
 ## Validation Contracts
 - Runtime validators return `{ valid, errors }` and must never throw.
@@ -65,6 +66,7 @@
 - Webhook response semantics are strict: `200` for accepted/duplicate/no-op, `401` for auth rejection, `500` for transient processing failures.
 - Support webhook basic-auth rotation with dual credentials (`current` + `previous`) and track previous-credential usage before retiring old secrets.
 - Shadow email-alert adapters must remain disabled by default and shadow-only until an explicit promotion phase; do not wire them into review ingestion or send-path side effects.
+- Shadow email-alert audit rows must use `actorUserId: null` unless a real persisted actor exists; do not invent synthetic `User` ids such as `system`.
 - Outbound send workers must use atomic DB claim transitions (`QUEUED` -> `SENDING`) and exit on zero-row claims.
 - Treat `deliveryState=SENT && providerMessageId=null` as an invariant violation: alert and stop (never re-send).
 - Global safety override: `POSTMARK_SEND_DISABLED=1` forces simulation regardless of tenant policy.

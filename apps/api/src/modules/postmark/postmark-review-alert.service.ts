@@ -173,7 +173,7 @@ export class PostmarkReviewAlertService {
       await tx.auditLog.create({
         data: {
           tenantId,
-          actorUserId: 'system',
+          actorUserId: null,
           action: 'REVIEW_ALERT_EMAIL_INGESTED',
           entityType: 'review_alert_email',
           entityId: row.id,

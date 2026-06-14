@@ -105,6 +105,13 @@ describe('Postmark review alert inbound adapter', () => {
     );
     expect((prisma.integrationAlert as { create: jest.Mock }).create).toHaveBeenCalledTimes(1);
     expect((prisma.auditLog as { create: jest.Mock }).create).toHaveBeenCalledTimes(1);
+    expect((prisma.auditLog as { create: jest.Mock }).create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          actorUserId: null
+        })
+      })
+    );
     expect((prisma.review as { create: jest.Mock }).create).not.toHaveBeenCalled();
     expect((prisma.customer as { create: jest.Mock }).create).not.toHaveBeenCalled();
     expect((prisma.campaign as { create: jest.Mock }).create).not.toHaveBeenCalled();
