@@ -28,6 +28,12 @@ Startup fails fast for required variables per role.
 - `POSTMARK_WEBHOOK_BASIC_AUTH` (legacy alias)
 - `POSTMARK_WEBHOOK_BASIC_AUTH_PREVIOUS` (optional, during credential rotation)
 - `POSTMARK_WEBHOOK_IP_ALLOWLIST` (optional, comma-separated)
+- Google review alert shadow adapter envs:
+- `REVIEW_ALERT_INBOUND_ENABLED=0` by default
+- `REVIEW_ALERT_INBOUND_TENANT_ID=cmoybzkon0000tm3wj7ofru4n`
+- `REVIEW_ALERT_ALLOWED_FROM_DOMAINS=google.com,googlebusinessprofile-noreply@google.com`
+- `REVIEW_ALERT_ALLOWED_RECIPIENT` (optional, future inbound mailbox)
+- `REVIEW_ALERT_STORE_RAW=0` by default; reserved for future debugging, do not persist full raw email in this phase
 
 ### `blackbolt-worker`
 - Queue/sweeper tuning envs (optional):
@@ -98,7 +104,7 @@ Startup fails fast for required variables per role.
 - `npm error Missing script: "objective:rollout:shadow"`:
 - Root cause: wrong repo/worktree.
 - Fix:
-  1. `cd "/Users/thewhitley/.codex/worktrees/749b/New project"`
+  1. `cd "/Users/thewhitley/Documents/New project"`
   2. `npm run objective:rollout:preflight`
 - `Service 'blackbolt-api' not found` or `Service 'blackbolt-worker' not found`:
 - Root cause: Railway CLI linked to wrong project/environment.

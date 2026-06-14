@@ -24,6 +24,7 @@ export const OPENAPI_OPERATION_IDS = [
   'resumeCampaignRun',
   'redirectTrackedLink',
   'receivePostmarkWebhook',
+  'receiveGoogleReviewAlert',
   'getPostmarkOperatorSummary',
   'resumePostmarkSends',
   'getOperatorCommandCenter',

@@ -8,9 +8,9 @@
 - Work in explicit phases with entry/exit criteria; do not start the next phase until current phase gates pass.
 - For every phase, report: files changed, commands run with outcomes, blast radius, and rollback steps.
 - Keep changes minimal and reversible; prefer scaffolding and placeholders over speculative feature work.
-- Record all non-obvious architectural/tooling choices in `/Users/thewhitley/.codex/worktrees/749b/New project/docs/decision-log.md` before expanding scope.
+- Record all non-obvious architectural/tooling choices in `/Users/thewhitley/Documents/New project/docs/decision-log.md` before expanding scope.
 - If a requested governance skill is unavailable, mirror its enforcement rules here and continue with deterministic execution.
-- Node version must match `/Users/thewhitley/.codex/worktrees/749b/New project/.nvmrc` exactly for local and CI runs.
+- Node version must match `/Users/thewhitley/Documents/New project/.nvmrc` exactly for local and CI runs.
 - Support `TEST_OFFLINE=1` mode: skip external contract lint tooling, but still run local contract coverage and unit tests.
 - Define setup truthfully:
   - First-time setup (networked): `nvm install && nvm use && npm ci` (or `npm install` if lockfile is absent).
@@ -64,6 +64,7 @@
 - Webhook verification order is fixed: IP allowlist -> Basic Auth -> rate-limit checks -> persistence.
 - Webhook response semantics are strict: `200` for accepted/duplicate/no-op, `401` for auth rejection, `500` for transient processing failures.
 - Support webhook basic-auth rotation with dual credentials (`current` + `previous`) and track previous-credential usage before retiring old secrets.
+- Shadow email-alert adapters must remain disabled by default and shadow-only until an explicit promotion phase; do not wire them into review ingestion or send-path side effects.
 - Outbound send workers must use atomic DB claim transitions (`QUEUED` -> `SENDING`) and exit on zero-row claims.
 - Treat `deliveryState=SENT && providerMessageId=null` as an invariant violation: alert and stop (never re-send).
 - Global safety override: `POSTMARK_SEND_DISABLED=1` forces simulation regardless of tenant policy.

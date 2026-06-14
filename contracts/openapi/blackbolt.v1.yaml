@@ -893,6 +893,47 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /v1/webhooks/postmark/inbound/google-review-alert:
+    post:
+      operationId: receiveGoogleReviewAlert
+      tags: [webhooks, postmark]
+      summary: Receive shadow Google review alert email webhook
+      security: []
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema: { type: string, example: "Basic base64(user:pass)" }
+        - name: x-postmark-signature
+          in: header
+          required: false
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostmarkGoogleReviewAlertPayload'
+      responses:
+        '200':
+          description: Review alert accepted or disabled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewAlertInboundResponse'
+        '401':
+          description: Invalid webhook credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Transient webhook processing failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /v1/tenants/{tenantId}/integrations/postmark/operator-summary:
     get:
       operationId: getPostmarkOperatorSummary
@@ -1501,6 +1542,57 @@ components:
         duplicate: { type: boolean }
         eventId: { type: string }
         resolved: { type: boolean, nullable: true }
+    PostmarkGoogleReviewAlertPayload:
+      type: object
+      properties:
+        MessageID: { type: string, nullable: true }
+        MessageStream: { type: string, nullable: true }
+        From: { type: string, nullable: true }
+        FromFull:
+          oneOf:
+            - type: string
+            - type: object
+              properties:
+                Email: { type: string, nullable: true }
+                Name: { type: string, nullable: true }
+        To: { type: string, nullable: true }
+        ToFull:
+          oneOf:
+            - type: string
+            - type: object
+              properties:
+                Email: { type: string, nullable: true }
+                Name: { type: string, nullable: true }
+        Subject: { type: string, nullable: true }
+        TextBody: { type: string, nullable: true }
+        HtmlBody: { type: string, nullable: true }
+        StrippedTextReply: { type: string, nullable: true }
+        ReceivedAt: { type: string, format: date-time, nullable: true }
+        Headers:
+          oneOf:
+            - type: object
+              additionalProperties:
+                type: string
+            - type: array
+              items:
+                type: object
+                properties:
+                  Name: { type: string, nullable: true }
+                  Value: { type: string, nullable: true }
+      additionalProperties: true
+    ReviewAlertInboundResponse:
+      type: object
+      required: [accepted]
+      properties:
+        accepted: { type: boolean }
+        disabled: { type: boolean, nullable: true }
+        duplicate: { type: boolean, nullable: true }
+        reviewAlertEmailId: { type: string, nullable: true }
+        alertId: { type: string, nullable: true }
+        parsedStatus:
+          type: string
+          nullable: true
+          enum: [parsed, needs_review, quarantined]
     PostmarkSendSummaryItem:
       type: object
       required: [campaignMessageId, status, attempt, lastEventAt]

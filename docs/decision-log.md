@@ -396,3 +396,13 @@
   - `swift test` is again a credible certification gate for the active operator package surface
   - remaining quarantines are explicit package debt, not silent red-gate noise
   - the operator app now tells the truth when a section is empty or degraded instead of implying everything is fully ready
+
+## 2026-06-09 — Shadow-only Google review email alert adapter
+- Context: the official GBP Reviews API remains blocked, but the operator workflow needs a reversible shadow signal for forwarded review notifications without touching canonical review ingestion or send paths.
+- Decision:
+  - add a dedicated Postmark inbound adapter for forwarded Google review alert emails
+  - hard-bind the adapter to the SOS tenant only and keep it disabled by default behind `REVIEW_ALERT_INBOUND_ENABLED`
+  - persist only a shadow `review_alert_emails` record plus operator alert metadata
+  - do not create canonical `Review`, `Customer`, campaign, draft, approval, link, or send rows
+  - keep the GBP API path canonical and untouched until an explicit promotion phase
+- Consequence: the review-alert fallback can be deployed as a reversible shadow-only signal with a narrow blast radius, while rollback remains a config flip plus forwarding-rule removal instead of a data-model migration.

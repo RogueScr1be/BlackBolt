@@ -1,4 +1,5 @@
 export const POSTMARK_PROVIDER = 'POSTMARK';
+export const REVIEW_ALERT_SOURCE = 'google_email_alert';
 export const POSTMARK_SIGNATURE_HEADER = 'x-postmark-signature';
 export const AUTHORIZATION_HEADER = 'authorization';
 export const POSTMARK_WEBHOOK_JOB_NAME = 'postmark-webhook-reconcile';

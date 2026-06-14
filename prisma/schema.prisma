@@ -115,6 +115,7 @@ model Tenant {
   integrationAlerts     IntegrationAlert[]
   gbpSyncStates         GbpSyncState[]
   postmarkWebhookEvents PostmarkWebhookEvent[]
+  reviewAlertEmails     ReviewAlertEmail[]
   postmarkSendControl   PostmarkSendControl?
   operatorCredential    OperatorCredential?
   operatorPortfolioMemberships OperatorPortfolioTenantMembership[]
@@ -760,6 +761,36 @@ model PostmarkWebhookEvent {
   @@index([sourceIp, createdAt])
   @@index([reconcileStatus, nextRetryAt])
   @@map("postmark_webhook_events")
+}
+
+model ReviewAlertEmail {
+  id                 String   @id @default(cuid())
+  tenantId           String   @map("tenant_id")
+  provider           String
+  providerMessageId  String?  @map("provider_message_id")
+  source             String   @default("google_email_alert")
+  sourceMailbox      String?  @map("source_mailbox")
+  fromEmail          String?  @map("from_email")
+  subject            String?  @db.VarChar(500)
+  receivedAt         DateTime @map("received_at")
+  rawHash            String   @map("raw_hash")
+  parsedStatus       String   @map("parsed_status")
+  parsedRating       Int?     @map("parsed_rating")
+  parsedReviewerName String?  @map("parsed_reviewer_name")
+  parsedBusinessName String?  @map("parsed_business_name")
+  parsedReviewSnippet String? @map("parsed_review_snippet")
+  parsedReviewUrl    String?  @map("parsed_review_url")
+  parseConfidence    Decimal  @db.Decimal(5, 4) @map("parse_confidence")
+  failureReason      String?  @map("failure_reason")
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  tenant             Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@unique([tenantId, provider, providerMessageId])
+  @@unique([tenantId, rawHash])
+  @@index([tenantId, createdAt])
+  @@index([tenantId, parsedStatus])
+  @@map("review_alert_emails")
 }
 
 model PostmarkSendControl {

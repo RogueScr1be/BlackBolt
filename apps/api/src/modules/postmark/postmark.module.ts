@@ -5,6 +5,7 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { QUEUES } from '../queues/queue.constants';
 import { PostmarkController } from './postmark.controller';
 import { PostmarkService } from './postmark.service';
+import { PostmarkReviewAlertService } from './postmark-review-alert.service';
 import { PostmarkQueue } from './postmark.queue';
 import { PostmarkClient } from './postmark.client';
 import { PostmarkPolicyService } from './postmark-policy.service';
@@ -37,6 +38,7 @@ const queueImports = isWorker
   controllers: [PostmarkController, PostmarkOpsController],
   providers: [
     PostmarkService,
+    PostmarkReviewAlertService,
     PostmarkMetricsService,
     PostmarkWebhookLimiterService,
     PostmarkQueue,
@@ -44,6 +46,6 @@ const queueImports = isWorker
     PostmarkPolicyService,
     PostmarkOpsService
   ],
-  exports: [PostmarkService, PostmarkOpsService]
+  exports: [PostmarkService, PostmarkReviewAlertService, PostmarkOpsService]
 })
 export class PostmarkModule {}
