@@ -7,6 +7,7 @@ WORKDIR /app
 ARG BLACKBOLT_REF
 RUN : "${BLACKBOLT_REF:?BLACKBOLT_REF is required}" && \
     git clone https://github.com/RogueScr1be/BlackBolt.git . && \
+    git checkout "${BLACKBOLT_REF}" && \
     chmod +x scripts/verify-release-source.sh && \
     ./scripts/verify-release-source.sh
 
