@@ -50,6 +50,7 @@ export type ReviewAlertParseStatus = 'parsed' | 'needs_review' | 'quarantined';
 export type ReviewAlertInboundResponse = {
   accepted: boolean;
   disabled?: boolean;
+  diagnostic?: boolean;
   duplicate?: boolean;
   reviewAlertEmailId?: string;
   alertId?: string;

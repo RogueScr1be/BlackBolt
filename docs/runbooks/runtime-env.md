@@ -34,6 +34,7 @@ Startup fails fast for required variables per role.
 - `REVIEW_ALERT_ALLOWED_FROM_DOMAINS=google.com,googlebusinessprofile-noreply@google.com`
 - `REVIEW_ALERT_ALLOWED_RECIPIENT` (optional, future inbound mailbox)
 - `REVIEW_ALERT_STORE_RAW=0` by default; reserved for future debugging, do not persist full raw email in this phase
+- `POSTMARK_WEBHOOK_DIAGNOSTIC_MODE=0` by default; logs redacted ingress source data and returns a no-op without parsing or persistence
 
 ### `blackbolt-worker`
 - Queue/sweeper tuning envs (optional):

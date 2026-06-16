@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { ForbiddenException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { createHash } from 'node:crypto';
 
@@ -30,6 +30,18 @@ const PHI_RISK_PATTERNS = [
   /\bprescription\b/i
 ];
 
+type ReviewAlertIngressSnapshot = {
+  requestIp: string | null;
+  socketRemoteAddress: string | null;
+  xForwardedFor: string | null;
+  xForwardedForFirstHop: string | null;
+  xRealIp: string | null;
+  allowlistAllowed: boolean;
+  authCredentialKind: 'current' | 'previous' | 'missing' | 'invalid';
+  signatureConfigured: boolean;
+  signatureVerified: boolean | null;
+};
+
 type ParsedAlert = {
   status: ReviewAlertParseStatus;
   confidence: number;
@@ -47,6 +59,8 @@ type ParsedAlert = {
 
 @Injectable()
 export class PostmarkReviewAlertService {
+  private readonly logger = new Logger(PostmarkReviewAlertService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly limiter: PostmarkWebhookLimiterService
@@ -57,19 +71,14 @@ export class PostmarkReviewAlertService {
     rawBody: Buffer | undefined;
     signatureHeader: string | undefined;
     sourceIp: string | null;
+    socketRemoteAddress?: string | null;
+    xForwardedFor?: string | null;
+    xRealIp?: string | null;
     payload: PostmarkGoogleReviewAlertPayload;
   }): Promise<ReviewAlertInboundResponse> {
-    if (!this.isEnabled()) {
+    const diagnosticMode = this.isDiagnosticMode();
+    if (!this.isEnabled() && !diagnosticMode) {
       return { accepted: true, disabled: true };
-    }
-
-    if (
-      !isIpAllowed({
-        sourceIp: input.sourceIp,
-        allowlistCsv: process.env.POSTMARK_WEBHOOK_IP_ALLOWLIST
-      })
-    ) {
-      throw new UnauthorizedException('Postmark webhook source IP not allowed');
     }
 
     const authMatch = verifyBasicAuthHeader({
@@ -77,21 +86,55 @@ export class PostmarkReviewAlertService {
       expectedCredential: process.env.POSTMARK_WEBHOOK_BASIC_AUTH ?? process.env.POSTMARK_WEBHOOK_BASIC_AUTH_CURRENT,
       previousCredential: process.env.POSTMARK_WEBHOOK_BASIC_AUTH_PREVIOUS
     });
+    const signatureConfigured = Boolean(input.signatureHeader && process.env.POSTMARK_WEBHOOK_SECRET);
+    const signatureVerified = signatureConfigured
+      ? verifyPostmarkSignature({
+          rawBody: input.rawBody ?? Buffer.alloc(0),
+          signatureHeader: input.signatureHeader,
+          secret: process.env.POSTMARK_WEBHOOK_SECRET
+        })
+      : null;
+    const ingressSnapshot = this.buildIngressSnapshot({
+      requestIp: input.sourceIp,
+      socketRemoteAddress: input.socketRemoteAddress,
+      xForwardedFor: input.xForwardedFor,
+      xRealIp: input.xRealIp,
+      authCredentialKind: authMatch ?? (input.authorizationHeader ? 'invalid' : 'missing'),
+      signatureConfigured,
+      signatureVerified,
+      allowlistAllowed: isIpAllowed({
+        sourceIp: input.sourceIp,
+        allowlistCsv: process.env.POSTMARK_WEBHOOK_IP_ALLOWLIST
+      })
+    });
+
+    if (diagnosticMode) {
+      this.logger.log(
+        JSON.stringify({
+          event: 'postmark.review_alert.ingress_diagnostic',
+          ...ingressSnapshot
+        })
+      );
+    }
+
+    if (!ingressSnapshot.allowlistAllowed) {
+      throw new UnauthorizedException('Postmark webhook source IP not allowed');
+    }
+
     if (!authMatch) {
       throw new UnauthorizedException('Invalid Postmark webhook credentials');
     }
 
-    const signatureProvided = Boolean(input.signatureHeader && process.env.POSTMARK_WEBHOOK_SECRET);
-    if (signatureProvided) {
-      const signatureOk = verifyPostmarkSignature({
-        rawBody: input.rawBody ?? Buffer.alloc(0),
-        signatureHeader: input.signatureHeader,
-        secret: process.env.POSTMARK_WEBHOOK_SECRET
-      });
+    if (signatureConfigured && !signatureVerified) {
+      throw new UnauthorizedException('Invalid Postmark webhook signature');
+    }
 
-      if (!signatureOk) {
-        throw new UnauthorizedException('Invalid Postmark webhook signature');
-      }
+    if (diagnosticMode) {
+      return {
+        accepted: true,
+        disabled: true,
+        diagnostic: true
+      };
     }
 
     const tenantId = this.resolveTenantId();
@@ -200,6 +243,10 @@ export class PostmarkReviewAlertService {
 
   private isEnabled(): boolean {
     return process.env.REVIEW_ALERT_INBOUND_ENABLED === '1';
+  }
+
+  private isDiagnosticMode(): boolean {
+    return process.env.POSTMARK_WEBHOOK_DIAGNOSTIC_MODE === '1';
   }
 
   private resolveTenantId(): string {
@@ -505,6 +552,38 @@ export class PostmarkReviewAlertService {
 
   private hashRawBody(rawBody: Buffer): string {
     return createHash('sha256').update(rawBody).digest('hex');
+  }
+
+  private buildIngressSnapshot(input: {
+    requestIp: string | null;
+    socketRemoteAddress?: string | null;
+    xForwardedFor?: string | null;
+    xRealIp?: string | null;
+    allowlistAllowed: boolean;
+    authCredentialKind: 'current' | 'previous' | 'missing' | 'invalid';
+    signatureConfigured: boolean;
+    signatureVerified: boolean | null;
+  }): ReviewAlertIngressSnapshot {
+    return {
+      requestIp: input.requestIp,
+      socketRemoteAddress: input.socketRemoteAddress ?? null,
+      xForwardedFor: input.xForwardedFor ?? null,
+      xForwardedForFirstHop: this.firstForwardedIp(input.xForwardedFor),
+      xRealIp: input.xRealIp ?? null,
+      allowlistAllowed: input.allowlistAllowed,
+      authCredentialKind: input.authCredentialKind,
+      signatureConfigured: input.signatureConfigured,
+      signatureVerified: input.signatureVerified
+    };
+  }
+
+  private firstForwardedIp(header: string | null | undefined): string | null {
+    if (!header) {
+      return null;
+    }
+
+    const [first] = header.split(',').map((item) => item.trim());
+    return first && first.length > 0 ? first : null;
   }
 
   private resolveMessageId(payload: PostmarkGoogleReviewAlertPayload): string | null {

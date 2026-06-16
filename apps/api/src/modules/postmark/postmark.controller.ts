@@ -5,6 +5,14 @@ import { PostmarkReviewAlertService } from './postmark-review-alert.service';
 import { PostmarkService } from './postmark.service';
 import type { PostmarkGoogleReviewAlertPayload, PostmarkWebhookPayload } from './postmark.types';
 
+function firstHeaderValue(value: string | string[] | undefined): string | null {
+  if (Array.isArray(value)) {
+    return value[0] ?? null;
+  }
+
+  return value ?? null;
+}
+
 @Controller('v1/webhooks')
 export class PostmarkController {
   constructor(
@@ -37,11 +45,16 @@ export class PostmarkController {
     @Headers(POSTMARK_SIGNATURE_HEADER) signatureHeader: string | undefined,
     @Body() body: PostmarkGoogleReviewAlertPayload
   ) {
+    const xForwardedFor = firstHeaderValue(req.headers['x-forwarded-for']);
+    const xRealIp = firstHeaderValue(req.headers['x-real-ip']);
     return this.reviewAlertService.receiveGoogleReviewAlert({
       authorizationHeader,
       rawBody: req.rawBody,
       signatureHeader,
       sourceIp: req.ip ?? null,
+      socketRemoteAddress: req.socket.remoteAddress ?? null,
+      xForwardedFor,
+      xRealIp,
       payload: body
     });
   }

@@ -1,4 +1,4 @@
-import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
+import { ForbiddenException, Logger, UnauthorizedException } from '@nestjs/common';
 import { createHmac } from 'node:crypto';
 import { PostmarkReviewAlertService } from '../src/modules/postmark/postmark-review-alert.service';
 
@@ -20,6 +20,7 @@ describe('Postmark review alert inbound adapter', () => {
     process.env.REVIEW_ALERT_INBOUND_TENANT_ID = 'cmoybzkon0000tm3wj7ofru4n';
     process.env.REVIEW_ALERT_ALLOWED_FROM_DOMAINS = 'google.com,googlebusinessprofile-noreply@google.com';
     delete process.env.REVIEW_ALERT_ALLOWED_RECIPIENT;
+    delete process.env.POSTMARK_WEBHOOK_DIAGNOSTIC_MODE;
   });
 
   afterEach(() => {
@@ -29,6 +30,7 @@ describe('Postmark review alert inbound adapter', () => {
     delete process.env.REVIEW_ALERT_INBOUND_TENANT_ID;
     delete process.env.REVIEW_ALERT_ALLOWED_FROM_DOMAINS;
     delete process.env.REVIEW_ALERT_ALLOWED_RECIPIENT;
+    delete process.env.POSTMARK_WEBHOOK_DIAGNOSTIC_MODE;
   });
 
   function buildService(overrides?: {
@@ -244,6 +246,42 @@ describe('Postmark review alert inbound adapter', () => {
         })
       })
     );
+  });
+
+  it('diagnostic mode reports ingress details without creating rows when disabled', async () => {
+    process.env.REVIEW_ALERT_INBOUND_ENABLED = '0';
+    process.env.POSTMARK_WEBHOOK_DIAGNOSTIC_MODE = '1';
+    const logSpy = jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
+    const { service, prisma } = buildService();
+    const payload = {
+      MessageID: 'msg-diag',
+      From: 'Google Business Profile <googlebusinessprofile-noreply@google.com>',
+      To: 'sos-reviews@blackbolt.test',
+      Subject: 'New review from Alex',
+      TextBody: 'Alex rated you 5 stars. Review link: https://www.google.com/maps?cid=123',
+      ReceivedAt: '2026-06-09T10:00:00.000Z'
+    };
+    const raw = Buffer.from(JSON.stringify(payload));
+
+    const result = await service.receiveGoogleReviewAlert({
+      authorizationHeader: authHeader(),
+      rawBody: raw,
+      signatureHeader: sign(raw, secret),
+      sourceIp: '203.0.113.10',
+      socketRemoteAddress: '10.0.0.10',
+      xForwardedFor: '203.0.113.10, 10.0.0.10',
+      xRealIp: '203.0.113.10',
+      payload
+    });
+
+    expect(result).toEqual({ accepted: true, disabled: true, diagnostic: true });
+    expect((prisma.reviewAlertEmail as { create: jest.Mock }).create).not.toHaveBeenCalled();
+    expect((prisma.integrationAlert as { create: jest.Mock }).create).not.toHaveBeenCalled();
+    expect((prisma.auditLog as { create: jest.Mock }).create).not.toHaveBeenCalled();
+    expect(logSpy).toHaveBeenCalledWith(
+      expect.stringContaining('postmark.review_alert.ingress_diagnostic')
+    );
+    logSpy.mockRestore();
   });
 
   it('quarantines PHI-adjacent snippet', async () => {
