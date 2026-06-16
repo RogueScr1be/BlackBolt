@@ -415,3 +415,12 @@
   - require the request to arrive through an expected proxy/private socket context before forwarded headers can override `req.ip`
   - continue requiring Postmark basic auth regardless of source-IP resolution
 - Consequence: the adapter can accept real Postmark ingress behind Railway without widening the allowlist to proxy IPs or enabling global `trust proxy`.
+
+## 2026-06-16 — Fail-closed release-source pin for Railway deploys
+- Context: a production enablement deploy silently rebuilt `main` during an env flip, causing the route-bearing Postmark adapter to regress to `404` even though the intended release branch had already been validated.
+- Decision:
+  - make `BLACKBOLT_REF` required in the Railway Dockerfile
+  - fail the build if `BLACKBOLT_REF` is missing, cannot be resolved, or does not check out cleanly
+  - print non-secret provenance for the requested ref, checked-out ref, and commit SHA
+  - assert the route-bearing Postmark adapter files exist before `npm ci` / `api:build`
+- Consequence: future Railway deploys fail closed instead of silently falling back to `main`, so production activation cannot lose the route during an env-only flip.

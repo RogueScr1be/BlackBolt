@@ -285,3 +285,13 @@ The synthetic Postmark inbound smoke reached BlackBolt, but the review-alert all
 - Postmark webhook ingress must resolve source IP locally for the route, not via a global `trust proxy` change.
 - Forwarded headers may be trusted only when an explicit env enables them and the socket context looks like a proxy/private hop.
 - Keep the official Postmark allowlist authoritative; do not widen it to include Railway proxy ranges.
+
+## 2026-06-16 — Railway env flip rebuilt `main` and regressed the route-bearing artifact
+
+### Summary
+When `REVIEW_ALERT_INBOUND_ENABLED` was flipped on in production, Railway rebuilt the service from `main` instead of the validated release branch. The build log showed `git checkout main`, and the production route regressed to `404` before SMTP testing could proceed.
+
+### Guardrail
+- Railway deploys must fail closed if `BLACKBOLT_REF` is missing or if the resolved source does not contain the route-bearing Postmark adapter.
+- Do not rely on env-only flips to preserve the active build source.
+- Production activation of the review-alert adapter is blocked until the build provenance proves the intended release ref was checked out.

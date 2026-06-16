@@ -4,9 +4,11 @@ RUN apk add --no-cache git bash
 
 WORKDIR /app
 
-ARG BLACKBOLT_REF=codex/objective-closure-0811722
-RUN git clone https://github.com/RogueScr1be/BlackBolt.git . && \
-    git checkout "${BLACKBOLT_REF}"
+ARG BLACKBOLT_REF
+RUN : "${BLACKBOLT_REF:?BLACKBOLT_REF is required}" && \
+    git clone https://github.com/RogueScr1be/BlackBolt.git . && \
+    chmod +x scripts/verify-release-source.sh && \
+    ./scripts/verify-release-source.sh
 
 RUN npm ci
 RUN npm run api:build

@@ -21,6 +21,7 @@
 - Release CI must reflect the shipping surface area; legacy suites run in a separate non-blocking lane until repaired.
 - CI must run `npm run api:build`; tests passing while build fails is not releasable.
 - No “pre-existing” exception for red gates: if it fails on the release branch, fix it or revert it.
+- Railway deploys must fail closed on source drift: `BLACKBOLT_REF` is required, the build must print requested/checked-out ref provenance, and the route-bearing Postmark adapter files must exist before the build proceeds. Env flips may not silently rebuild `main`.
 
 ## Web Deploy Reality
 - If using `expo export -p web`, treat hosting as static only.
