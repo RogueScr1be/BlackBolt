@@ -21,6 +21,8 @@ describe('Postmark review alert inbound adapter', () => {
     process.env.REVIEW_ALERT_ALLOWED_FROM_DOMAINS = 'google.com,googlebusinessprofile-noreply@google.com';
     delete process.env.REVIEW_ALERT_ALLOWED_RECIPIENT;
     delete process.env.POSTMARK_WEBHOOK_DIAGNOSTIC_MODE;
+    delete process.env.POSTMARK_WEBHOOK_TRUST_PROXY_HEADERS;
+    delete process.env.POSTMARK_WEBHOOK_IP_ALLOWLIST;
   });
 
   afterEach(() => {
@@ -31,6 +33,8 @@ describe('Postmark review alert inbound adapter', () => {
     delete process.env.REVIEW_ALERT_ALLOWED_FROM_DOMAINS;
     delete process.env.REVIEW_ALERT_ALLOWED_RECIPIENT;
     delete process.env.POSTMARK_WEBHOOK_DIAGNOSTIC_MODE;
+    delete process.env.POSTMARK_WEBHOOK_TRUST_PROXY_HEADERS;
+    delete process.env.POSTMARK_WEBHOOK_IP_ALLOWLIST;
   });
 
   function buildService(overrides?: {
@@ -284,6 +288,86 @@ describe('Postmark review alert inbound adapter', () => {
     logSpy.mockRestore();
   });
 
+  it('accepts a trusted forwarded Postmark hop when proxy headers are enabled', async () => {
+    process.env.POSTMARK_WEBHOOK_TRUST_PROXY_HEADERS = '1';
+    const { service, prisma } = buildService();
+    const payload = {
+      MessageID: 'msg-trusted-hop',
+      From: 'Google Business Profile <googlebusinessprofile-noreply@google.com>',
+      To: 'sos-reviews@blackbolt.test',
+      Subject: 'New review from Alex',
+      TextBody: 'Alex rated you 5 stars. “Great care and fast follow-up.” Review link: https://www.google.com/maps?cid=123',
+      ReceivedAt: '2026-06-09T10:00:00.000Z'
+    };
+    const raw = Buffer.from(JSON.stringify(payload));
+
+    const result = await service.receiveGoogleReviewAlert({
+      authorizationHeader: authHeader(),
+      rawBody: raw,
+      signatureHeader: sign(raw, secret),
+      requestIp: '100.64.0.3',
+      sourceIp: '18.217.206.57',
+      sourceIpSource: 'x-forwarded-for',
+      proxyHeadersTrusted: true,
+      socketRemoteAddress: '100.64.0.3',
+      xForwardedFor: '18.217.206.57, 100.64.0.3',
+      xRealIp: '18.217.206.57',
+      payload
+    });
+
+    expect(result.accepted).toBe(true);
+    expect(result.duplicate).toBe(false);
+    expect((prisma.reviewAlertEmail as { create: jest.Mock }).create).toHaveBeenCalledTimes(1);
+    expect((prisma.integrationAlert as { create: jest.Mock }).create).toHaveBeenCalledTimes(1);
+    expect((prisma.auditLog as { create: jest.Mock }).create).toHaveBeenCalledTimes(1);
+    expect((prisma.review as { create: jest.Mock }).create).not.toHaveBeenCalled();
+    expect((prisma.customer as { create: jest.Mock }).create).not.toHaveBeenCalled();
+    expect((prisma.campaign as { create: jest.Mock }).create).not.toHaveBeenCalled();
+    expect((prisma.campaignRun as { create: jest.Mock }).create).not.toHaveBeenCalled();
+    expect((prisma.draftMessage as { create: jest.Mock }).create).not.toHaveBeenCalled();
+    expect((prisma.approvalItem as { create: jest.Mock }).create).not.toHaveBeenCalled();
+    expect((prisma.linkCode as { upsert: jest.Mock }).upsert).not.toHaveBeenCalled();
+    expect((prisma.sendEvent as { upsert: jest.Mock }).upsert).not.toHaveBeenCalled();
+    expect((prisma.reviewQueueItem as { upsert: jest.Mock }).upsert).not.toHaveBeenCalled();
+    expect((prisma.campaignMessage as { create: jest.Mock }).create).not.toHaveBeenCalled();
+  });
+
+  it('rejects a spoofed forwarded hop that is not allowlisted', async () => {
+    process.env.POSTMARK_WEBHOOK_TRUST_PROXY_HEADERS = '1';
+    const { service, prisma } = buildService();
+    const payload = {
+      MessageID: 'msg-spoofed-hop',
+      From: 'Google Business Profile <googlebusinessprofile-noreply@google.com>',
+      To: 'sos-reviews@blackbolt.test',
+      Subject: 'New review from Alex',
+      TextBody: 'Alex rated you 5 stars. Review link: https://www.google.com/maps?cid=123',
+      ReceivedAt: '2026-06-09T10:00:00.000Z'
+    };
+    const raw = Buffer.from(JSON.stringify(payload));
+    process.env.POSTMARK_WEBHOOK_IP_ALLOWLIST = '18.217.206.57';
+
+    await expect(
+      service.receiveGoogleReviewAlert({
+        authorizationHeader: authHeader(),
+        rawBody: raw,
+        signatureHeader: sign(raw, secret),
+        requestIp: '100.64.0.3',
+        sourceIp: '203.0.113.10',
+        sourceIpSource: 'x-forwarded-for',
+        proxyHeadersTrusted: true,
+        socketRemoteAddress: '100.64.0.3',
+        xForwardedFor: '203.0.113.10, 100.64.0.3',
+        xRealIp: '203.0.113.10',
+        payload
+      })
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+
+    expect((prisma.reviewAlertEmail as { create: jest.Mock }).create).not.toHaveBeenCalled();
+    expect((prisma.integrationAlert as { create: jest.Mock }).create).not.toHaveBeenCalled();
+    expect((prisma.auditLog as { create: jest.Mock }).create).not.toHaveBeenCalled();
+    delete process.env.POSTMARK_WEBHOOK_IP_ALLOWLIST;
+  });
+
   it('quarantines PHI-adjacent snippet', async () => {
     const { service, prisma } = buildService();
     const payload = {
@@ -329,6 +413,8 @@ describe('Postmark review alert inbound adapter', () => {
 
     expect(result).toEqual({ accepted: true, disabled: true });
     expect((prisma.reviewAlertEmail as { create: jest.Mock }).create).not.toHaveBeenCalled();
+    expect((prisma.integrationAlert as { create: jest.Mock }).create).not.toHaveBeenCalled();
+    expect((prisma.auditLog as { create: jest.Mock }).create).not.toHaveBeenCalled();
   });
 
   it('rejects misconfigured tenant binding', async () => {

@@ -28,11 +28,15 @@ export class PostmarkService {
     rawBody: Buffer | undefined;
     signatureHeader: string | undefined;
     sourceIp: string | null;
+    requestIp?: string | null;
+    sourceIpSource?: 'request-ip' | 'x-forwarded-for' | 'x-real-ip' | 'socket-remote-address' | 'none';
+    proxyHeadersTrusted?: boolean;
     payload: PostmarkWebhookPayload;
   }) {
+    const resolvedSourceIp = input.sourceIp;
     if (
       !isIpAllowed({
-        sourceIp: input.sourceIp,
+        sourceIp: resolvedSourceIp,
         allowlistCsv: process.env.POSTMARK_WEBHOOK_IP_ALLOWLIST
       })
     ) {
@@ -53,7 +57,7 @@ export class PostmarkService {
       this.metrics.increment('webhook_auth_previous_cred_total');
     }
 
-    await this.assertRateLimit(input.sourceIp, null);
+    await this.assertRateLimit(resolvedSourceIp, null);
 
     const signatureProvided = Boolean(input.signatureHeader && process.env.POSTMARK_WEBHOOK_SECRET);
     if (signatureProvided) {
@@ -78,7 +82,7 @@ export class PostmarkService {
         tenantId: normalized.tenantId,
         providerEventId: normalized.providerEventId,
         providerMessageId: normalized.providerMessageId,
-        sourceIp: input.sourceIp,
+        sourceIp: resolvedSourceIp,
         eventType: normalized.eventType,
         receivedAt: normalized.occurredAt,
         payloadRedactedJson: normalized.payloadRedactedJson as Prisma.InputJsonValue,

@@ -406,3 +406,12 @@
   - do not create canonical `Review`, `Customer`, campaign, draft, approval, link, or send rows
   - keep the GBP API path canonical and untouched until an explicit promotion phase
 - Consequence: the review-alert fallback can be deployed as a reversible shadow-only signal with a narrow blast radius, while rollback remains a config flip plus forwarding-rule removal instead of a data-model migration.
+
+## 2026-06-16 — Proxy-aware Postmark ingress source-IP resolution
+- Context: the synthetic Postmark inbound smoke reached the adapter, but Railway terminated the request such that `req.ip` resolved to the proxy hop (`100.64.0.3`) rather than the forwarded Postmark client hop (`18.217.206.57`).
+- Decision:
+  - keep the official Postmark allowlist as the source of truth
+  - resolve the review-alert source IP through a route-scoped helper that can trust forwarded headers only when `POSTMARK_WEBHOOK_TRUST_PROXY_HEADERS=1`
+  - require the request to arrive through an expected proxy/private socket context before forwarded headers can override `req.ip`
+  - continue requiring Postmark basic auth regardless of source-IP resolution
+- Consequence: the adapter can accept real Postmark ingress behind Railway without widening the allowlist to proxy IPs or enabling global `trust proxy`.

@@ -28,6 +28,7 @@ Startup fails fast for required variables per role.
 - `POSTMARK_WEBHOOK_BASIC_AUTH` (legacy alias)
 - `POSTMARK_WEBHOOK_BASIC_AUTH_PREVIOUS` (optional, during credential rotation)
 - `POSTMARK_WEBHOOK_IP_ALLOWLIST` (optional, comma-separated)
+- `POSTMARK_WEBHOOK_TRUST_PROXY_HEADERS=0` by default; when set to `1`, the Postmark review-alert route resolves source IP from forwarded headers only if the request arrives through an expected proxy/private socket context and basic auth still passes
 - Google review alert shadow adapter envs:
 - `REVIEW_ALERT_INBOUND_ENABLED=0` by default
 - `REVIEW_ALERT_INBOUND_TENANT_ID=cmoybzkon0000tm3wj7ofru4n`

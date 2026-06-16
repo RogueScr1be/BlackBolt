@@ -2,6 +2,7 @@ import { createHmac } from 'node:crypto';
 import { UnauthorizedException } from '@nestjs/common';
 import { PostmarkService } from '../src/modules/postmark/postmark.service';
 import { DELIVERY_EVENT_TO_STATE, DELIVERY_STATE_RANK } from '../src/modules/postmark/postmark.constants';
+import { isIpAllowed, resolvePostmarkWebhookSourceIp } from '../src/modules/postmark/postmark.auth';
 
 function sign(raw: Buffer, secret: string) {
   return createHmac('sha256', secret).update(raw).digest('base64');
@@ -75,6 +76,67 @@ describe('Postmark webhooks', () => {
     ).rejects.toBeInstanceOf(UnauthorizedException);
     expect(upsert).not.toHaveBeenCalled();
     delete process.env.POSTMARK_WEBHOOK_IP_ALLOWLIST;
+  });
+
+  it('resolves a trusted Postmark forwarded hop when proxy headers are enabled', () => {
+    const resolved = resolvePostmarkWebhookSourceIp({
+      requestIp: '100.64.0.3',
+      socketRemoteAddress: '100.64.0.3',
+      xForwardedFor: '18.217.206.57, 152.233.47.69',
+      xRealIp: '18.217.206.57',
+      trustProxyHeaders: true
+    });
+
+    expect(resolved).toEqual(
+      expect.objectContaining({
+        sourceIp: '18.217.206.57',
+        sourceIpSource: 'x-forwarded-for',
+        proxyContext: true,
+        proxyHeadersTrusted: true,
+        xForwardedForFirstPublicHop: '18.217.206.57'
+      })
+    );
+    expect(isIpAllowed({ sourceIp: resolved.sourceIp, allowlistCsv: '18.217.206.57' })).toBe(true);
+  });
+
+  it('falls back to the proxy socket when forwarded headers are not trusted', () => {
+    const resolved = resolvePostmarkWebhookSourceIp({
+      requestIp: '100.64.0.3',
+      socketRemoteAddress: '100.64.0.3',
+      xForwardedFor: '18.217.206.57, 152.233.47.69',
+      xRealIp: '18.217.206.57',
+      trustProxyHeaders: false
+    });
+
+    expect(resolved).toEqual(
+      expect.objectContaining({
+        sourceIp: '100.64.0.3',
+        sourceIpSource: 'request-ip',
+        proxyContext: true,
+        proxyHeadersTrusted: false
+      })
+    );
+    expect(isIpAllowed({ sourceIp: resolved.sourceIp, allowlistCsv: '18.217.206.57' })).toBe(false);
+  });
+
+  it('keeps a spoofed forwarded hop rejected when it is not on the allowlist', () => {
+    const resolved = resolvePostmarkWebhookSourceIp({
+      requestIp: '100.64.0.3',
+      socketRemoteAddress: '100.64.0.3',
+      xForwardedFor: '203.0.113.10, 152.233.47.69',
+      xRealIp: '203.0.113.10',
+      trustProxyHeaders: true
+    });
+
+    expect(resolved).toEqual(
+      expect.objectContaining({
+        sourceIp: '203.0.113.10',
+        sourceIpSource: 'x-forwarded-for',
+        proxyContext: true,
+        proxyHeadersTrusted: true
+      })
+    );
+    expect(isIpAllowed({ sourceIp: resolved.sourceIp, allowlistCsv: '18.217.206.57' })).toBe(false);
   });
 
   it('rejects rate-limited webhook before DB write', async () => {

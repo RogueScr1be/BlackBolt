@@ -32,6 +32,9 @@ const PHI_RISK_PATTERNS = [
 
 type ReviewAlertIngressSnapshot = {
   requestIp: string | null;
+  resolvedSourceIp: string | null;
+  sourceIpSource: 'request-ip' | 'x-forwarded-for' | 'x-real-ip' | 'socket-remote-address' | 'none';
+  proxyHeadersTrusted: boolean;
   socketRemoteAddress: string | null;
   xForwardedFor: string | null;
   xForwardedForFirstHop: string | null;
@@ -71,6 +74,10 @@ export class PostmarkReviewAlertService {
     rawBody: Buffer | undefined;
     signatureHeader: string | undefined;
     sourceIp: string | null;
+    requestIp?: string | null;
+    resolvedSourceIp?: string | null;
+    sourceIpSource?: 'request-ip' | 'x-forwarded-for' | 'x-real-ip' | 'socket-remote-address' | 'none';
+    proxyHeadersTrusted?: boolean;
     socketRemoteAddress?: string | null;
     xForwardedFor?: string | null;
     xRealIp?: string | null;
@@ -95,7 +102,10 @@ export class PostmarkReviewAlertService {
         })
       : null;
     const ingressSnapshot = this.buildIngressSnapshot({
-      requestIp: input.sourceIp,
+      requestIp: input.requestIp ?? input.sourceIp,
+      resolvedSourceIp: input.resolvedSourceIp ?? input.sourceIp,
+      sourceIpSource: input.sourceIpSource ?? 'request-ip',
+      proxyHeadersTrusted: input.proxyHeadersTrusted ?? false,
       socketRemoteAddress: input.socketRemoteAddress,
       xForwardedFor: input.xForwardedFor,
       xRealIp: input.xRealIp,
@@ -103,7 +113,7 @@ export class PostmarkReviewAlertService {
       signatureConfigured,
       signatureVerified,
       allowlistAllowed: isIpAllowed({
-        sourceIp: input.sourceIp,
+        sourceIp: input.resolvedSourceIp ?? input.sourceIp,
         allowlistCsv: process.env.POSTMARK_WEBHOOK_IP_ALLOWLIST
       })
     });
@@ -138,7 +148,7 @@ export class PostmarkReviewAlertService {
     }
 
     const tenantId = this.resolveTenantId();
-    await this.assertRateLimit(input.sourceIp, tenantId);
+    await this.assertRateLimit(input.resolvedSourceIp ?? input.sourceIp, tenantId);
 
     const parsed = this.parseInboundAlert(input.payload);
     const rawHash = this.hashRawBody(input.rawBody ?? Buffer.from(JSON.stringify(input.payload)));
@@ -556,6 +566,9 @@ export class PostmarkReviewAlertService {
 
   private buildIngressSnapshot(input: {
     requestIp: string | null;
+    resolvedSourceIp: string | null;
+    sourceIpSource: 'request-ip' | 'x-forwarded-for' | 'x-real-ip' | 'socket-remote-address' | 'none';
+    proxyHeadersTrusted: boolean;
     socketRemoteAddress?: string | null;
     xForwardedFor?: string | null;
     xRealIp?: string | null;
@@ -566,6 +579,9 @@ export class PostmarkReviewAlertService {
   }): ReviewAlertIngressSnapshot {
     return {
       requestIp: input.requestIp,
+      resolvedSourceIp: input.resolvedSourceIp,
+      sourceIpSource: input.sourceIpSource,
+      proxyHeadersTrusted: input.proxyHeadersTrusted,
       socketRemoteAddress: input.socketRemoteAddress ?? null,
       xForwardedFor: input.xForwardedFor ?? null,
       xForwardedForFirstHop: this.firstForwardedIp(input.xForwardedFor),

@@ -65,6 +65,7 @@
 - Webhook verification order is fixed: IP allowlist -> Basic Auth -> rate-limit checks -> persistence.
 - Webhook response semantics are strict: `200` for accepted/duplicate/no-op, `401` for auth rejection, `500` for transient processing failures.
 - Support webhook basic-auth rotation with dual credentials (`current` + `previous`) and track previous-credential usage before retiring old secrets.
+- Postmark review-alert ingress behind Railway must resolve source IP with a route-scoped helper. Do not widen the allowlist to Railway proxy IPs and do not enable global `trust proxy`; forwarded headers may be trusted only when `POSTMARK_WEBHOOK_TRUST_PROXY_HEADERS=1`, the socket context looks like a proxy/private hop, and basic auth still passes.
 - Shadow email-alert adapters must remain disabled by default and shadow-only until an explicit promotion phase; do not wire them into review ingestion or send-path side effects.
 - Shadow email-alert audit rows must use `actorUserId: null` unless a real persisted actor exists; do not invent synthetic `User` ids such as `system`.
 - Outbound send workers must use atomic DB claim transitions (`QUEUED` -> `SENDING`) and exit on zero-row claims.

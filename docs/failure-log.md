@@ -275,3 +275,13 @@ These are not part of the `/v1` appendix, but they are a Phase 0 contract-discip
 
 ### Consequence
 - Production deploys for this path are now documented as a two-step process: make the release ref reachable to the Dockerfile build, then migrate using the public database connection from outside Railway.
+
+## 2026-06-16 — Postmark ingress allowlist read Railway proxy IP instead of forwarded client hop
+
+### Summary
+The synthetic Postmark inbound smoke reached BlackBolt, but the review-alert allowlist rejected the request because the controller passed `req.ip` directly and Express/Nest resolved that to Railway's proxy address (`100.64.0.3`) instead of the forwarded Postmark hop (`18.217.206.57`).
+
+### Guardrail
+- Postmark webhook ingress must resolve source IP locally for the route, not via a global `trust proxy` change.
+- Forwarded headers may be trusted only when an explicit env enables them and the socket context looks like a proxy/private hop.
+- Keep the official Postmark allowlist authoritative; do not widen it to include Railway proxy ranges.
