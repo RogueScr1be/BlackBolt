@@ -49,6 +49,7 @@ export class ReviewsQueue implements OnModuleInit {
 
     const timeBucket = input.timeBucket ?? new Date().toISOString().slice(0, 13);
     const idempotencyKey = `${GBP_INGEST_IDEMPOTENCY_PREFIX}:${input.tenantId}:${input.locationId}:${timeBucket}`;
+    const jobId = this.buildBullJobId(GBP_POLL_TRIGGER_JOB_NAME, idempotencyKey);
 
     const job = await this.queue.add(
       GBP_POLL_TRIGGER_JOB_NAME,
@@ -58,7 +59,7 @@ export class ReviewsQueue implements OnModuleInit {
         timeBucket
       },
       {
-        jobId: idempotencyKey,
+        jobId,
         delay: input.delayMs ?? Math.floor(Math.random() * 1000),
         attempts: 5,
         backoff: {
@@ -79,6 +80,7 @@ export class ReviewsQueue implements OnModuleInit {
     }
 
     const tickAt = new Date().toISOString();
+    const jobId = this.buildBullJobId(GBP_POLL_SCHEDULER_JOB_NAME, tickAt);
     const job = await this.queue.add(
       GBP_POLL_SCHEDULER_JOB_NAME,
       {
@@ -87,7 +89,7 @@ export class ReviewsQueue implements OnModuleInit {
         timeBucket: tickAt
       },
       {
-        jobId: `${GBP_POLL_SCHEDULER_JOB_NAME}:${tickAt}`,
+        jobId,
         removeOnComplete: true,
         removeOnFail: false
       }
@@ -136,6 +138,7 @@ export class ReviewsQueue implements OnModuleInit {
     const cursorHash = this.hashCursor(input.cursor);
     const idempotencyKey =
       `${GBP_INGEST_IDEMPOTENCY_PREFIX}:${input.tenantId}:${input.locationId}:${cursorHash}:${GBP_INGEST_IDEMPOTENCY_VERSION}`;
+    const jobId = this.buildBullJobId(GBP_PAGE_FETCH_JOB_NAME, idempotencyKey);
 
     const job = await this.queue.add(
       GBP_PAGE_FETCH_JOB_NAME,
@@ -147,7 +150,7 @@ export class ReviewsQueue implements OnModuleInit {
         deadlineAtEpochMs: input.deadlineAtEpochMs
       },
       {
-        jobId: idempotencyKey,
+        jobId,
         attempts: 5,
         backoff: {
           type: 'exponential',
@@ -163,5 +166,10 @@ export class ReviewsQueue implements OnModuleInit {
 
   private hashCursor(cursor: string | null): string {
     return createHash('sha256').update(cursor ?? 'START_CURSOR').digest('hex').slice(0, 16);
+  }
+
+  private buildBullJobId(jobName: string, idempotencyKey: string): string {
+    const digest = createHash('sha256').update(idempotencyKey).digest('hex');
+    return `${jobName}-${digest}`;
   }
 }
