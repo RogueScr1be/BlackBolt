@@ -35,12 +35,43 @@ export type OperatorActivityEvent = {
   created_at: string;
 };
 
+export type OperatorReviewActionReviewSummary = {
+  id: string;
+  source_review_id: string;
+  rating: number | null;
+  classification_label: string | null;
+  classification_confidence: number | null;
+  queue_state: string | null;
+  created_at: string;
+};
+
+export type OperatorReviewActionSummaryItem = {
+  id: string;
+  review_id: string;
+  action_type: 'public_reply_suggestion';
+  status: 'draft' | 'reviewed' | 'dismissed';
+  created_by_kind: string;
+  created_by_user_id: string | null;
+  confidence: number | null;
+  created_at: string;
+  updated_at: string;
+  review: OperatorReviewActionReviewSummary | null;
+};
+
+export type OperatorReviewActionSummary = {
+  pending_public_reply_suggestions: number;
+  reviewed_count: number;
+  dismissed_count: number;
+  newest_action: OperatorReviewActionSummaryItem | null;
+};
+
 export type CommandCenterPayload = {
   tenant_id: string;
   kpis: OperatorKPI;
   health: OperatorHealth;
   alerts: OperatorAlert[];
   activity_feed: OperatorActivityEvent[];
+  review_actions: OperatorReviewActionSummary;
 };
 
 export type MonthlyReportPayload = {

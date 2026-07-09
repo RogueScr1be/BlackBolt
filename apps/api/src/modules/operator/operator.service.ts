@@ -4,9 +4,17 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ReviewsService } from '../reviews/reviews.service';
 import { PostmarkOpsService } from '../postmark/postmark-ops.service';
 import { OperatorCredentialsService } from '../operator-credentials/operator-credentials.service';
-import type { CommandCenterPayload, MonthlyReportPayload, OperatorAlert, OperatorHealth } from './operator.types';
+import type {
+  CommandCenterPayload,
+  MonthlyReportPayload,
+  OperatorAlert,
+  OperatorHealth,
+  OperatorReviewActionSummary,
+  OperatorReviewActionSummaryItem
+} from './operator.types';
 
 type Trend = 'healthy' | 'warning' | 'critical';
+const REVIEW_OPERATOR_ACTION_TYPE = 'public_reply_suggestion' as const;
 
 @Injectable()
 export class OperatorService {
@@ -32,6 +40,10 @@ export class OperatorService {
       newFiveStarReviewsMonth,
       sentCountMonth,
       clickCountMonth,
+      reviewActionDraftCount,
+      reviewActionReviewedCount,
+      reviewActionDismissedCount,
+      newestReviewAction,
       unresolvedAlerts,
       latestJobRun,
       recentReviews,
@@ -57,6 +69,53 @@ export class OperatorService {
       }),
       this.prisma.sendEvent.count({
         where: { tenantId, eventType: 'click', occurredAt: { gte: monthStart } }
+      }),
+      this.prisma.reviewOperatorAction.count({
+        where: { tenantId, actionType: REVIEW_OPERATOR_ACTION_TYPE, status: 'draft' }
+      }),
+      this.prisma.reviewOperatorAction.count({
+        where: { tenantId, actionType: REVIEW_OPERATOR_ACTION_TYPE, status: 'reviewed' }
+      }),
+      this.prisma.reviewOperatorAction.count({
+        where: { tenantId, actionType: REVIEW_OPERATOR_ACTION_TYPE, status: 'dismissed' }
+      }),
+      this.prisma.reviewOperatorAction.findFirst({
+        where: { tenantId, actionType: REVIEW_OPERATOR_ACTION_TYPE },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        select: {
+          id: true,
+          reviewId: true,
+          actionType: true,
+          status: true,
+          createdByKind: true,
+          createdByUserId: true,
+          confidence: true,
+          createdAt: true,
+          updatedAt: true,
+          review: {
+            select: {
+              id: true,
+              sourceReviewId: true,
+              rating: true,
+              createdAt: true,
+              classifications: {
+                select: {
+                  label: true,
+                  confidence: true
+                },
+                orderBy: { createdAt: 'desc' },
+                take: 1
+              },
+              queueItems: {
+                select: {
+                  state: true
+                },
+                orderBy: { createdAt: 'desc' },
+                take: 1
+              }
+            }
+          }
+        }
       }),
       this.prisma.integrationAlert.findMany({
         where: { tenantId, resolvedAt: null },
@@ -127,6 +186,12 @@ export class OperatorService {
       },
       health,
       alerts,
+      review_actions: this.buildReviewActionSummary({
+        draftCount: reviewActionDraftCount,
+        reviewedCount: reviewActionReviewedCount,
+        dismissedCount: reviewActionDismissedCount,
+        newestAction: newestReviewAction
+      }),
       activity_feed: this.buildActivityFeed({
         tenantId,
         recentReviews,
@@ -520,6 +585,85 @@ export class OperatorService {
     return items
       .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))
       .slice(0, 15);
+  }
+
+  private buildReviewActionSummary(input: {
+    draftCount: number;
+    reviewedCount: number;
+    dismissedCount: number;
+    newestAction: {
+      id: string;
+      reviewId: string;
+      actionType: string;
+      status: string;
+      createdByKind: string;
+      createdByUserId: string | null;
+      confidence: Prisma.Decimal | null;
+      createdAt: Date;
+      updatedAt: Date;
+      review: {
+        id: string;
+        sourceReviewId: string;
+        rating: number | null;
+        createdAt: Date;
+        classifications: Array<{ label: string; confidence: Prisma.Decimal }>;
+        queueItems: Array<{ state: string }>;
+      } | null;
+    } | null;
+  }): OperatorReviewActionSummary {
+    return {
+      pending_public_reply_suggestions: input.draftCount,
+      reviewed_count: input.reviewedCount,
+      dismissed_count: input.dismissedCount,
+      newest_action: input.newestAction ? this.mapReviewActionSummary(input.newestAction) : null
+    };
+  }
+
+  private mapReviewActionSummary(input: {
+    id: string;
+    reviewId: string;
+    actionType: string;
+    status: string;
+    createdByKind: string;
+    createdByUserId: string | null;
+    confidence: Prisma.Decimal | null;
+    createdAt: Date;
+    updatedAt: Date;
+    review: {
+      id: string;
+      sourceReviewId: string;
+      rating: number | null;
+      createdAt: Date;
+      classifications: Array<{ label: string; confidence: Prisma.Decimal }>;
+      queueItems: Array<{ state: string }>;
+    } | null;
+  }): OperatorReviewActionSummaryItem {
+    const review = input.review;
+    const latestClassification = review?.classifications[0] ?? null;
+    const latestQueueItem = review?.queueItems[0] ?? null;
+
+    return {
+      id: input.id,
+      review_id: input.reviewId,
+      action_type: input.actionType as 'public_reply_suggestion',
+      status: input.status as 'draft' | 'reviewed' | 'dismissed',
+      created_by_kind: input.createdByKind,
+      created_by_user_id: input.createdByUserId,
+      confidence: input.confidence === null ? null : Number(input.confidence),
+      created_at: input.createdAt.toISOString(),
+      updated_at: input.updatedAt.toISOString(),
+      review: review
+        ? {
+            id: review.id,
+            source_review_id: review.sourceReviewId,
+            rating: review.rating,
+            classification_label: latestClassification?.label ?? null,
+            classification_confidence: latestClassification?.confidence === undefined ? null : Number(latestClassification.confidence),
+            queue_state: latestQueueItem?.state ?? null,
+            created_at: review.createdAt.toISOString()
+          }
+        : null
+    };
   }
 
   private mapSeverity(raw: string): 'critical' | 'warning' | 'info' {

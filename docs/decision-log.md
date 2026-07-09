@@ -441,3 +441,11 @@
 - Context: a stale dead-lettered `GBP_AUTH_REVOKED` page-fetch run from the earlier auth outage prevented fresh manual polls from advancing after GBP access was restored.
 - Decision: keep poll-trigger idempotency at `v1`, but bump page-fetch idempotency to `v2` so replay after auth recovery uses a new cursor-scoped job identity and bypasses the dead-letter collision.
 - Consequence: manual polls can re-enter the page-fetch path after credential recovery without changing trigger dedupe or queue semantics for unrelated GBP jobs.
+
+## 2026-07-09 — Operator command-center surfacing for public review actions
+- Context: `ReviewOperatorAction` was already locked as a separate public-review artifact, but the operator command center did not expose any compact summary of pending/reviewed/dismissed work.
+- Decision:
+  - extend the existing command-center payload with a read-only `review_actions` summary containing pending, reviewed, and dismissed counts plus the newest action metadata
+  - keep the surface strictly metadata-only: no raw review text, no customer inference, and no send/reply execution path
+  - keep public-review actions separate from `DraftMessage`, `ApprovalItem`, `CampaignMessage`, and all outbound send artifacts
+- Consequence: operators can see public-review work in the dashboard aggregate without widening the private outreach model or creating any outbound execution path.

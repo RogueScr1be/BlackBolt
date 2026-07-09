@@ -23,6 +23,32 @@ describe('Operator command center', () => {
           { id: 'r2', rating: 5, createdAt: new Date('2026-02-13T10:00:00.000Z') }
         ])
       },
+      reviewOperatorAction: {
+        count: jest
+          .fn()
+          .mockResolvedValueOnce(2)
+          .mockResolvedValueOnce(1)
+          .mockResolvedValueOnce(1),
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'action-1',
+          reviewId: 'r1',
+          actionType: 'public_reply_suggestion',
+          status: 'draft',
+          createdByKind: 'system',
+          createdByUserId: null,
+          confidence: 0.91,
+          createdAt: new Date('2026-02-15T09:00:00.000Z'),
+          updatedAt: new Date('2026-02-15T09:05:00.000Z'),
+          review: {
+            id: 'r1',
+            sourceReviewId: 'reviews/1',
+            rating: 5,
+            createdAt: new Date('2026-02-14T10:00:00.000Z'),
+            classifications: [{ label: 'genuine_positive', confidence: 0.98 }],
+            queueItems: [{ state: 'classified' }]
+          }
+        })
+      },
       sendEvent: {
         count: jest
           .fn()
@@ -51,7 +77,13 @@ describe('Operator command center', () => {
       },
       draftMessage: {
         findMany: jest.fn().mockResolvedValue([])
-      }
+      },
+      customer: { create: jest.fn() },
+      campaign: { create: jest.fn() },
+      campaignRun: { create: jest.fn() },
+      campaignMessage: { create: jest.fn() },
+      approvalItem: { create: jest.fn() },
+      linkCode: { create: jest.fn() }
     };
 
     const reviewsService = {
@@ -82,7 +114,36 @@ describe('Operator command center', () => {
     expect(result.kpis.email_conversion_rate).toBeCloseTo(0.15, 5);
     expect(result.health.deliverability).toBe('healthy');
     expect(result.alerts).toHaveLength(1);
+    expect(result.review_actions).toMatchObject({
+      pending_public_reply_suggestions: 2,
+      reviewed_count: 1,
+      dismissed_count: 1,
+      newest_action: {
+        id: 'action-1',
+        review_id: 'r1',
+        action_type: 'public_reply_suggestion',
+        status: 'draft',
+        created_by_kind: 'system',
+        created_by_user_id: null,
+        confidence: 0.91,
+        review: {
+          id: 'r1',
+          source_review_id: 'reviews/1',
+          rating: 5,
+          classification_label: 'genuine_positive',
+          classification_confidence: 0.98,
+          queue_state: 'classified'
+        }
+      }
+    });
     expect(result.activity_feed.length).toBeGreaterThan(0);
+    expect(prisma.customer.create).not.toHaveBeenCalled();
+    expect(prisma.campaign.create).not.toHaveBeenCalled();
+    expect(prisma.campaignRun.create).not.toHaveBeenCalled();
+    expect(prisma.campaignMessage.create).not.toHaveBeenCalled();
+    expect(prisma.approvalItem.create).not.toHaveBeenCalled();
+    expect(prisma.linkCode.create).not.toHaveBeenCalled();
+    expect(prisma.sendEvent.count).toHaveBeenCalledTimes(2);
   });
 
   it('ack alert resolves record and writes audit log', async () => {

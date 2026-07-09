@@ -281,6 +281,7 @@
 - Operator review surfaces stay auth-gated even when the underlying queue is healthy; the audit path should rely on metadata-only DB inspection when no plaintext operator key is available.
 - Live GBP replay/backfill must resolve token material through `TokenVault` / `TOKEN_REF_*` env refs, not a stale raw `GBP_ACCESS_TOKEN`; a direct bearer env can lag behind the refreshed Railway token ref.
 - Public GBP reply suggestions must use a separate `ReviewOperatorAction` artifact. Do not reuse `DraftMessage`, `ApprovalItem`, or `ReviewQueueItem` for public-review workflows because they imply private outreach or customer targeting.
+- The operator command center may surface `ReviewOperatorAction` only as a read-only metadata summary. Do not add customer inference, raw review text, or send/reply execution to that aggregate payload.
 
 ## CWV Lane Guardrail
 - Desktop CSS deferral lanes must use explicit handle allowlists and pass a disabled-control median gate before promotion.
