@@ -115,6 +115,145 @@ describe('GBP review ingestion idempotency and paging', () => {
     expect(upsert).toHaveBeenCalledTimes(1);
   });
 
+  it('replays a GBP review with refreshed star rating without duplicating queue or send-path rows', async () => {
+    const reviewUpsert = jest.fn().mockResolvedValue({ id: 'review-1' });
+    const prisma = {
+      tenant: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'tenant-1',
+          gbpAccountId: 'acct-1',
+          gbpLocationId: 'loc-1',
+          gbpAccessTokenRef: 'tok-ref-1',
+          gbpIntegrationStatus: 'CONNECTED',
+          timeZone: 'UTC'
+        }),
+        update: jest.fn().mockResolvedValue({})
+      },
+      gbpSyncState: {
+        upsert: jest.fn().mockResolvedValue({})
+      },
+      review: {
+        findUnique: jest
+          .fn()
+          .mockResolvedValueOnce(null)
+          .mockResolvedValueOnce({ id: 'review-1' }),
+        upsert: reviewUpsert
+      },
+      reviewClassification: { upsert: jest.fn().mockResolvedValue({}) },
+      reviewQueueItem: { upsert: jest.fn().mockResolvedValue({}) },
+      tenantPolicy: { findUnique: jest.fn().mockResolvedValue(null) },
+      customer: {
+        findMany: jest.fn().mockResolvedValue([])
+      },
+      campaign: {
+        create: jest.fn().mockResolvedValue({ id: 'camp-1' })
+      },
+      campaignRun: {
+        create: jest.fn().mockResolvedValue({ id: 'run-1' }),
+        update: jest.fn().mockResolvedValue({})
+      },
+      auditLog: {
+        create: jest.fn().mockResolvedValue({})
+      },
+      draftMessage: {
+        create: jest.fn().mockResolvedValue({ id: 'draft-1' })
+      },
+      approvalItem: {
+        create: jest.fn().mockResolvedValue({})
+      },
+      campaignMessage: {
+        create: jest.fn().mockResolvedValue({ id: 'cm-1' })
+      },
+      linkCode: {
+        upsert: jest.fn().mockResolvedValue({})
+      },
+      integrationAlert: { create: jest.fn().mockResolvedValue({}) }
+    };
+
+    const ledger = {
+      createRun: jest
+        .fn()
+        .mockResolvedValueOnce({ run: { id: 'run-1' }, created: true })
+        .mockResolvedValueOnce({ run: { id: 'run-2' }, created: true }),
+      markState: jest.fn().mockResolvedValue({})
+    };
+
+    const gbpClient = {
+      fetchReviews: jest
+        .fn()
+        .mockResolvedValueOnce({
+          reviews: [
+            {
+              sourceReviewId: 'rev-1',
+              rating: 5,
+              body: 'Great care and supportive follow-up',
+              reviewerName: 'Alex',
+              reviewedAt: new Date().toISOString(),
+              redactedJson: { reviewId: 'rev-1', starRating: 'FIVE' },
+              payloadHash: 'h1'
+            }
+          ],
+          nextPageToken: null
+        })
+        .mockResolvedValueOnce({
+          reviews: [
+            {
+              sourceReviewId: 'rev-1',
+              rating: 5,
+              body: 'Great care and supportive follow-up',
+              reviewerName: 'Alex',
+              reviewedAt: new Date().toISOString(),
+              redactedJson: { reviewId: 'rev-1', starRating: 'FIVE' },
+              payloadHash: 'h1'
+            }
+          ],
+          nextPageToken: null
+        })
+    };
+
+    const reviewsQueue = { enqueuePageFetch: jest.fn() };
+    const processor = new ReviewsProcessor(
+      prisma as never,
+      ledger as never,
+      gbpClient as never,
+      reviewsQueue as never
+    );
+    const job = {
+      id: 'gbp-ingest:tenant-1:loc-1:start:v1',
+      name: GBP_PAGE_FETCH_JOB_NAME,
+      data: { tenantId: 'tenant-1', locationId: 'loc-1', cursor: null, pagesRemaining: 5, deadlineAtEpochMs: Date.now() + 30_000 }
+    };
+
+    await processor.process(job as never);
+    await processor.process({
+      ...job,
+      id: 'gbp-ingest:tenant-1:loc-1:next:v2',
+      data: { ...job.data, cursor: 'next-cursor' }
+    } as never);
+
+    expect(reviewUpsert).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        create: expect.objectContaining({ rating: 5 }),
+        update: expect.objectContaining({ rating: 5 })
+      })
+    );
+    expect(reviewUpsert).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        create: expect.objectContaining({ rating: 5 }),
+        update: expect.objectContaining({ rating: 5 })
+      })
+    );
+    expect(prisma.reviewClassification.upsert).toHaveBeenCalledTimes(1);
+    expect(prisma.reviewQueueItem.upsert).toHaveBeenCalledTimes(2);
+    expect(prisma.campaign.create).not.toHaveBeenCalled();
+    expect(prisma.draftMessage.create).not.toHaveBeenCalled();
+    expect(prisma.approvalItem.create).not.toHaveBeenCalled();
+    expect(prisma.campaignMessage.create).not.toHaveBeenCalled();
+    expect(prisma.linkCode.upsert).not.toHaveBeenCalled();
+  });
+
   it('processes one page then enqueues the next cursor page', async () => {
     const upsert = jest.fn().mockResolvedValue({ id: 'review-1' });
     const syncStateUpsert = jest.fn().mockResolvedValue({});

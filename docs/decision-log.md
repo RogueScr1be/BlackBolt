@@ -311,6 +311,8 @@
   - `/Users/thewhitley/Documents/New project/apps/api/src/modules/tenants/tenants.controller.ts`
 - Consequence: route-level tenant identity now fails closed on both missing tenant context and missing/invalid operator key for those endpoints, while operator-portfolio routes continue to use `PortfolioOperatorGuard` plus service-level `allowedTenantIds` enforcement.
 
+- Decision: normalize Google GBP review `starRating` enums in `apps/api/src/modules/gbp/gbp.client.ts` before persistence so `Review.rating` stores numeric values (`ONE`-`FIVE` -> `1`-`5`) and replays/backfills can update existing SOS reviews without duplicating rows.
+
 ## 2026-03-15 — Phase 1 PHI-prevention enforcement points
 - Context: Phase 0 proved that PHI-prevention intent existed, but not that all ingest paths rejected unsafe inputs before persistence.
 - Decision: Phase 1 hardens PHI prevention by mechanism at the parse boundary and review-ingest boundary:

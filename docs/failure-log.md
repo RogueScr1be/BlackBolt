@@ -311,3 +311,24 @@ When `REVIEW_ALERT_INBOUND_ENABLED` was flipped on in production, Railway rebuil
 - Railway deploys must fail closed if `BLACKBOLT_REF` is missing or if the resolved source does not contain the route-bearing Postmark adapter.
 - Do not rely on env-only flips to preserve the active build source.
 - Production activation of the review-alert adapter is blocked until the build provenance proves the intended release ref was checked out.
+
+## 2026-07-09 — GBP quality audit found all imported reviews classifying as `needs_review`
+
+### Failure observed
+- The live GBP import is structurally healthy and persisted 66 reviews, 66 classifications, and 66 queue rows, but every persisted `Review` row has `rating = null`, so the deterministic classifier collapses all imported items to `needs_review`.
+- No `ReviewQueueItem` has advanced to `awaiting_approval`, and there is no safe live-send candidate yet from the current production dataset.
+
+### Guardrail
+- Treat null-rating GBP imports as an explicit release blocker for live-send promotion.
+- Do not infer a safe outreach candidate from queue health alone when the persisted review rating is missing.
+- If the upstream GBP mapping is expected to carry stars, fix the ingestion mapping before attempting controlled draft generation.
+
+## 2026-07-09 — GBP starRating enum was parsed as NaN and dropped from Review.rating
+
+### Failure observed
+- The GBP client converted `review.starRating` with `parseInt(...)`, which works for numeric strings but returns `NaN` for Google enum values like `FIVE` and `ONE`.
+- That caused every imported SOS review to persist with `rating = null`, which in turn forced deterministic classification into `needs_review`.
+
+### Fix applied
+- Added explicit enum-to-number normalization in `apps/api/src/modules/gbp/gbp.client.ts`.
+- Added regression tests for `FIVE`, `ONE`, missing, and unknown star ratings, plus replay/backfill behavior that updates the existing review row without creating send-path objects.

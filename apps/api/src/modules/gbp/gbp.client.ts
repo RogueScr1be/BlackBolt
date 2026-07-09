@@ -18,6 +18,32 @@ export type FetchReviewsResult = {
   nextPageToken: string | null;
 };
 
+const STAR_RATING_MAP: Record<string, number> = {
+  ONE: 1,
+  TWO: 2,
+  THREE: 3,
+  FOUR: 4,
+  FIVE: 5
+};
+
+export function normalizeStarRating(input: unknown): number | null {
+  if (typeof input === 'number' && Number.isInteger(input) && input >= 1 && input <= 5) {
+    return input;
+  }
+
+  const normalized = String(input ?? '').trim().toUpperCase();
+  if (!normalized) {
+    return null;
+  }
+
+  if (/^[1-5]$/.test(normalized)) {
+    return Number.parseInt(normalized, 10);
+  }
+
+  const withoutStarSuffix = normalized.replace(/[\s_-]*STARS?$/, '');
+  return STAR_RATING_MAP[normalized] ?? STAR_RATING_MAP[withoutStarSuffix] ?? null;
+}
+
 @Injectable()
 export class GbpClient {
   private readonly logger = new Logger(GbpClient.name);
@@ -70,8 +96,7 @@ export class GbpClient {
     return {
       reviews: rows
         .map((review) => {
-          const starRatingRaw = String(review.starRating ?? '').toUpperCase();
-          const rating = Number.parseInt(starRatingRaw.replace('STAR', ''), 10);
+          const rating = normalizeStarRating(review.starRating);
           const reviewer = (review.reviewer as Record<string, unknown> | undefined) ?? {};
           const sourceReviewId = String(review.reviewId ?? '');
           const reviewedAt = typeof review.createTime === 'string' ? review.createTime : null;

@@ -275,6 +275,10 @@
 - Keep poll-trigger idempotency stable unless the trigger semantics change.
 - If a dead-lettered GBP page-fetch job blocks replay after auth recovery, bump only the page-fetch idempotency version and document the version change in `docs/decision-log.md` and `docs/failure-log.md`.
 - Do not reset the queue or widen dedupe scope just to recover a single stale page-fetch cursor.
+- The scheduler runs from `ReviewsQueue.onModuleInit` in both API and worker, with a 600000 ms repeat cadence unless `GBP_POLL_INTERVAL_MS` overrides it.
+- Shadow scheduler activation is only safe with `POSTMARK_SEND_DISABLED=1` and `REVIEW_ALERT_INBOUND_ENABLED=0`; the proof target is scheduler-triggered `gbp.ingest` jobs only, with send-path tables staying at zero.
+- If the live GBP import persists reviews with `rating = null`, `ReviewClassification` will collapse to `needs_review` and there is no safe live-send candidate yet.
+- Operator review surfaces stay auth-gated even when the underlying queue is healthy; the audit path should rely on metadata-only DB inspection when no plaintext operator key is available.
 
 ## CWV Lane Guardrail
 - Desktop CSS deferral lanes must use explicit handle allowlists and pass a disabled-control median gate before promotion.
