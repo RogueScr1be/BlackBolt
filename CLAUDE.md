@@ -22,6 +22,8 @@
 - CI must run `npm run api:build`; tests passing while build fails is not releasable.
 - No “pre-existing” exception for red gates: if it fails on the release branch, fix it or revert it.
 - Railway deploys must fail closed on source drift: `BLACKBOLT_REF` is required, the build must print requested/checked-out ref provenance, and the route-bearing Postmark adapter files must exist before the build proceeds. Env flips may not silently rebuild `main`.
+- Railway env-flip deploys must also be source-bound at the service config level. A fail-closed Dockerfile is not sufficient if Railway still points `blackbolt-api` at `main`; verify the production service branch before any enabled smoke and keep it pinned to the release-bearing ref.
+- If a branch-pinned Railway build can still serve stale code, switch the deploy ref to the exact release commit SHA for the rollout, then verify the live container source and compiled dist before any smoke. Branch pinning alone is not enough if the build layer cache can reuse an older checkout.
 
 ## Web Deploy Reality
 - If using `expo export -p web`, treat hosting as static only.
@@ -268,6 +270,11 @@
 - Tenant onboarding is complete only after running `npm run tenant:seed -- --name=\"...\" --slug=...`.
 - The seed output is source-of-truth for `tenantId` (`x-tenant-id`) and `operatorKey` (`x-operator-key`).
 - Do not mark operator workflows usable until per-tenant operator credential is present in DB.
+
+## GBP Replay Recovery
+- Keep poll-trigger idempotency stable unless the trigger semantics change.
+- If a dead-lettered GBP page-fetch job blocks replay after auth recovery, bump only the page-fetch idempotency version and document the version change in `docs/decision-log.md` and `docs/failure-log.md`.
+- Do not reset the queue or widen dedupe scope just to recover a single stale page-fetch cursor.
 
 ## CWV Lane Guardrail
 - Desktop CSS deferral lanes must use explicit handle allowlists and pass a disabled-control median gate before promotion.

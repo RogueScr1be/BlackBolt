@@ -424,3 +424,8 @@
   - print non-secret provenance for the requested ref, checked-out ref, and commit SHA
   - assert the route-bearing Postmark adapter files exist before `npm ci` / `api:build`
 - Consequence: future Railway deploys fail closed instead of silently falling back to `main`, so production activation cannot lose the route during an env-only flip.
+
+## 2026-07-09 — GBP page-fetch replay recovery version bump
+- Context: a stale dead-lettered `GBP_AUTH_REVOKED` page-fetch run from the earlier auth outage prevented fresh manual polls from advancing after GBP access was restored.
+- Decision: keep poll-trigger idempotency at `v1`, but bump page-fetch idempotency to `v2` so replay after auth recovery uses a new cursor-scoped job identity and bypasses the dead-letter collision.
+- Consequence: manual polls can re-enter the page-fetch path after credential recovery without changing trigger dedupe or queue semantics for unrelated GBP jobs.

@@ -7,6 +7,7 @@ import {
   GBP_INGEST_IDEMPOTENCY_PREFIX,
   GBP_INGEST_IDEMPOTENCY_VERSION,
   GBP_PAGE_FETCH_JOB_NAME,
+  GBP_PAGE_FETCH_IDEMPOTENCY_VERSION,
   GBP_POLL_INTERVAL_DEFAULT_MS,
   GBP_POLL_SCHEDULER_JOB_ID,
   GBP_POLL_SCHEDULER_JOB_NAME,
@@ -137,7 +138,7 @@ export class ReviewsQueue implements OnModuleInit {
 
     const cursorHash = this.hashCursor(input.cursor);
     const idempotencyKey =
-      `${GBP_INGEST_IDEMPOTENCY_PREFIX}:${input.tenantId}:${input.locationId}:${cursorHash}:${GBP_INGEST_IDEMPOTENCY_VERSION}`;
+      `${GBP_INGEST_IDEMPOTENCY_PREFIX}:${input.tenantId}:${input.locationId}:${cursorHash}:${GBP_PAGE_FETCH_IDEMPOTENCY_VERSION}`;
     const jobId = this.buildBullJobId(GBP_PAGE_FETCH_JOB_NAME, idempotencyKey);
 
     const job = await this.queue.add(

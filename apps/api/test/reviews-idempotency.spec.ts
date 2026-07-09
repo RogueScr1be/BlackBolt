@@ -104,7 +104,7 @@ describe('GBP review ingestion idempotency and paging', () => {
     );
 
     const job = {
-      id: 'gbp-ingest:tenant-1:loc-1:cursorhash:v1',
+      id: 'gbp-ingest:tenant-1:loc-1:cursorhash:v2',
       name: GBP_PAGE_FETCH_JOB_NAME,
       data: { tenantId: 'tenant-1', locationId: 'loc-1', cursor: null, pagesRemaining: 5, deadlineAtEpochMs: Date.now() + 1000 }
     };

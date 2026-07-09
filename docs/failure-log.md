@@ -286,6 +286,22 @@ The synthetic Postmark inbound smoke reached BlackBolt, but the review-alert all
 - Forwarded headers may be trusted only when an explicit env enables them and the socket context looks like a proxy/private hop.
 - Keep the official Postmark allowlist authoritative; do not widen it to include Railway proxy ranges.
 
+## 2026-07-09 — GBP manual poll recovery blocked by stale page-fetch dead letter
+
+### Failure observed
+- The production GBP direct probe returned `200`, and the manual poll trigger endpoint returned `201`, but the page-fetch stage did not advance because the cursor-scoped page job collided with an old dead-lettered `GBP_AUTH_REVOKED` entry from the prior auth outage.
+
+### Root cause
+- Page-fetch idempotency reused the same `gbp-ingest:{tenant}:{location}:{cursorHash}:v1` identity that had already been recorded in the stale dead-letter state.
+- The trigger job was healthy; the replay collision lived only at the page-fetch cursor identity layer.
+
+### Fix applied
+- Bumped page-fetch idempotency to `v2` while leaving poll-trigger idempotency at `v1`.
+
+### Guardrail learned
+- When an auth-revoked dead letter is the last known page-fetch state, recover with a narrow replay-version bump instead of broad queue resets or trigger key changes.
+- Keep manual poll replay separate from scheduler dedupe so the production worker can advance without disturbing unrelated GBP queue semantics.
+
 ## 2026-06-16 — Railway env flip rebuilt `main` and regressed the route-bearing artifact
 
 ### Summary

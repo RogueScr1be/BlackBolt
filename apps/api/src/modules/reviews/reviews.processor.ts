@@ -11,8 +11,8 @@ import { GbpClient } from '../gbp/gbp.client';
 import { GBP_SOURCE, GbpPermanentAuthError } from '../gbp/gbp.constants';
 import {
   GBP_INGEST_IDEMPOTENCY_PREFIX,
-  GBP_INGEST_IDEMPOTENCY_VERSION,
   GBP_PAGE_FETCH_JOB_NAME,
+  GBP_PAGE_FETCH_IDEMPOTENCY_VERSION,
   GBP_POLL_SCHEDULER_JOB_NAME,
   GBP_POLL_TRIGGER_JOB_NAME
 } from './reviews.constants';
@@ -176,7 +176,7 @@ export class ReviewsProcessor extends WorkerHost {
     const { tenantId, locationId, cursor, pagesRemaining, deadlineAtEpochMs } = job.data;
     const cursorHash = this.hashCursor(cursor);
     const idempotencyKey =
-      `${GBP_INGEST_IDEMPOTENCY_PREFIX}:${tenantId}:${locationId}:${cursorHash}:${GBP_INGEST_IDEMPOTENCY_VERSION}`;
+      `${GBP_INGEST_IDEMPOTENCY_PREFIX}:${tenantId}:${locationId}:${cursorHash}:${GBP_PAGE_FETCH_IDEMPOTENCY_VERSION}`;
 
     const run = await this.ledger.createRun({
       tenantId,
