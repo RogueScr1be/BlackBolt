@@ -107,7 +107,8 @@ export function detectRiskFlags(body: string): string[] {
   const text = body.toLowerCase();
   const rules: Array<[string, RegExp]> = [
     ['medical_claim', /\b(cure|guarantee|always works)\b/],
-    ['phi_hint', /\b(ssn|social security|dob|date of birth|mrn)\b/],
+    ['phi_hint', /\b(ssn|social security|dob|date of birth|mrn|medical record number)\b/],
+    ['phi_medical', /\b(diagnosis|treatment|insurance|medication|procedure codes?|clinical notes?|consultation notes?)\b/],
     ['legal_risk', /\b(lawsuit|malpractice)\b/]
   ];
   return rules.filter(([, regex]) => regex.test(text)).map(([code]) => code);

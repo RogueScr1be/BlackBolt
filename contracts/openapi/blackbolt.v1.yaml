@@ -207,6 +207,82 @@ paths:
               schema:
                 $ref: '#/components/schemas/OperatorReviewQueueResponse'
 
+  /v1/operator/review-actions:
+    get:
+      operationId: listOperatorReviewActions
+      tags: [operator, reviews]
+      summary: List review operator actions across operator portfolio
+      description: Returns public-review operator actions filtered by status and tenant.
+      parameters:
+        - $ref: '#/components/parameters/OperatorKeyHeader'
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [draft, reviewed, dismissed, all]
+        - name: tenant_id
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Review operator action list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperatorReviewActionListResponse'
+
+  /v1/operator/review-actions/public-reply-suggestion:
+    post:
+      operationId: createOperatorReviewAction
+      tags: [operator, reviews]
+      summary: Create a public reply suggestion for a review
+      description: Creates or returns a customerless operator suggestion for a public GBP review.
+      parameters:
+        - $ref: '#/components/parameters/OperatorKeyHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OperatorReviewActionCreateRequest'
+      responses:
+        '200':
+          description: Public reply suggestion
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperatorReviewActionSummary'
+
+  /v1/operator/review-actions/{actionId}:
+    patch:
+      operationId: updateOperatorReviewAction
+      tags: [operator, reviews]
+      summary: Update a review operator action status
+      description: Marks a public-review operator action reviewed or dismissed.
+      parameters:
+        - $ref: '#/components/parameters/OperatorKeyHeader'
+        - name: actionId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OperatorReviewActionUpdateRequest'
+      responses:
+        '200':
+          description: Updated review operator action
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperatorReviewActionSummary'
+
   /v1/operator/approvals:
     get:
       operationId: listOperatorApprovals
@@ -1958,6 +2034,62 @@ components:
         items:
           type: array
           items: { $ref: '#/components/schemas/OperatorReviewQueueItem' }
+    OperatorReviewActionReview:
+      type: object
+      required: [id, tenant_id, source_review_id, created_at]
+      properties:
+        id: { type: string }
+        tenant_id: { type: string }
+        source_review_id: { type: string }
+        rating: { type: integer, nullable: true }
+        reviewed_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+        classification_label: { type: string, nullable: true }
+        classification_confidence: { type: number, nullable: true }
+        queue_state: { type: string, nullable: true }
+        queue_confidence: { type: number, nullable: true }
+        classified_at: { type: string, format: date-time, nullable: true }
+        awaiting_approval_at: { type: string, format: date-time, nullable: true }
+    OperatorReviewActionSummary:
+      type: object
+      required:
+        [id, tenant_id, review_id, action_type, status, safety_flags, created_by_kind, created_at, updated_at]
+      properties:
+        id: { type: string }
+        tenant_id: { type: string }
+        review_id: { type: string }
+        action_type: { type: string, enum: [public_reply_suggestion] }
+        status: { type: string, enum: [draft, reviewed, dismissed] }
+        suggested_text: { type: string, nullable: true }
+        safety_flags:
+          type: object
+          additionalProperties: true
+        confidence: { type: number, nullable: true }
+        created_by_kind: { type: string }
+        created_by_user_id: { type: string, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        review:
+          $ref: '#/components/schemas/OperatorReviewActionReview'
+          nullable: true
+    OperatorReviewActionListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/OperatorReviewActionSummary' }
+    OperatorReviewActionCreateRequest:
+      type: object
+      required: [tenant_id, review_id]
+      properties:
+        tenant_id: { type: string }
+        review_id: { type: string }
+    OperatorReviewActionUpdateRequest:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [reviewed, dismissed] }
     OperatorApprovalSummary:
       type: object
       required:

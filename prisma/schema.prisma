@@ -95,6 +95,7 @@ model Tenant {
   suppressions          Suppression[]
   reviews               Review[]
   reviewClassifications ReviewClassification[]
+  reviewOperatorActions ReviewOperatorAction[]
   draftMessages         DraftMessage[]
   approvalItems         ApprovalItem[]
   campaigns             Campaign[]
@@ -359,6 +360,7 @@ model Review {
   tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   customer         Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
   classifications  ReviewClassification[]
+  reviewOperatorActions ReviewOperatorAction[]
   draftMessages    DraftMessage[]
   campaignRuns     CampaignRun[]
   queueItems       ReviewQueueItem[]
@@ -383,6 +385,29 @@ model ReviewClassification {
   @@unique([tenantId, reviewId, modelVersion])
   @@index([tenantId])
   @@map("review_classifications")
+}
+
+model ReviewOperatorAction {
+  id              String   @id @default(cuid())
+  tenantId        String   @map("tenant_id")
+  reviewId        String   @map("review_id")
+  actionType      String   @map("action_type")
+  status          String
+  suggestedText   String?  @map("suggested_text")
+  safetyFlags     Json     @map("safety_flags")
+  confidence      Decimal? @db.Decimal(5, 4)
+  createdByKind   String   @default("system") @map("created_by_kind")
+  createdByUserId String?  @map("created_by_user_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  review          Review   @relation(fields: [reviewId], references: [id], onDelete: Restrict)
+
+  @@unique([tenantId, reviewId, actionType])
+  @@index([tenantId, status])
+  @@index([tenantId, createdAt])
+  @@map("review_operator_actions")
 }
 
 model DraftMessage {

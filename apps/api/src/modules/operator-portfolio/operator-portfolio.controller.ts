@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards } from
 import type { RequestWithContext } from '../../common/request-context';
 import { PortfolioOperatorGuard } from '../../common/guards/portfolio-operator.guard';
 import { OperatorPortfolioService } from './operator-portfolio.service';
+import { ReviewOperatorActionsService, type ReviewOperatorActionStatus } from './review-operator-actions.service';
 
 type PatchApprovalDraftBody = {
   subject?: string;
@@ -14,10 +15,22 @@ type RejectApprovalBody = {
   reason?: string;
 };
 
+type CreateReviewOperatorActionBody = {
+  tenant_id: string;
+  review_id: string;
+};
+
+type UpdateReviewOperatorActionBody = {
+  status: ReviewOperatorActionStatus;
+};
+
 @Controller('v1/operator')
 @UseGuards(PortfolioOperatorGuard)
 export class OperatorPortfolioController {
-  constructor(private readonly portfolio: OperatorPortfolioService) {}
+  constructor(
+    private readonly portfolio: OperatorPortfolioService,
+    private readonly reviewOperatorActions: ReviewOperatorActionsService
+  ) {}
 
   @Get('portfolio/tenants')
   async listPortfolioTenants(@Req() req: RequestWithContext) {
@@ -110,6 +123,43 @@ export class OperatorPortfolioController {
       allowedTenantIds: req.operatorTenantIds ?? [],
       reviewId,
       tenantId: body.tenant_id,
+      actorUserId: req.userId ?? null
+    });
+  }
+
+  @Get('review-actions')
+  async listReviewActions(
+    @Req() req: RequestWithContext,
+    @Query('status') status?: string,
+    @Query('tenant_id') tenantId?: string
+  ) {
+    return this.reviewOperatorActions.listReviewOperatorActions({
+      allowedTenantIds: req.operatorTenantIds ?? [],
+      tenantId,
+      status
+    });
+  }
+
+  @Post('review-actions/public-reply-suggestion')
+  async createReviewAction(@Req() req: RequestWithContext, @Body() body: CreateReviewOperatorActionBody) {
+    return this.reviewOperatorActions.createPublicReplySuggestion({
+      allowedTenantIds: req.operatorTenantIds ?? [],
+      tenantId: body.tenant_id,
+      reviewId: body.review_id,
+      actorUserId: req.userId ?? null
+    });
+  }
+
+  @Patch('review-actions/:actionId')
+  async updateReviewAction(
+    @Req() req: RequestWithContext,
+    @Param('actionId') actionId: string,
+    @Body() body: UpdateReviewOperatorActionBody
+  ) {
+    return this.reviewOperatorActions.updateReviewOperatorAction({
+      allowedTenantIds: req.operatorTenantIds ?? [],
+      actionId,
+      status: body.status,
       actorUserId: req.userId ?? null
     });
   }

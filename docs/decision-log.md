@@ -118,6 +118,16 @@
 ## 2026-02-14 — Phase 5.2 atomic claim and stale-claim recovery
 - Context: queue retries and multi-worker execution can produce duplicate sends unless claim ownership is atomic.
 - Decision: worker claims via single `updateMany` transition (`QUEUED` or stale `SENDING`) and sets `claimed_at`, `claimed_by`, `send_attempt += 1`; zero-row updates exit immediately.
+
+## 2026-07-09 — GBP replay/backfill must use vault-resolved token refs
+- Context: the live worker still exposed a stale raw `GBP_ACCESS_TOKEN` even after Railway token refresh, which caused direct replay code to fail with `401` until the vault path was used.
+- Decision: perform GBP replay/backfill through `TokenVault.resolve()` with the tenant token ref (`sos_lactation_gbp_v1` / `TOKEN_REF_SOS_LACTATION_GBP_V1`) rather than trusting the raw bearer env.
+- Consequence: production re-ingestion stays aligned with the refreshed token material, and future manual repair scripts should prefer the vault path to avoid stale-env drift.
+
+## 2026-07-09 — Public GBP replies use a separate operator action table
+- Context: public review response suggestions must not inherit private outreach assumptions from `DraftMessage`, `ApprovalItem`, or `ReviewQueueItem`.
+- Decision: introduce `ReviewOperatorAction` as a customerless, review-scoped operator artifact for `public_reply_suggestion` workflows with no send-path dependencies.
+- Consequence: public-review operator actions stay isolated from customer targeting and can be audited or dismissed independently before any future reply execution exists.
 - Consequence: only one worker can own a send attempt, and stale claims are reclaimable after timeout.
 
 ## 2026-02-14 — Phase 5.2 policy controls and kill switch
