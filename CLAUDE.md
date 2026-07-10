@@ -277,6 +277,8 @@
 - Do not reset the queue or widen dedupe scope just to recover a single stale page-fetch cursor.
 - The scheduler runs from `ReviewsQueue.onModuleInit` in both API and worker, with a 600000 ms repeat cadence unless `GBP_POLL_INTERVAL_MS` overrides it.
 - Shadow scheduler activation is only safe with `POSTMARK_SEND_DISABLED=1` and `REVIEW_ALERT_INBOUND_ENABLED=0`; the proof target is scheduler-triggered `gbp.ingest` jobs only, with send-path tables staying at zero.
+- GBP scheduler shadow mode must run before any public reply execution or private outreach. During scheduler soak, `POSTMARK_SEND_DISABLED=1` and `REVIEW_ALERT_INBOUND_ENABLED=0` must remain set. Any send-path row creation during scheduler-only work is a stop condition.
+- GBP token durability must resolve through `TOKEN_REF_*` plus `REFRESH_TOKEN_REF_*` when available; do not trust raw `GBP_ACCESS_TOKEN` as the live source of truth. If refresh exchange fails, stop closed before any scheduler retry.
 - If the live GBP import persists reviews with `rating = null`, `ReviewClassification` will collapse to `needs_review` and there is no safe live-send candidate yet.
 - Operator review surfaces stay auth-gated even when the underlying queue is healthy; the audit path should rely on metadata-only DB inspection when no plaintext operator key is available.
 - Live GBP replay/backfill must resolve token material through `TokenVault` / `TOKEN_REF_*` env refs, not a stale raw `GBP_ACCESS_TOKEN`; a direct bearer env can lag behind the refreshed Railway token ref.

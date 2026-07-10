@@ -124,6 +124,15 @@
 - Decision: perform GBP replay/backfill through `TokenVault.resolve()` with the tenant token ref (`sos_lactation_gbp_v1` / `TOKEN_REF_SOS_LACTATION_GBP_V1`) rather than trusting the raw bearer env.
 - Consequence: production re-ingestion stays aligned with the refreshed token material, and future manual repair scripts should prefer the vault path to avoid stale-env drift.
 
+## 2026-07-10 — GBP token durability repair before scheduler soak
+- Context: the live production runtime still produced `401` on direct `reviews.list` even after Railway env refresh because the vault path lacked refresh-token exchange support and the runtime could still lean on stale bearer material.
+- Decision:
+  - remove raw `GBP_ACCESS_TOKEN` fallback from the GBP vault path
+  - prefer `TOKEN_REF_SOS_LACTATION_GBP_V1` plus `REFRESH_TOKEN_REF_SOS_LACTATION_GBP_V1` when present
+  - refresh expired GBP access tokens through Google OAuth client credentials before retrying direct review probes or scheduler work
+  - fail closed if refresh exchange fails
+- Consequence: scheduler shadow mode must only run after the production runtime proves it can rehydrate GBP credentials through the vault path instead of a stale bearer env.
+
 ## 2026-07-09 — Public GBP replies use a separate operator action table
 - Context: public review response suggestions must not inherit private outreach assumptions from `DraftMessage`, `ApprovalItem`, or `ReviewQueueItem`.
 - Decision: introduce `ReviewOperatorAction` as a customerless, review-scoped operator artifact for `public_reply_suggestion` workflows with no send-path dependencies.
@@ -449,3 +458,12 @@
   - keep the surface strictly metadata-only: no raw review text, no customer inference, and no send/reply execution path
   - keep public-review actions separate from `DraftMessage`, `ApprovalItem`, `CampaignMessage`, and all outbound send artifacts
 - Consequence: operators can see public-review work in the dashboard aggregate without widening the private outreach model or creating any outbound execution path.
+
+## 2026-07-09 — GBP scheduler shadow soak before reply execution
+- Context: official GBP ingestion is proven and the operator command center now surfaces public-review actions, but autonomous scheduler behavior still needs long-running stability proof before any public reply execution is considered.
+- Decision:
+  - enable the GBP poll scheduler in shadow mode first with `GBP_POLL_SCHEDULER_DISABLED=0`
+  - keep `POSTMARK_SEND_DISABLED=1` and `REVIEW_ALERT_INBOUND_ENABLED=0` throughout the soak
+  - treat any send-path row creation, duplicate review import, or command-center drift as a stop condition
+  - do not move to public GBP reply execution until the 24-hour shadow soak is clean
+- Consequence: Blackbolt gains an autonomous production ingestion loop only in shadow mode, while reply execution remains deferred until the scheduler proves stable.

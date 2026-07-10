@@ -56,7 +56,6 @@ export class GbpClient {
     accessTokenRef: string;
     pageToken?: string | null;
   }): Promise<FetchReviewsResult> {
-    const tokenSet = await this.resolveTokenSet(input.accessTokenRef);
     const endpoint = new URL(
       `${GBP_BASE_URL}/accounts/${encodeURIComponent(input.accountId)}/locations/${encodeURIComponent(input.locationId)}/reviews`
     );
@@ -65,30 +64,9 @@ export class GbpClient {
       endpoint.searchParams.set('pageToken', input.pageToken);
     }
 
-    const response = await fetch(endpoint, {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${tokenSet.accessToken}`,
-        Accept: 'application/json'
-      }
-    });
-
-    if (response.status === 401 || response.status === 403) {
-      throw new GbpPermanentAuthError(`GBP auth rejected (${response.status})`);
-    }
-
-    if (response.status === 429 || response.status >= 500) {
-      throw new Error(`GBP transient failure (${response.status})`);
-    }
-
-    if (!response.ok) {
-      throw new Error(`GBP unexpected response (${response.status})`);
-    }
-
-    const payload = (await response.json()) as {
-      reviews?: Array<Record<string, unknown>>;
-      nextPageToken?: string;
-    };
+    const tokenSet = await this.resolveTokenSet(input.accessTokenRef);
+    const response = await this.fetchReviewsOnce(endpoint, tokenSet.accessToken);
+    const payload = await this.handleResponse(input.accessTokenRef, endpoint, response, tokenSet);
 
     const rows = payload.reviews ?? [];
     this.logger.log(`GBP fetched ${rows.length} reviews for location ${input.locationId}`);
@@ -133,5 +111,60 @@ export class GbpClient {
       }
       throw error;
     }
+  }
+
+  private async refreshTokenSet(ref: string) {
+    try {
+      return await this.tokenVault.refresh(ref);
+    } catch (error) {
+      if (error instanceof TokenVaultError && ['REVOKED', 'REFUSED', 'MISSING_REF', 'EXPIRED'].includes(error.code)) {
+        throw new GbpPermanentAuthError(`TokenVault ${error.code}: ${error.message}`);
+      }
+      throw error;
+    }
+  }
+
+  private async fetchReviewsOnce(endpoint: URL, accessToken: string) {
+    return fetch(endpoint, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: 'application/json'
+      }
+    });
+  }
+
+  private async handleResponse(
+    accessTokenRef: string,
+    endpoint: URL,
+    response: Response,
+    tokenSet: Awaited<ReturnType<GbpClient['resolveTokenSet']>>
+  ) {
+    if (response.status === 401 && tokenSet.refreshToken) {
+      const refreshed = await this.refreshTokenSet(accessTokenRef);
+      const retryResponse = await this.fetchReviewsOnce(endpoint, refreshed.accessToken);
+      return this.parseReviewsResponse(retryResponse);
+    }
+
+    return this.parseReviewsResponse(response);
+  }
+
+  private async parseReviewsResponse(response: Response) {
+    if (response.status === 401 || response.status === 403) {
+      throw new GbpPermanentAuthError(`GBP auth rejected (${response.status})`);
+    }
+
+    if (response.status === 429 || response.status >= 500) {
+      throw new Error(`GBP transient failure (${response.status})`);
+    }
+
+    if (!response.ok) {
+      throw new Error(`GBP unexpected response (${response.status})`);
+    }
+
+    return (await response.json()) as {
+      reviews?: Array<Record<string, unknown>>;
+      nextPageToken?: string;
+    };
   }
 }

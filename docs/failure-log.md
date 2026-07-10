@@ -1,5 +1,15 @@
 # Failure Log
 
+## 2026-07-10 — GBP token durability probe still 401 after Railway refresh
+
+### Summary
+The live production `reviews.list` probe continued to return `401` after Railway token material was refreshed because the GBP vault path still fell back to a raw `GBP_ACCESS_TOKEN` and did not refresh expired access material through the tenant refresh token.
+
+### Guardrail
+- GBP runtime resolution must prefer the tenant token ref and refresh token ref.
+- Raw `GBP_ACCESS_TOKEN` must not be treated as the live source of truth.
+- If refresh exchange fails, stop closed and do not enable the scheduler soak.
+
 ## 2026-06-14 — Phase C-F3 synthetic smoke audit-log FK failure
 
 ### Summary

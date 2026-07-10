@@ -36,6 +36,11 @@ Startup fails fast for required variables per role.
 - `REVIEW_ALERT_ALLOWED_RECIPIENT` (optional, future inbound mailbox)
 - `REVIEW_ALERT_STORE_RAW=0` by default; reserved for future debugging, do not persist full raw email in this phase
 - `POSTMARK_WEBHOOK_DIAGNOSTIC_MODE=0` by default; logs redacted ingress source data and returns a no-op without parsing or persistence
+- GBP token durability envs:
+- `TOKEN_REF_SOS_LACTATION_GBP_V1` (tenant-scoped access token ref, required for SOS runtime probes and polls)
+- `REFRESH_TOKEN_REF_SOS_LACTATION_GBP_V1` (tenant-scoped refresh token ref, used when access tokens expire)
+- `GOOGLE_GBP_CLIENT_ID` and `GOOGLE_GBP_CLIENT_SECRET` (required for refresh-token exchange when refresh material is present)
+- `GBP_ACCESS_TOKEN` is legacy fallback material and should not be relied on as the live source of truth
 
 ### `blackbolt-worker`
 - Queue/sweeper tuning envs (optional):
