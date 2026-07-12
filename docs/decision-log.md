@@ -494,3 +494,13 @@
   - treat `ReviewOperatorAction` and `review_actions` as recommendation-only surfaces
   - require manual operator copy into Google Business Profile for any public response
 - Consequence: Blackbolt is locked into a safe operating model where it watches reviews, classifies them, and surfaces suggestions without creating private outreach or outbound execution artifacts.
+
+## 2026-07-12 — Minimal ops hardening for review-loop observability
+- Context: the recommendation-only loop needs one read-only check command, one panic-disable path, and one concise runbook without introducing new vendors or a full alerting stack.
+- Decision:
+  - add a single production check script that verifies API health, worker heartbeat, GBP `reviews.list`, job recency, counts, and safety flags
+  - document the exact panic-disable commands for `GBP_POLL_SCHEDULER_DISABLED=1`
+  - reuse existing `IntegrationAlert` support only where it already fits cleanly; do not build new monitoring infrastructure or a separate repeated-failure alerting pipeline in this phase
+- Execution note:
+  - the check must run inside `railway ssh` on a deployed service shell because the production Postgres host is private and `railway run` from the workstation cannot reach it
+- Consequence: operators get a deterministic one-command health check and a deterministic rollback path, while alerting scope stays intentionally small and low-risk.

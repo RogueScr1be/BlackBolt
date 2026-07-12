@@ -15,6 +15,9 @@
 6. Use `Reports` only when monthly proof is needed.
 7. Close app.
 
+## Review Loop Hardening
+- For the production review-loop check command and panic-disable path, see `docs/runbooks/review-loop-ops.md`.
+
 ## Recommendation-Only Operating Mode
 1. Keep GBP scheduler enabled in shadow mode only when `GBP_POLL_SCHEDULER_DISABLED=0` has already been proven healthy.
 2. Keep `POSTMARK_SEND_DISABLED=1` and `REVIEW_ALERT_INBOUND_ENABLED=0` at all times in this mode.

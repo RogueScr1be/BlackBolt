@@ -24,6 +24,7 @@
     "operator:start": "bash scripts/start-operator.sh",
     "operator:package": "bash scripts/operator/package-macos-app.sh",
     "operator:install": "bash scripts/operator/install-macos-app.sh --open",
+    "ops:check:review-loop": "sh -c 'npm --workspace @blackbolt/api exec -- ts-node \"$PWD/scripts/ops/check-review-loop.ts\"'",
     "objective:verify:shadow": "bash scripts/smoke/objective-shadow-verify.sh",
     "objective:verify:live": "bash scripts/smoke/objective-live-verify.sh",
     "objective:rollout:preflight": "bash scripts/smoke/objective-rollout-preflight.sh",
