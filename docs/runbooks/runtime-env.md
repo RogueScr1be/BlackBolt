@@ -59,6 +59,15 @@ Startup fails fast for required variables per role.
 - Keep `GBP_POLL_SCHEDULER_DISABLED` unset or `0` on worker during shadow/live validation windows.
 - Keep worker heartbeat defaults unless rollout diagnostics require temporary tuning.
 
+## Recommendation-Only Review Operating Mode
+- Production lock state for SOS:
+  - `GBP_POLL_SCHEDULER_DISABLED=0`
+  - `POSTMARK_SEND_DISABLED=1`
+  - `REVIEW_ALERT_INBOUND_ENABLED=0`
+- In this mode, the scheduler ingests and classifies reviews, the command center surfaces `review_actions`, and any public reply remains a manual operator action outside BlackBolt.
+- Do not enable Postmark sends, Postmark fallback, or Google reply execution while this lock is active.
+- Treat any new send-path row, unexpected Google auth failure, or command-center drift as a stop condition.
+
 ## Revenue Import Runtime Contract
 - Canonical tenant-scoped endpoints:
 - `POST /v1/tenants/{tenantId}/revenue/imports`

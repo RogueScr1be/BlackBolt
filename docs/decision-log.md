@@ -467,3 +467,30 @@
   - treat any send-path row creation, duplicate review import, or command-center drift as a stop condition
   - do not move to public GBP reply execution until the 24-hour shadow soak is clean
 - Consequence: Blackbolt gains an autonomous production ingestion loop only in shadow mode, while reply execution remains deferred until the scheduler proves stable.
+
+## 2026-07-10 — GBP scheduler shadow soak armed after runtime token proof
+- Context: the live API and worker both returned `200` for `reviews.list` with the raw env token and the refreshed token, while SOS tenant counts remained unchanged and send-path tables stayed at zero.
+- Decision:
+  - turn on `GBP_POLL_SCHEDULER_DISABLED=0` on API and worker for the SOS shadow soak
+  - keep `POSTMARK_SEND_DISABLED=1` and `REVIEW_ALERT_INBOUND_ENABLED=0` during the soak
+  - use `reviews.list` parity, worker heartbeat, and tenant-scoped counts as the proof target for scheduler stability
+- Consequence: the scheduler soak can run against the real GBP runtime path without opening Postmark sends or the private outreach model.
+- Checkpoint note: the bare env-token fetch probe can still return `401`, but the compiled `GbpClient` refresh path succeeds on both API and worker and fetches 50 reviews from the SOS location. Treat the actual client path, not the bare bearer probe, as the scheduler path of record.
+
+## 2026-07-12 — GBP scheduler 24-hour shadow soak completed cleanly
+- Context: the armed shadow soak ran from `2026-07-11T01:10:24Z` to `2026-07-12T01:48:45Z` with `GBP_POLL_SCHEDULER_DISABLED=0`, `POSTMARK_SEND_DISABLED=1`, and `REVIEW_ALERT_INBOUND_ENABLED=0`.
+- Result:
+  - API health stayed `200` and worker heartbeat stayed fresh
+  - the compiled worker `GbpClient` continued to fetch 50 reviews from the SOS location
+  - `gbp-poll-trigger` runs succeeded throughout the window with no repeated failures
+  - SOS tenant counts remained stable and send-path tables stayed at zero
+- Consequence: the GBP scheduler can remain enabled in shadow mode; the diagnostic bare-token `401` is not the path of record and does not block the scheduler when the live `GbpClient` refresh path is green.
+
+## 2026-07-12 — Recommendation-only production lock for SOS review workflow
+- Context: GBP scheduler shadow mode is stable, operator-visible public-review suggestions are live, and the production send path remains completely closed.
+- Decision:
+  - keep `GBP_POLL_SCHEDULER_DISABLED=0` for SOS shadow ingestion
+  - keep `POSTMARK_SEND_DISABLED=1` and `REVIEW_ALERT_INBOUND_ENABLED=0`
+  - treat `ReviewOperatorAction` and `review_actions` as recommendation-only surfaces
+  - require manual operator copy into Google Business Profile for any public response
+- Consequence: Blackbolt is locked into a safe operating model where it watches reviews, classifies them, and surfaces suggestions without creating private outreach or outbound execution artifacts.

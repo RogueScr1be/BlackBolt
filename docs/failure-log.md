@@ -1,5 +1,23 @@
 # Failure Log
 
+## 2026-07-10 — OAuth Playground identity isolation blocked by Google sign-in security
+
+### Summary
+The local Chrome profile can open OAuth Playground and reach Google sign-in, but the account step requires a password / security interaction that the current headless automation path cannot complete. That prevents generating a fresh matched OAuth pair from the same Google account/session without manual browser interaction.
+
+### Guardrail
+- Do not assume a readable Chrome profile is sufficient to finish Google OAuth consent.
+- If Google prompts for password or "this browser may not be secure", stop and request a manual OAuth Playground session or the fresh token pair from the operator.
+
+## 2026-07-10 — GBP refresh path still does not unlock reviews.list
+
+### Summary
+After installing `GOOGLE_GBP_CLIENT_ID` and `GOOGLE_GBP_CLIENT_SECRET`, the runtime refresh exchange succeeded in both API and worker, and token metadata showed the expected `business.manage` scope. However, both runtimes still returned `401` on the live `reviews.list` probe, so the refreshed token material does not yet authorize the SOS GBP location.
+
+### Guardrail
+- Do not start the 24-hour scheduler soak on a token pair that can refresh successfully but still fails live GBP reviews reads.
+- Treat this as token-material/account authorization mismatch until a fresh GBP-authorized token pair is issued from the correct account.
+
 ## 2026-07-10 — GBP token durability probe still 401 after Railway refresh
 
 ### Summary
@@ -342,3 +360,15 @@ When `REVIEW_ALERT_INBOUND_ENABLED` was flipped on in production, Railway rebuil
 ### Fix applied
 - Added explicit enum-to-number normalization in `apps/api/src/modules/gbp/gbp.client.ts`.
 - Added regression tests for `FIVE`, `ONE`, missing, and unknown star ratings, plus replay/backfill behavior that updates the existing review row without creating send-path objects.
+
+## 2026-07-10 — GBP runtime token identity diagnostic confirmed live env token works for reviews
+
+### Diagnostic result
+- API and worker both resolved the same live token fingerprint (`sha256` prefix `839798b6d004`), with no whitespace and a `ya29.` access-token shape.
+- Direct `reviews.list` from both runtimes returned `200` with `reviewsCount=50` and `totalReviewCount=66` using the raw env token and the refreshed token path.
+- The refresh exchange itself returned `200` in both runtimes and produced a usable access token.
+- `accounts.list`, `accounts/{accountId}`, and `accounts/{accountId}/locations/{locationId}` returned `404` in this diagnostic; the review endpoint remained healthy.
+
+### Guardrail
+- Treat the live GBP access token material as resolved for SOS review ingestion when `reviews.list` is `200` from both API and worker.
+- Do not infer a token-identity problem solely from `accounts.*` 404s in this environment; keep scheduler soak gated on the review endpoint and runtime parity instead.

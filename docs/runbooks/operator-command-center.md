@@ -15,6 +15,33 @@
 6. Use `Reports` only when monthly proof is needed.
 7. Close app.
 
+## Recommendation-Only Operating Mode
+1. Keep GBP scheduler enabled in shadow mode only when `GBP_POLL_SCHEDULER_DISABLED=0` has already been proven healthy.
+2. Keep `POSTMARK_SEND_DISABLED=1` and `REVIEW_ALERT_INBOUND_ENABLED=0` at all times in this mode.
+3. Use `review_actions` as operator guidance only:
+   - pending public reply suggestions
+   - reviewed/dismissed counts
+   - newest action metadata
+4. Treat any public response as a manual operator action copied into Google Business Profile outside BlackBolt.
+5. Do not expect the command center to create `Customer`, `Campaign`, `CampaignMessage`, `DraftMessage`, `ApprovalItem`, `LinkCode`, or `SendEvent` rows in this mode.
+
+## Monitoring Checklist
+1. Check `/health` and worker heartbeat daily.
+2. Confirm the latest GBP `JobRun` succeeded.
+3. Confirm `review_actions` is still present in the command-center payload.
+4. Confirm `Review`, `ReviewClassification`, and `ReviewQueueItem` counts are stable or changing only through expected ingestion.
+5. Confirm `ReviewOperatorAction` remains metadata-only and customerless.
+6. Confirm send-path tables remain at zero:
+   - `Customer`
+   - `Campaign`
+   - `CampaignRun`
+   - `CampaignMessage`
+   - `DraftMessage`
+   - `ApprovalItem`
+   - `LinkCode`
+   - `SendEvent`
+7. Treat any Google auth failure, send-path row creation, or command-center drift as a stop condition.
+
 ## Launch Policy (No Hybrid Browser Window)
 - Daily path is the standalone macOS app (`~/Applications/BlackBolt Operator.app`).
 - Install/update the app bundle from repo root:
