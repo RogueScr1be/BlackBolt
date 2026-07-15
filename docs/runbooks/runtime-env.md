@@ -23,6 +23,8 @@ Startup fails fast for required variables per role.
 
 ### `blackbolt-api`
 - `PORT` (Railway usually injects this)
+- `POSTMARK_SERVER_TOKEN` (required for the isolated review-request live canary and existing Postmark outbound worker)
+- `POSTMARK_FROM` (approved Postmark sender identity; must match the live review-request sender email)
 - Postmark webhook auth/security envs used by webhook endpoint:
 - `POSTMARK_WEBHOOK_BASIC_AUTH_CURRENT` (preferred)
 - `POSTMARK_WEBHOOK_BASIC_AUTH` (legacy alias)
@@ -36,6 +38,8 @@ Startup fails fast for required variables per role.
 - `REVIEW_ALERT_ALLOWED_RECIPIENT` (optional, future inbound mailbox)
 - `REVIEW_ALERT_STORE_RAW=0` by default; reserved for future debugging, do not persist full raw email in this phase
 - `POSTMARK_WEBHOOK_DIAGNOSTIC_MODE=0` by default; logs redacted ingress source data and returns a no-op without parsing or persistence
+- `REVIEW_REQUEST_SEND_ENABLED=0` by default; enables the isolated review-request live canary only when paired with `--live`
+- `REVIEW_REQUEST_FINGERPRINT_SECRET` (required in live mode; HMAC key for recipient fingerprints only)
 - GBP token durability envs:
 - `TOKEN_REF_SOS_LACTATION_GBP_V1` (tenant-scoped access token ref, required for SOS runtime probes and polls)
 - `REFRESH_TOKEN_REF_SOS_LACTATION_GBP_V1` (tenant-scoped refresh token ref, used when access tokens expire)

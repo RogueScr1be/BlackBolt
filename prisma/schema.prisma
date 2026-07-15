@@ -117,6 +117,7 @@ model Tenant {
   gbpSyncStates         GbpSyncState[]
   postmarkWebhookEvents PostmarkWebhookEvent[]
   reviewAlertEmails     ReviewAlertEmail[]
+  reviewRequestDeliveries ReviewRequestDelivery[]
   postmarkSendControl   PostmarkSendControl?
   operatorCredential    OperatorCredential?
   operatorPortfolioMemberships OperatorPortfolioTenantMembership[]
@@ -816,6 +817,26 @@ model ReviewAlertEmail {
   @@index([tenantId, createdAt])
   @@index([tenantId, parsedStatus])
   @@map("review_alert_emails")
+}
+
+model ReviewRequestDelivery {
+  id                   String   @id @default(cuid())
+  tenantId             String   @map("tenant_id")
+  batchKey             String   @map("batch_key")
+  recipientFingerprint String   @map("recipient_fingerprint")
+  status               String
+  providerMessageId    String?  @map("provider_message_id")
+  errorCode            String?  @map("error_code")
+  sentAt               DateTime? @map("sent_at")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  tenant               Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@unique([tenantId, batchKey, recipientFingerprint])
+  @@index([tenantId, batchKey])
+  @@index([tenantId, status])
+  @@map("review_request_deliveries")
 }
 
 model PostmarkSendControl {

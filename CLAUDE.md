@@ -292,6 +292,8 @@
 - Live GBP replay/backfill must resolve token material through `TokenVault` / `TOKEN_REF_*` env refs, not a stale raw `GBP_ACCESS_TOKEN`; a direct bearer env can lag behind the refreshed Railway token ref.
 - Public GBP reply suggestions must use a separate `ReviewOperatorAction` artifact. Do not reuse `DraftMessage`, `ApprovalItem`, or `ReviewQueueItem` for public-review workflows because they imply private outreach or customer targeting.
 - The operator command center may surface `ReviewOperatorAction` only as a read-only metadata summary. Do not add customer inference, raw review text, or send/reply execution to that aggregate payload.
+- Review/referral request dry runs must use an isolated ops primitive that only validates CSV recipients, dedupes, checks suppressions, and renders copy. Do not reuse the private outreach campaign path, and keep `trigger_type=manual_replay_last_3_reviews` honest in audit output.
+- The first live review-request canary must use the isolated `ReviewRequestDelivery` ledger plus HMAC recipient fingerprints. Keep `POSTMARK_SEND_DISABLED=1`, require `REVIEW_REQUEST_SEND_ENABLED=1` for the canary script, and never route the review-request experiment through `Campaign`, `DraftMessage`, `ApprovalItem`, `LinkCode`, or `SendEvent`.
 
 ## CWV Lane Guardrail
 - Desktop CSS deferral lanes must use explicit handle allowlists and pass a disabled-control median gate before promotion.

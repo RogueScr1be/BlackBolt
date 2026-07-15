@@ -504,3 +504,20 @@
 - Execution note:
   - the check must run inside `railway ssh` on a deployed service shell because the production Postgres host is private and `railway run` from the workstation cannot reach it
 - Consequence: operators get a deterministic one-command health check and a deterministic rollback path, while alerting scope stays intentionally small and low-risk.
+
+## 2026-07-15 — Isolated review-request CSV dry-run primitive
+- Context: the first review/referral send experiment needed a dry-run-only primitive that validates recipients and renders copy without reusing the private outreach campaign model.
+- Decision:
+  - add a standalone ops script that reads one or more CSVs, validates emails, dedupes recipients, checks suppressions when database access is available, and renders a review request without sending
+  - keep the primitive isolated from `Campaign`, `CampaignRun`, `DraftMessage`, `ApprovalItem`, `CampaignMessage`, `LinkCode`, and `SendEvent`
+  - treat `manual_replay_last_3_reviews` as honest internal trigger metadata only; do not misrepresent audit history as if reviews were newly created
+- Consequence: review-request preparation can be dry-run safely and audited independently before any explicit live-send gate is approved.
+
+## 2026-07-15 — Isolated live review-request canary ledger
+- Context: the first live review-request canary needed duplicate protection and auditability without reopening the private campaign/send path.
+- Decision:
+  - add a dedicated `ReviewRequestDelivery` ledger keyed by `tenantId + batchKey + recipientFingerprint`
+  - store only HMAC recipient fingerprints plus delivery status metadata
+  - require an explicit live gate (`REVIEW_REQUEST_SEND_ENABLED=1` plus `--live` / `--confirm-live SOS-R11B`) and keep `POSTMARK_SEND_DISABLED=1` unchanged
+  - fail closed when suppression lookup is unavailable or when the approved sender / Postmark credentials are missing
+- Consequence: the canary can send a small deterministic slice with duplicate protection while the campaign system and send-path tables remain isolated.
