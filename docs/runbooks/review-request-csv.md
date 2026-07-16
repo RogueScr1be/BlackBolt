@@ -73,6 +73,28 @@ R11B must re-check:
 The first live canary stays isolated from the campaign path and uses a dedicated ledger table:
 - `ReviewRequestDelivery`
 
+## Preview Manifest
+Before the live gate, operators can produce the masked 10-recipient manifest without sending:
+
+```bash
+npm run ops:review-request:dry-run -- \
+  --tenant-id cmoybzkon0000tm3wj7ofru4n \
+  --csv "wp_wpforms_entries_cleaned - wp_wpforms_entries_cleaned.csv" \
+  --csv "SOS Intake Ledger 2-26- present - Sheet2 (1).csv" \
+  --from-email soslactation@gmail.com \
+  --business-address "4005 Fernwood Ln Houston, TX 77021" \
+  --google-review-link "https://share.google/N94oCQ5jrZ2Zv9sTG" \
+  --trigger-type manual_replay_last_3_reviews \
+  --preview-live \
+  --limit 10
+```
+
+Operational rules for preview mode:
+- `DATABASE_URL` must be available so suppression lookup succeeds.
+- The command must print a masked 10-recipient manifest only.
+- No send-path rows may be created.
+- Operator approval is still required before the live canary.
+
 Live mode requirements:
 - `REVIEW_REQUEST_SEND_ENABLED=1`
 - `POSTMARK_SEND_DISABLED=1` remains set

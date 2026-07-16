@@ -71,6 +71,7 @@
 - Postmark review-alert ingress behind Railway must resolve source IP with a route-scoped helper. Do not widen the allowlist to Railway proxy IPs and do not enable global `trust proxy`; forwarded headers may be trusted only when `POSTMARK_WEBHOOK_TRUST_PROXY_HEADERS=1`, the socket context looks like a proxy/private hop, and basic auth still passes.
 - Shadow email-alert adapters must remain disabled by default and shadow-only until an explicit promotion phase; do not wire them into review ingestion or send-path side effects.
 - Shadow email-alert audit rows must use `actorUserId: null` unless a real persisted actor exists; do not invent synthetic `User` ids such as `system`.
+- Review-request canaries must keep preview and send separate: `--preview-live` may produce the masked 10-recipient manifest with DB suppression lookup, but only `--live --confirm-live SOS-R11B --batch-key <unique> --limit <=25` may send. Never treat preview output as a send approval.
 - Outbound send workers must use atomic DB claim transitions (`QUEUED` -> `SENDING`) and exit on zero-row claims.
 - Treat `deliveryState=SENT && providerMessageId=null` as an invariant violation: alert and stop (never re-send).
 - Global safety override: `POSTMARK_SEND_DISABLED=1` forces simulation regardless of tenant policy.

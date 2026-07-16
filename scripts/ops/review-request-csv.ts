@@ -59,6 +59,7 @@ type Options = {
   fromEmail: string;
   businessAddress: string;
   triggerType: string;
+  previewLive: boolean;
   live: boolean;
   confirmLive: string | null;
   batchKey: string | null;
@@ -74,6 +75,7 @@ function fail(message: string): never {
 function readArgs(argv: string[]): Options {
   const csvPaths: string[] = [];
   const out: Partial<Options> = {
+    previewLive: false,
     live: false,
     confirmLive: null,
     batchKey: null,
@@ -118,6 +120,9 @@ function readArgs(argv: string[]): Options {
         break;
       case '--trigger-type':
         out.triggerType = readValue();
+        break;
+      case '--preview-live':
+        out.previewLive = true;
         break;
       case '--live':
         out.live = true;
@@ -168,6 +173,9 @@ function readArgs(argv: string[]): Options {
   }
 
   if (out.live) {
+    if (out.previewLive) {
+      fail('--preview-live cannot be combined with --live');
+    }
     if (out.confirmLive !== 'SOS-R11B') {
       fail('--confirm-live SOS-R11B is required for live mode');
     }
@@ -192,6 +200,7 @@ function readArgs(argv: string[]): Options {
     fromEmail,
     businessAddress,
     triggerType,
+    previewLive: Boolean(out.previewLive),
     live: Boolean(out.live),
     confirmLive: out.confirmLive ?? null,
     batchKey: out.batchKey ?? null,
@@ -506,7 +515,7 @@ function parseCsvFile(sourceFile: string): ParsedCsvFile {
 async function loadSuppressions(tenantId: string, emails: string[], requireAvailable: boolean) {
   if (!process.env.DATABASE_URL?.trim()) {
     if (requireAvailable) {
-      fail('DATABASE_URL is required for live mode');
+      fail('DATABASE_URL is required for preview/live mode');
     }
     return {
       available: false,
@@ -571,7 +580,7 @@ async function loadSuppressions(tenantId: string, emails: string[], requireAvail
     };
   } catch {
     if (requireAvailable) {
-      fail('Suppression lookup failed in live mode');
+      fail('Suppression lookup failed in preview/live mode');
     }
     return {
       available: false,
@@ -613,7 +622,11 @@ async function main() {
     dedupedRows.push(row);
   }
 
-  const suppressionLookup = await loadSuppressions(options.tenantId, dedupedRows.map((row) => row.email), options.live);
+  const suppressionLookup = await loadSuppressions(
+    options.tenantId,
+    dedupedRows.map((row) => row.email),
+    options.live || options.previewLive
+  );
 
   const sendableRows: CandidateRow[] = [];
   let suppressedRows = 0;
@@ -643,6 +656,56 @@ async function main() {
   });
 
   if (!options.live) {
+    if (options.previewLive) {
+      const previewLimit = options.limit ?? 10;
+      if (previewLimit > 25) {
+        fail('--limit must be <= 25 for preview mode');
+      }
+      if (sendableRows.length < previewLimit) {
+        fail(`Only ${sendableRows.length} eligible recipients available; preview requires at least ${previewLimit}`);
+      }
+
+      const previewRows = sendableRows.slice(0, previewLimit);
+
+      console.log('[review-request] status=PASS');
+      console.log('[review-request] reason=preview manifest prepared');
+      console.log('[review-request] next_action=Pause for operator approval before sending, then run live mode with the approved batch key');
+      console.log(`[review-request] tenant_id=${options.tenantId}`);
+      console.log(`[review-request] trigger_type=${options.triggerType}`);
+      console.log(`[review-request] preview_limit=${previewLimit}`);
+      console.log(`[review-request] csv_files=${options.csvPaths.join(' | ')}`);
+      for (const file of parsedFiles) {
+        console.log(`[review-request] csv_file=${file.sourceFile}`);
+        console.log(`[review-request] csv_rows=${file.totalRows}`);
+        console.log(`[review-request] csv_columns=${formatColumns(file.headers)}`);
+      }
+      console.log(`[review-request] rows_total=${totalRows}`);
+      console.log(`[review-request] valid_recipient_count=${sendableRows.length}`);
+      console.log(`[review-request] selected_recipient_count=${previewRows.length}`);
+      console.log(`[review-request] skipped_duplicate_count=${duplicateRows + crossFileDuplicateRows}`);
+      console.log(`[review-request] skipped_duplicate_cross_file_count=${crossFileDuplicateRows}`);
+      console.log(`[review-request] skipped_invalid_count=${invalidRows}`);
+      console.log(`[review-request] skipped_suppressed_count=${suppressedRows}`);
+      console.log('[review-request] suppression_lookup=available');
+      console.log(`[review-request] from_email=${maskEmail(options.fromEmail)}`);
+      console.log(`[review-request] google_review_link=${options.googleReviewLink}`);
+      console.log(`[review-request] business_address=${options.businessAddress}`);
+
+      previewRows.forEach((row, index) => {
+        const sampleNumber = index + 1;
+        console.log(`[review-request] manifest[${sampleNumber}].email=${maskEmail(row.email)}`);
+        console.log(`[review-request] manifest[${sampleNumber}].first_name=${maskName(row.firstName)}`);
+        console.log(`[review-request] manifest[${sampleNumber}].source=${path.basename(row.sourceFile)}:${row.rowNum}`);
+      });
+
+      console.log('[review-request] preview_mode=true');
+      console.log('[review-request] live_send=false');
+      console.log('[review-request] send_path_mutation=false');
+
+      process.exitCode = 0;
+      return;
+    }
+
     const status: Status =
       candidateRows.length > 0 && sendableRows.length > 0
         ? suppressionLookup.available && duplicateRows === 0 && crossFileDuplicateRows === 0 && invalidRows === 0 && suppressedRows === 0

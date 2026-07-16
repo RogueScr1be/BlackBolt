@@ -521,3 +521,12 @@
   - require an explicit live gate (`REVIEW_REQUEST_SEND_ENABLED=1` plus `--live` / `--confirm-live SOS-R11B`) and keep `POSTMARK_SEND_DISABLED=1` unchanged
   - fail closed when suppression lookup is unavailable or when the approved sender / Postmark credentials are missing
 - Consequence: the canary can send a small deterministic slice with duplicate protection while the campaign system and send-path tables remain isolated.
+
+## 2026-07-16 — Review-request preview manifest
+- Context: operators needed a DB-backed approval manifest for the first 10 recipients without enabling outbound sends.
+- Decision:
+  - add a read-only `--preview-live` mode to `scripts/ops/review-request-csv.ts`
+  - require database suppression lookup for preview mode
+  - print a masked 10-recipient manifest and stop before any ledger write or Postmark call
+  - keep live sending behind the existing explicit `--live --confirm-live SOS-R11B --batch-key <unique> --limit <=25` gate
+- Consequence: operators can approve the exact canary slice without exposing the send path.
